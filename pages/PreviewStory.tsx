@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Storybook } from '../types';
 import { STORYBOOK_PRICE, THEMES } from '../constants';
@@ -9,7 +9,8 @@ import {
   Loader2,
   AlertTriangle,
   ShoppingCart,
-  PartyPopper
+  PartyPopper,
+  ArrowLeft
 } from 'lucide-react';
 import * as storage from '../services/storageService';
 import {
@@ -18,12 +19,26 @@ import {
   SHOPIFY_CONFIG,
   isShopifyEnvironment,
   isShopifyCustomerLoggedIn,
+  clearPendingCheckout,
 } from '../src/api/client';
 import BookPageCard from '../components/BookPageCard';
 import CoverPageCard from '../components/CoverPageCard';
+import OptimizedImage from '../components/OptimizedImage';
 import AuthModal, { hasChosenGuestMode } from '../components/AuthModal';
 import { LockedPagesSection } from '../components/LockedPageCard';
 import UnlockingOverlay from '../components/UnlockingOverlay';
+
+// Responsive CSS to override Shopify theme conflicts
+const PreviewResponsiveStyles = () => (
+  <style>{`
+    #sg-desktop-back { display: none !important; }
+    #sg-mobile-back { display: block !important; }
+    @media (min-width: 768px) {
+      #sg-desktop-back { display: block !important; }
+      #sg-mobile-back { display: none !important; }
+    }
+  `}</style>
+);
 
 const PreviewStory: React.FC = () => {
   const { id } = useParams();
@@ -47,6 +62,21 @@ const PreviewStory: React.FC = () => {
   const [showUnlocking, setShowUnlocking] = useState(false);
   const [unlockProgress, setUnlockProgress] = useState(0);
   const [customerEmail, setCustomerEmail] = useState('');
+
+  // Ref to track if component is mounted (for cleanup)
+  const isMountedRef = useRef(true);
+  const pollingAbortRef = useRef<boolean>(false);
+
+  // Cleanup on unmount to prevent memory leaks
+  useEffect(() => {
+    isMountedRef.current = true;
+    pollingAbortRef.current = false;
+
+    return () => {
+      isMountedRef.current = false;
+      pollingAbortRef.current = true;
+    };
+  }, []);
 
   useEffect(() => {
     const loadBook = async () => {
@@ -126,6 +156,9 @@ const PreviewStory: React.FC = () => {
     const isCheckoutSuccess = urlParams.get('checkout_success') === 'true';
 
     if (isCheckoutSuccess && id) {
+      // Clear any pending checkout since we're now processing it
+      clearPendingCheckout();
+
       setCheckoutSuccess(true);
       // Clean URL without reload
       window.history.replaceState({}, '', window.location.pathname);
@@ -150,12 +183,21 @@ const PreviewStory: React.FC = () => {
     setUnlockProgress(10);
 
     const maxPaymentAttempts = 15; // 30 seconds for payment confirmation
-    const maxGenerationAttempts = 60; // 2 minutes for remaining page generation
 
     // Phase 1: Poll for payment confirmation
     for (let i = 0; i < maxPaymentAttempts; i++) {
+      // Check if component unmounted or polling was aborted
+      if (!isMountedRef.current || pollingAbortRef.current) {
+        console.log('🛑 Payment polling aborted (component unmounted)');
+        return;
+      }
+
       try {
         const previewData = await api.getPreview(previewId);
+
+        // Check again after async call
+        if (!isMountedRef.current || pollingAbortRef.current) return;
+
         setUnlockProgress(10 + (i * 3)); // Progress 10-55%
 
         if (previewData.status === 'purchased' || previewData.generation_phase !== 'preview') {
@@ -175,10 +217,12 @@ const PreviewStory: React.FC = () => {
       await new Promise(r => setTimeout(r, 2000));
     }
 
-    // Timeout
-    setPollingPayment(false);
-    setShowUnlocking(false);
-    alert('Payment is still processing. Please refresh the page in a moment.');
+    // Timeout - only update state if still mounted
+    if (isMountedRef.current) {
+      setPollingPayment(false);
+      setShowUnlocking(false);
+      alert('Payment is still processing. Please refresh the page in a moment.');
+    }
   };
 
   // Poll for remaining page generation to complete
@@ -186,8 +230,18 @@ const PreviewStory: React.FC = () => {
     const maxAttempts = 60; // 2 minutes
 
     for (let i = 0; i < maxAttempts; i++) {
+      // Check if component unmounted or polling was aborted
+      if (!isMountedRef.current || pollingAbortRef.current) {
+        console.log('🛑 Generation polling aborted (component unmounted)');
+        return;
+      }
+
       try {
         const previewData = await api.getPreview(previewId);
+
+        // Check again after async call
+        if (!isMountedRef.current || pollingAbortRef.current) return;
+
         setUnlockProgress(60 + (i * 0.6)); // Progress 60-96%
         setGenerationPhase(previewData.generation_phase || 'generating_full');
 
@@ -230,7 +284,9 @@ const PreviewStory: React.FC = () => {
 
           // Hide overlay after brief celebration
           setTimeout(() => {
-            setShowUnlocking(false);
+            if (isMountedRef.current) {
+              setShowUnlocking(false);
+            }
           }, 1500);
           return;
         }
@@ -240,9 +296,11 @@ const PreviewStory: React.FC = () => {
       await new Promise(r => setTimeout(r, 2000));
     }
 
-    // Still not complete - show message but hide overlay
-    setShowUnlocking(false);
-    alert('Your book is almost ready! We\'ll email you when it\'s complete.');
+    // Still not complete - show message but hide overlay (only if mounted)
+    if (isMountedRef.current) {
+      setShowUnlocking(false);
+      alert('Your book is almost ready! We\'ll email you when it\'s complete.');
+    }
   };
 
   const handleDownloadClick = () => {
@@ -265,7 +323,24 @@ const PreviewStory: React.FC = () => {
       if (book.paymentStatus === 'paid') {
         const downloadData = await api.getDownload(book.id);
         if (downloadData.status === 'ready' && downloadData.downloads?.pdf) {
-          window.open(downloadData.downloads.pdf.url, '_blank');
+          // Generate friendly filename from book data
+          const childNameClean = book.childName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+          const themeName = (book.theme || 'Story')
+            .replace('storygift_', '')
+            .replace(/_/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join('_');
+          const pdfFilename = `${childNameClean}_${themeName}_Storybook.pdf`;
+
+          // Use invisible anchor tag to trigger download without navigating away
+          const link = document.createElement('a');
+          link.href = downloadData.downloads.pdf.url;
+          link.download = pdfFilename;
+          link.target = '_blank'; // Fallback for browsers that ignore download attribute
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
         } else if (downloadData.status === 'generating') {
           alert('Your PDF is still being generated. Please try again in a few minutes.');
         } else {
@@ -340,8 +415,8 @@ const PreviewStory: React.FC = () => {
             <Link to="/create" className="block w-full bg-primary text-white py-4 rounded-2xl font-bold shadow-lg hover:shadow-primary/20 transition-all">
               Re-cast the Spell
             </Link>
-            <Link to="/dashboard" className="block w-full text-gray-400 font-bold py-2 hover:text-gray-600">
-              Back to Dashboard
+            <Link to="/my-creations" className="block w-full text-gray-400 font-bold py-2 hover:text-gray-600">
+              Back to My Creations
             </Link>
           </div>
         </div>
@@ -353,6 +428,7 @@ const PreviewStory: React.FC = () => {
 
   return (
     <>
+      <PreviewResponsiveStyles />
       {/* Unlocking Overlay - shown after payment */}
       <UnlockingOverlay
         childName={book.childName}
@@ -365,23 +441,43 @@ const PreviewStory: React.FC = () => {
       <div className="min-h-screen bg-gray-50 pb-28">
         {/* Hero Header */}
         <div className="bg-white border-b border-gray-100 py-8 px-4 mb-8">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="flex items-center justify-center space-x-2 text-primary mb-2">
-              <Sparkles className="w-5 h-5 fill-current" />
-              <span className="text-xs font-black uppercase tracking-widest">Your Story is Ready</span>
+          <div className="max-w-7xl mx-auto relative">
+
+            {/* Desktop Back Button - Absolute Top Left */}
+            <div id="sg-desktop-back" className="absolute left-0 top-1">
+              <Link to="/" className="inline-flex items-center text-gray-500 hover:text-primary transition-colors bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-full hover:bg-primary/5 border border-transparent hover:border-primary/20">
+                <ArrowLeft className="w-4 h-4 mr-1.5" />
+                <span className="font-medium text-sm">Create Another Story</span>
+              </Link>
             </div>
-            <h1 className="text-3xl md:text-4xl font-heading text-slate-900 mb-2">
-              {book.childName}'s <span className="text-primary">{themeData?.title || book.theme.replace('storygift_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span> Adventure
-            </h1>
-            <p className="text-gray-500">
-              {/* Page count includes cover */}
-              {book.coverUrl ? (book.pages.length + 1) : book.pages.length} magical pages • {themeData?.icon || '📚'} {themeData?.title || book.theme.replace('storygift_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            </p>
+
+            {/* Mobile Back Button - Stacked */}
+            <div id="sg-mobile-back" className="mb-6 flex justify-start">
+              <Link to="/" className="inline-flex items-center text-gray-500 hover:text-primary transition-colors">
+                <ArrowLeft className="w-4 h-4 mr-1.5" />
+                <span className="font-medium text-sm">Create Another Story</span>
+              </Link>
+            </div>
+
+            <div className="max-w-3xl mx-auto text-center">
+              <div className="flex items-center justify-center space-x-2 text-primary mb-2">
+                <Sparkles className="w-5 h-5 fill-current" />
+                <span className="text-xs font-black uppercase tracking-widest">Your Story is Ready</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-heading text-slate-900 mb-2">
+                {book.childName}'s <span className="text-primary">{themeData?.title || book.theme.replace('storygift_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span> Adventure
+              </h1>
+              <p className="text-gray-500">
+                {/* Page count includes cover */}
+                {book.coverUrl ? (book.pages.length + 1) : book.pages.length} magical pages • {themeData?.icon || '📚'} {themeData?.title || book.theme.replace('storygift_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Vertical Page Cards Feed - Compact, centered cards */}
-        <div className="max-w-md mx-auto px-4 space-y-5">
+
+        {/* Vertical Page Cards Feed - Larger size for impactful preview */}
+        <div className="w-full max-w-md mx-auto px-3 sm:px-4 space-y-5">
           {/* Cover Page - displayed first with title/starring overlays */}
           {book.coverUrl && (
             <CoverPageCard
@@ -409,37 +505,29 @@ const PreviewStory: React.FC = () => {
                 </div>
               )}
 
-              {/* Premium Page Card - matches PDF layout (80% image, 20% text) */}
-              <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-                {/* Page Header */}
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                  <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                    Page {page.pageNumber}
-                  </span>
-                  {book.paymentStatus === 'paid' && (
-                    <span className="text-xs font-bold text-green-500 flex items-center space-x-1">
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Unlocked</span>
-                    </span>
-                  )}
-                </div>
-
-                {/* Image Section - 4:3 aspect ratio for compact mobile view */}
-                <div className="relative bg-gray-100">
-                  <div className="aspect-[4/3]">
-                    <img
-                      src={page.imageUrl}
-                      alt={`Page ${page.pageNumber} illustration`}
-                      className="w-full h-full object-cover"
-                    />
+              {/* Page Card - 80% image, 20% text */}
+              <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                {/* Image Section - wider ratio for 80% of card */}
+                <div className="relative">
+                  <OptimizedImage
+                    src={page.imageUrl}
+                    alt={`Page ${page.pageNumber} illustration`}
+                    aspectRatio="5/4"
+                  />
+                  {/* Page number badge */}
+                  <div className="absolute top-3 left-3 bg-black/60 text-white text-xs font-bold px-2.5 py-1 rounded-full z-10">
+                    {page.pageNumber}
                   </div>
                 </div>
 
-                {/* Text Section - matches PDF's 20% text area */}
-                <div className="p-4 bg-white border-t border-gray-50">
-                  <p className="text-sm md:text-base text-gray-800 leading-relaxed font-medium text-center">
+                {/* Text Section - Fixed height, 2 lines max with truncation */}
+                <div className="px-4 py-3 bg-gradient-to-b from-white to-gray-50/50 border-t border-gray-100">
+                  <p className="text-sm leading-relaxed text-gray-700 text-center line-clamp-2">
                     {page.text}
                   </p>
+                  {page.text && page.text.length > 120 && (
+                    <p className="text-xs text-gray-400 text-center mt-1 italic">...full story in your PDF</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -458,7 +546,7 @@ const PreviewStory: React.FC = () => {
             <LockedPagesSection
               lockedPages={lockedPages}
               onUnlock={handlePaymentClick}
-              price={`$${SHOPIFY_CONFIG.PRODUCT_PRICE_USD}`}
+              price={`${SHOPIFY_CONFIG.CURRENCY_SYMBOL}${SHOPIFY_CONFIG.PRODUCT_PRICE}`}
               isLoading={isPaymentLoading}
             />
           )}
@@ -484,7 +572,7 @@ const PreviewStory: React.FC = () => {
                       Love this story? Keep it forever.
                     </p>
                     <p className="text-2xl font-heading text-primary">
-                      ${SHOPIFY_CONFIG.PRODUCT_PRICE_USD}
+                      {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}
                     </p>
                   </>
                 ) : (
@@ -521,7 +609,7 @@ const PreviewStory: React.FC = () => {
                     <span>
                       {isPaymentLoading
                         ? 'Redirecting...'
-                        : `Buy to Unlock High-Res PDF - $${SHOPIFY_CONFIG.PRODUCT_PRICE_USD}`
+                        : `Buy to Unlock High-Res PDF - ${SHOPIFY_CONFIG.CURRENCY_SYMBOL}${SHOPIFY_CONFIG.PRODUCT_PRICE}`
                       }
                     </span>
                   </button>
@@ -558,11 +646,10 @@ const PreviewStory: React.FC = () => {
             }
             setPendingAction(null);
           }}
-          title={pendingAction === 'payment' ? "Sign in to track your purchase" : "Sign in to access downloads"}
-          subtitle="Your purchases and downloads will be linked to your account"
+          context={pendingAction === 'download' ? 'download' : 'default'}
           returnPath={window.location.pathname}
         />
-      </div>
+      </div >
     </>
   );
 };

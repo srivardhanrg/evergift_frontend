@@ -14,12 +14,16 @@ export enum Theme {
     // Primary StoryGift themes
     STORYGIFT_MAGIC_CASTLE = 'storygift_magic_castle',
     STORYGIFT_ENCHANTED_FOREST = 'storygift_enchanted_forest',
-    STORYGIFT_SPY_MISSION = 'storygift_spy_mission',
+    // New premium themes
+    STORYGIFT_COSMIC_DREAMER = 'storygift_cosmic_dreamer',
+    STORYGIFT_MIGHTY_GUARDIAN = 'storygift_mighty_guardian',
+    STORYGIFT_OCEAN_EXPLORER = 'storygift_ocean_explorer',
+    STORYGIFT_BIRTHDAY_MAGIC = 'storygift_birthday_magic',
+    // Newest premium themes (Safari & Dream Weaver)
+    STORYGIFT_SAFARI_ADVENTURE = 'storygift_safari_adventure',
+    STORYGIFT_DREAM_WEAVER = 'storygift_dream_weaver',
     // Legacy themes
     MAGIC_CASTLE = 'magic_castle',
-    SPACE_ADVENTURE = 'space_adventure',
-    UNDERWATER = 'underwater',
-    FOREST_FRIENDS = 'forest_friends',
 }
 
 export enum BookStyle {
@@ -106,6 +110,7 @@ export interface PreviewResponse {
     child_name: string;
     theme: Theme;
     style: BookStyle;
+    cover_url?: string;
     preview_pages: PageData[];
     locked_pages?: PageData[];
     total_pages: number;
@@ -113,6 +118,7 @@ export interface PreviewResponse {
     locked_pages_count: number;
     expires_at: string;
     days_remaining: number;
+    generation_phase?: 'preview' | 'generating_full' | 'complete';
     purchase: {
         price: number;
         currency: string;

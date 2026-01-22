@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Loader2, Lock, Sparkles } from 'lucide-react';
 
 export type PageCardState = 'completed' | 'generating' | 'pending';
@@ -32,8 +32,18 @@ const BookPageCard: React.FC<BookPageCardProps> = ({
     generatingMessage = "Creating magic...",
     isCover = false
 }) => {
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [imageError, setImageError] = useState(false);
+
     // Dynamic label based on isCover
     const pageLabel = isCover ? 'Cover' : `Page ${pageNumber}`;
+
+    // Reset loading state when URL changes
+    React.useEffect(() => {
+        setImageLoaded(false);
+        setImageError(false);
+    }, [imageUrl]);
+
     // Completed Page: Full white card with image and text matching PDF layout
     if (state === 'completed') {
         return (
@@ -41,7 +51,7 @@ const BookPageCard: React.FC<BookPageCardProps> = ({
                 className={`bg-white rounded-2xl shadow-md overflow-hidden mx-auto max-w-lg ${className}`}
             >
                 <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
+                    <span className="text-xs font-black text-gray-600 uppercase tracking-widest">
                         {pageLabel}
                     </span>
                     <span className="text-xs font-bold text-green-500 flex items-center space-x-1">
@@ -54,11 +64,24 @@ const BookPageCard: React.FC<BookPageCardProps> = ({
                 <div className="relative bg-gray-100">
                     <div className="aspect-[5/4]">
                         {imageUrl ? (
-                            <img
-                                src={imageUrl}
-                                alt={`Page ${pageNumber} illustration`}
-                                className="w-full h-full object-cover"
-                            />
+                            <>
+                                {/* Loading skeleton - shown until image loads */}
+                                {!imageLoaded && !imageError && (
+                                    <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 animate-pulse flex items-center justify-center">
+                                        <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+                                    </div>
+                                )}
+                                <img
+                                    src={imageUrl}
+                                    alt={storyText ? `Illustration: ${storyText.substring(0, 100)}...` : `Illustration for ${pageLabel}`}
+                                    className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'
+                                        }`}
+                                    onLoad={() => setImageLoaded(true)}
+                                    onError={() => setImageError(true)}
+                                    loading="eager"
+                                    decoding="async"
+                                />
+                            </>
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-gray-300">
                                 <span>Image loading...</span>
@@ -67,11 +90,14 @@ const BookPageCard: React.FC<BookPageCardProps> = ({
                     </div>
                 </div>
 
-                {/* Text Section - matches PDF's 20% text area */}
-                <div className="p-4 bg-white border-t border-gray-50">
-                    <p className="text-sm md:text-base text-gray-800 leading-relaxed font-medium text-center">
+                {/* Text Section - Fixed height matching PDF's 20% area */}
+                <div className="p-4 bg-gradient-to-b from-white to-gray-50/50 border-t border-gray-100">
+                    <p className="text-sm text-gray-800 leading-relaxed font-medium text-center line-clamp-2">
                         {storyText || 'Story text loading...'}
                     </p>
+                    {storyText && storyText.length > 100 && (
+                        <p className="text-xs text-gray-400 text-center mt-1.5 italic">...continues in full book</p>
+                    )}
                 </div>
             </div>
         );
@@ -135,7 +161,7 @@ const BookPageCard: React.FC<BookPageCardProps> = ({
             className={`bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 opacity-40 overflow-hidden mx-auto max-w-lg ${className}`}
         >
             <div className="px-4 py-3 border-b border-gray-100">
-                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
+                <span className="text-xs font-black text-gray-600 uppercase tracking-widest">
                     {pageLabel}
                 </span>
             </div>

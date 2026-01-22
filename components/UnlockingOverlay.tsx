@@ -100,17 +100,6 @@ const UnlockingOverlay: React.FC<UnlockingOverlayProps> = ({
                     Please wait, this will only take a moment...
                 </p>
             </div>
-
-            {/* Custom animation */}
-            <style>{`
-                @keyframes scale-in {
-                    from { opacity: 0; transform: scale(0.95); }
-                    to { opacity: 1; transform: scale(1); }
-                }
-                .animate-scale-in {
-                    animation: scale-in 0.3s ease-out;
-                }
-            `}</style>
         </div>
     );
 };

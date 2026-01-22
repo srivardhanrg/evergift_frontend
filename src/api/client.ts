@@ -60,7 +60,28 @@ const getApiBase = (): string => {
     return isShopifyEnvironment() ? '/apps/zelavo/api' : '/proxy/api';
 };
 
+/**
+ * Get direct backend URL for file uploads.
+ * Shopify App Proxy doesn't support multipart/form-data, so we need to 
+ * upload directly to the backend via the URL injected in the Liquid template.
+ * 
+ * The Liquid template should include: data-backend-url="https://your-backend.com"
+ * For local dev, falls back to /proxy/api
+ */
+const getDirectApiBase = (): string => {
+    if (typeof document !== 'undefined') {
+        const appElement = document.getElementById('zelavo-app');
+        const backendUrl = appElement?.dataset.backendUrl;
+        if (backendUrl) {
+            return `${backendUrl}/api`;
+        }
+    }
+    // Fallback for local development
+    return '/proxy/api';
+};
+
 const API_BASE = getApiBase();
+const DIRECT_API_BASE = getDirectApiBase();
 
 /**
  * Get Shopify customer context from Liquid-injected data attributes
@@ -107,9 +128,10 @@ class ApiError extends Error {
 }
 
 /**
- * Get or create a session ID for guest users (same as AuthModal)
+ * Get or create a session ID for guest users
+ * Exported for use in AuthModal and other components
  */
-const getOrCreateSessionId = (): string => {
+export const getOrCreateSessionId = (): string => {
     if (typeof localStorage === 'undefined') {
         return `guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
@@ -139,10 +161,8 @@ function buildHeaders(additionalHeaders?: Record<string, string>): Record<string
         headers['X-Shopify-Customer-Email'] = customerEmail;
     }
 
-    // Add session ID for guest users (used for linking previews when they sign up)
-    if (!customerId) {
-        headers['X-Session-Id'] = getOrCreateSessionId();
-    }
+    // Always add session ID - needed for linking guest creations after login
+    headers['X-Session-Id'] = getOrCreateSessionId();
 
     return headers;
 }
@@ -150,19 +170,36 @@ function buildHeaders(additionalHeaders?: Record<string, string>): Record<string
 
 async function handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-        let errorData: ErrorResponse | null = null;
+        let errorData: any = null;
         try {
             errorData = await response.json();
         } catch {
             // Response was not JSON
         }
 
-        if (errorData?.error) {
+        // Handle standard ErrorResponse format: { error: { code, message } }
+        if (errorData?.error?.code) {
             throw new ApiError(
                 errorData.error.message,
                 errorData.error.code,
                 errorData.error.details
             );
+        }
+
+        // Handle FastAPI HTTPException format: { detail: { code, message } } or { detail: "string" }
+        if (errorData?.detail) {
+            if (typeof errorData.detail === 'object' && errorData.detail.code) {
+                throw new ApiError(
+                    errorData.detail.message || 'Request failed',
+                    errorData.detail.code,
+                    errorData.detail
+                );
+            } else if (typeof errorData.detail === 'string') {
+                throw new ApiError(
+                    errorData.detail,
+                    'REQUEST_FAILED'
+                );
+            }
         }
 
         throw new ApiError(
@@ -179,13 +216,15 @@ async function handleResponse<T>(response: Response): Promise<T> {
 // ==================
 
 /**
- * Upload a child's photo for face validation
+ * Upload a child's photo for face validation.
+ * Uses DIRECT_API_BASE because Shopify App Proxy doesn't support multipart/form-data.
  */
 export async function uploadPhoto(file: File): Promise<PhotoUploadResponse> {
     const formData = new FormData();
     formData.append('photo', file);
 
-    const response = await fetch(`${API_BASE}/upload-photo`, {
+    // Use direct backend URL for file uploads (bypasses Shopify App Proxy)
+    const response = await fetch(`${DIRECT_API_BASE}/upload-photo`, {
         method: 'POST',
         headers: buildHeaders(),
         body: formData,
@@ -200,7 +239,8 @@ export async function uploadPhoto(file: File): Promise<PhotoUploadResponse> {
 export async function createPreview(
     request: PreviewCreateRequest
 ): Promise<JobStartResponse> {
-    const response = await fetch(`${API_BASE}/preview`, {
+    // Use DIRECT_API_BASE to bypass Shopify App Proxy 500 errors
+    const response = await fetch(`${DIRECT_API_BASE}/preview`, {
         method: 'POST',
         headers: buildHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(request),
@@ -213,7 +253,7 @@ export async function createPreview(
  * Get the status of a generation job
  */
 export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
-    const response = await fetch(`${API_BASE}/status/${jobId}`, {
+    const response = await fetch(`${DIRECT_API_BASE}/status/${jobId}`, {
         headers: buildHeaders(),
     });
     return handleResponse<JobStatusResponse>(response);
@@ -223,7 +263,7 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
  * Get preview data for display
  */
 export async function getPreview(previewId: string): Promise<PreviewResponse> {
-    const response = await fetch(`${API_BASE}/preview/${previewId}`, {
+    const response = await fetch(`${DIRECT_API_BASE}/preview/${previewId}`, {
         headers: buildHeaders(),
     });
     return handleResponse<PreviewResponse>(response);
@@ -233,7 +273,7 @@ export async function getPreview(previewId: string): Promise<PreviewResponse> {
  * Get download links for a completed order
  */
 export async function getDownload(orderId: string): Promise<DownloadResponse> {
-    const response = await fetch(`${API_BASE}/download/${orderId}`, {
+    const response = await fetch(`${DIRECT_API_BASE}/download/${orderId}`, {
         headers: buildHeaders(),
     });
     return handleResponse<DownloadResponse>(response);
@@ -244,11 +284,78 @@ export async function getDownload(orderId: string): Promise<DownloadResponse> {
  * Returns a new job_id to poll for status
  */
 export async function retryJob(jobId: string): Promise<JobStartResponse> {
-    const response = await fetch(`${API_BASE}/preview/${jobId}/retry`, {
+    const response = await fetch(`${DIRECT_API_BASE}/preview/${jobId}/retry`, {
         method: 'POST',
         headers: buildHeaders(),
     });
     return handleResponse<JobStartResponse>(response);
+}
+
+// ==================
+// My Creations API
+// ==================
+
+export interface CreationItem {
+    preview_id: string;
+    child_name: string;
+    theme: string;
+    cover_url: string | null;
+    status: string;
+    payment_status: 'paid' | 'unpaid';
+    created_at: string;
+    expires_at: string;
+    days_remaining: number;
+    job_id: string | null;
+}
+
+export interface MyCreationsResponse {
+    creations: CreationItem[];
+    total: number;
+    can_create_more: boolean;
+}
+
+export interface LinkSessionResponse {
+    linked_count: number;
+    message: string;
+}
+
+export interface CreationCountResponse {
+    count: number;
+    limit: number | null;
+    can_create: boolean;
+}
+
+/**
+ * Get user's creation history
+ */
+export async function getMyCreations(): Promise<MyCreationsResponse> {
+    const response = await fetch(`${DIRECT_API_BASE}/my-creations`, {
+        headers: buildHeaders(),
+    });
+    return handleResponse<MyCreationsResponse>(response);
+}
+
+/**
+ * Link guest session to logged-in user
+ * Called after login to migrate guest creations
+ */
+export async function linkSession(): Promise<LinkSessionResponse> {
+    const response = await fetch(`${DIRECT_API_BASE}/link-session`, {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify({}),
+    });
+    return handleResponse<LinkSessionResponse>(response);
+}
+
+/**
+ * Get count of creations to check guest limit
+ */
+export async function getCreationCount(): Promise<{ count: number }> {
+    const response = await fetch(`${DIRECT_API_BASE}/creation-count`, {
+        headers: buildHeaders(),
+    });
+    return handleResponse<{ count: number }>(response);
 }
 
 // ==================
@@ -317,11 +424,73 @@ export async function pollJobUntilComplete(
  * UPDATE THIS with your actual Shopify product variant ID
  */
 export const SHOPIFY_CONFIG = {
-    // The numeric variant ID of your "Personalized MagicTales Storybook" product
+    // The numeric variant ID of your "Personalized StoryGift Storybook" product
     // Store: storygift-2061.myshopify.com
-    PRODUCT_VARIANT_ID: 10089880912148, // Your actual variant ID
-    PRODUCT_PRICE_USD: 29.99, // Display price (actual price set in Shopify)
+    PRODUCT_VARIANT_ID: 51852877529364, // Correct Variant ID
+    PRODUCT_PRICE: 599, // Price in INR
+    CURRENCY_SYMBOL: '₹',
 };
+
+// ==================
+// Checkout Tracking (Fallback for when Shopify ignores return_to)
+// ==================
+
+const PENDING_CHECKOUT_KEY = 'magictales_pending_checkout';
+const CHECKOUT_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+interface PendingCheckout {
+    previewId: string;
+    timestamp: number;
+}
+
+/**
+ * Store pending checkout info before redirecting to Shopify
+ * This allows us to detect checkout completion even if return_to is ignored
+ */
+export function setPendingCheckout(previewId: string): void {
+    if (typeof localStorage === 'undefined') return;
+
+    const data: PendingCheckout = {
+        previewId,
+        timestamp: Date.now(),
+    };
+    localStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify(data));
+    console.log('[Checkout] Stored pending checkout:', previewId);
+}
+
+/**
+ * Get pending checkout if it exists and hasn't expired
+ */
+export function getPendingCheckout(): PendingCheckout | null {
+    if (typeof localStorage === 'undefined') return null;
+
+    const stored = localStorage.getItem(PENDING_CHECKOUT_KEY);
+    if (!stored) return null;
+
+    try {
+        const data: PendingCheckout = JSON.parse(stored);
+
+        // Check if checkout has expired (30 min timeout)
+        if (Date.now() - data.timestamp > CHECKOUT_TIMEOUT_MS) {
+            clearPendingCheckout();
+            return null;
+        }
+
+        return data;
+    } catch {
+        clearPendingCheckout();
+        return null;
+    }
+}
+
+/**
+ * Clear pending checkout (call after successful redirect or timeout)
+ */
+export function clearPendingCheckout(): void {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.removeItem(PENDING_CHECKOUT_KEY);
+    console.log('[Checkout] Cleared pending checkout');
+}
 
 /**
  * Add the storybook to Shopify cart with preview_id as line item property
@@ -329,7 +498,7 @@ export const SHOPIFY_CONFIG = {
  *
  * In test mode, calls the backend mock cart endpoint instead
  */
-export async function addToShopifyCart(previewId: string): Promise<{ success: boolean; error?: string; testOrderId?: string }> {
+export async function addToShopifyCart(previewId: string): Promise<{ success: boolean; error?: string; errorCode?: string; testOrderId?: string }> {
     // In test mode, call our backend mock endpoint
     if (isShopifyTestMode()) {
         console.log('[Shopify Test] Using mock cart endpoint for testing');
@@ -388,24 +557,61 @@ export async function addToShopifyCart(previewId: string): Promise<{ success: bo
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[Shopify Cart] Failed to add to cart:', errorText);
-            return { success: false, error: 'Failed to add to cart' };
+            // S-2 FIX: Parse Shopify error response for specific error handling
+            let errorMessage = 'Failed to add to cart';
+            let errorCode = 'CART_ERROR';
+
+            try {
+                const errorData = await response.json();
+                console.error('[Shopify Cart] Error response:', errorData);
+
+                if (errorData.description) {
+                    const desc = errorData.description.toLowerCase();
+
+                    if (desc.includes('sold out') || desc.includes('out of stock')) {
+                        errorMessage = 'This product is currently unavailable';
+                        errorCode = 'OUT_OF_STOCK';
+                    } else if (desc.includes('not found') || desc.includes('does not exist')) {
+                        errorMessage = 'Product configuration error. Please contact support.';
+                        errorCode = 'VARIANT_NOT_FOUND';
+                    } else if (desc.includes('limit')) {
+                        errorMessage = 'Cart quantity limit reached';
+                        errorCode = 'QUANTITY_LIMIT';
+                    } else {
+                        errorMessage = errorData.description;
+                    }
+                }
+            } catch (parseError) {
+                // If response is not JSON, use status text
+                const errorText = await response.text();
+                console.error('[Shopify Cart] Non-JSON error:', errorText);
+                errorMessage = `Cart error (${response.status})`;
+            }
+
+            return { success: false, error: errorMessage, errorCode };
         }
 
         console.log('[Shopify Cart] Successfully added to cart with preview_id:', previewId);
         return { success: true };
     } catch (error) {
-        console.error('[Shopify Cart] Error adding to cart:', error);
-        return { success: false, error: 'Network error' };
+        console.error('[Shopify Cart] Network error:', error);
+        return { success: false, error: 'Network error. Please check your connection.', errorCode: 'NETWORK_ERROR' };
     }
 }
 
 /**
  * Redirect to Shopify checkout with return URL
  * After checkout completion, user returns to preview page with ?checkout_success=true
+ *
+ * IMPORTANT: Shopify sometimes ignores return_to parameter.
+ * We store pending checkout in localStorage as a fallback.
+ * When user returns to the app (via My Creations or any page), we detect
+ * the pending checkout and redirect them to the preview page.
  */
 export function redirectToShopifyCheckout(previewId: string, testOrderId?: string): void {
+    // Store pending checkout BEFORE redirecting (fallback for when return_to is ignored)
+    setPendingCheckout(previewId);
+
     if (isShopifyTestMode() && testOrderId) {
         // In test mode, redirect to our test checkout simulation
         window.location.href = `/preview/${testOrderId}?checkout_success=true`;
@@ -479,6 +685,14 @@ export const api = {
     redirectToShopifyCheckout,
     buyNowWithShopify,
     SHOPIFY_CONFIG,
+    // Checkout tracking (fallback for Shopify redirect issues)
+    setPendingCheckout,
+    getPendingCheckout,
+    clearPendingCheckout,
+    // My Creations
+    getMyCreations,
+    linkSession,
+    getCreationCount,
 };
 
 export default api;

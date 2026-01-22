@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import OptimizedImage from './OptimizedImage';
 
 interface CoverPageCardProps {
     imageUrl: string;
@@ -55,22 +56,23 @@ const CoverPageCard: React.FC<CoverPageCardProps> = ({
                 {/* Cover Image with Text Overlays - 4:3 aspect to match story pages */}
                 <div className="relative">
                     {/* 4:3 aspect ratio for consistency with story pages */}
-                    <div className="aspect-[4/3] relative">
-                        <img
+                    <div className="relative">
+                        <OptimizedImage
                             src={imageUrl}
-                            alt="Story Cover"
-                            className="w-full h-full object-cover"
+                            alt={`Cover for ${storyTitle} story starring ${childName}`}
+                            aspectRatio="4/3"
+                            priority={true}
                         />
 
                         {/* Top Gradient + Title Overlay */}
-                        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-black/70 via-black/40 to-transparent flex items-start justify-center pt-6 px-4">
+                        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-black/70 via-black/40 to-transparent flex items-start justify-center pt-6 px-4 z-10">
                             <h2 className="text-2xl md:text-3xl font-heading text-amber-400 text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-tight uppercase tracking-wide">
                                 {displayTitle || 'The Adventure'}
                             </h2>
                         </div>
 
                         {/* Bottom Gradient + Starring Overlay */}
-                        <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-t from-black/80 via-black/50 to-transparent flex flex-col items-center justify-end pb-6 px-4">
+                        <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-t from-black/80 via-black/50 to-transparent flex flex-col items-center justify-end pb-6 px-4 z-10">
                             <span className="text-xs font-medium text-gray-300 uppercase tracking-[0.3em] mb-1">
                                 Starring
                             </span>

@@ -144,34 +144,6 @@ const EnhancedLockedPageCard: React.FC<EnhancedLockedPageCardProps> = ({
                     )}
                 </div>
             </div>
-
-            {/* Custom styles for animations */}
-            <style>{`
-                @keyframes float-up {
-                    0% { 
-                        transform: translateY(100px) scale(0); 
-                        opacity: 0; 
-                    }
-                    20% { 
-                        opacity: 1; 
-                    }
-                    100% { 
-                        transform: translateY(-100px) scale(1); 
-                        opacity: 0; 
-                    }
-                }
-                .animate-float-up {
-                    animation: float-up 3s ease-out infinite;
-                }
-                @keyframes wobble {
-                    0%, 100% { transform: rotate(0deg); }
-                    25% { transform: rotate(-15deg); }
-                    75% { transform: rotate(15deg); }
-                }
-                .animate-wobble {
-                    animation: wobble 0.5s ease-in-out;
-                }
-            `}</style>
         </div>
     );
 };
@@ -193,7 +165,7 @@ interface LockedPagesSectionProps {
 export const LockedPagesSection: React.FC<LockedPagesSectionProps> = ({
     lockedPages,
     onUnlock,
-    price = "$29.99",
+    price = "₹599",
     isLoading = false,
     daysRemaining = 7
 }) => {

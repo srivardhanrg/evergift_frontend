@@ -1,60 +1,99 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Heart, Instagram, Twitter, Facebook } from 'lucide-react';
+import { Star, Heart, Shield, Lock, Mail } from 'lucide-react';
 
 const Footer: React.FC = () => {
+  const currentYear = new Date().getFullYear();
+
   return (
-    <footer className="bg-white border-t border-gray-100 pt-16 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16">
-          <div className="col-span-2 md:col-span-1">
+    <footer className="bg-white border-t border-gray-100">
+      {/* Main Footer Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12">
+          {/* Brand Column */}
+          <div className="col-span-2 md:col-span-2">
             <Link to="/" className="flex items-center space-x-2 mb-6">
-              <Star className="text-primary w-6 h-6 fill-current" />
-              <span className="text-2xl font-heading text-gray-800">MagicTales</span>
+              <div className="bg-primary p-2 rounded-lg">
+                <Star className="text-white w-5 h-5 fill-current" />
+              </div>
+              <span className="text-2xl font-heading text-gray-800">StoryGift</span>
             </Link>
-            <p className="text-gray-500 mb-6">Empowering children's imagination through AI-powered personalized storytelling.</p>
-            <div className="flex space-x-4">
-              <Instagram className="w-5 h-5 text-gray-400 hover:text-primary cursor-pointer" />
-              <Twitter className="w-5 h-5 text-gray-400 hover:text-primary cursor-pointer" />
-              <Facebook className="w-5 h-5 text-gray-400 hover:text-primary cursor-pointer" />
+            <p className="text-gray-500 mb-6 max-w-md">
+              Creating magical, personalized storybooks where every child becomes the hero
+              of their own adventure. Trusted by thousands of families worldwide.
+            </p>
+
+            {/* Trust Badges */}
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2 bg-green-50 px-3 py-2 rounded-full border border-green-100">
+                <Shield className="w-4 h-4 text-green-600" />
+                <span className="text-xs font-medium text-green-700">Safe & Secure</span>
+              </div>
+              <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-full border border-blue-100">
+                <Lock className="w-4 h-4 text-blue-600" />
+                <span className="text-xs font-medium text-blue-700">Privacy Protected</span>
+              </div>
             </div>
           </div>
-          
+
+          {/* Quick Links */}
           <div>
-            <h4 className="font-heading text-lg mb-6">Company</h4>
-            <ul className="space-y-4 text-gray-500 font-medium">
-              <li><Link to="/about" className="hover:text-primary transition">About Us</Link></li>
-              <li><Link to="/" className="hover:text-primary transition">Technology</Link></li>
-              <li><Link to="/" className="hover:text-primary transition">Contact</Link></li>
+            <h4 className="font-heading text-lg text-gray-800 mb-6">Quick Links</h4>
+            <ul className="space-y-3">
+              <li>
+                <Link to="/" className="text-gray-500 hover:text-primary transition font-medium">
+                  Create Story
+                </Link>
+              </li>
+              <li>
+                <Link to="/my-creations" className="text-gray-500 hover:text-primary transition font-medium">
+                  My Creations
+                </Link>
+              </li>
+              <li>
+                <Link to="/about" className="text-gray-500 hover:text-primary transition font-medium">
+                  About Us
+                </Link>
+              </li>
             </ul>
           </div>
 
+          {/* Support */}
           <div>
-            <h4 className="font-heading text-lg mb-6">Product</h4>
-            <ul className="space-y-4 text-gray-500 font-medium">
-              <li><Link to="/create" className="hover:text-primary transition">Create Story</Link></li>
-              <li><Link to="/" className="hover:text-primary transition">Themes</Link></li>
-              <li><Link to="/" className="hover:text-primary transition">Pricing</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-heading text-lg mb-6">Legal</h4>
-            <ul className="space-y-4 text-gray-500 font-medium">
-              <li><Link to="/" className="hover:text-primary transition">Terms of Service</Link></li>
-              <li><Link to="/" className="hover:text-primary transition">Privacy Policy</Link></li>
-              <li><Link to="/" className="hover:text-primary transition">Cookie Policy</Link></li>
+            <h4 className="font-heading text-lg text-gray-800 mb-6">Support</h4>
+            <ul className="space-y-3">
+              <li>
+                <a href="mailto:hello@storygift.in" className="text-gray-500 hover:text-primary transition font-medium flex items-center gap-2">
+                  <Mail className="w-4 h-4" /> Contact Us
+                </a>
+              </li>
+              <li className="pt-4">
+                <span className="text-xs text-gray-500 uppercase tracking-wider">Legal</span>
+              </li>
+              <li>
+                <Link to="/privacy-policy" className="text-gray-500 hover:text-primary transition font-medium">Privacy Policy</Link>
+              </li>
+              <li>
+                <Link to="/terms-of-service" className="text-gray-500 hover:text-primary transition font-medium">Terms of Service</Link>
+              </li>
             </ul>
           </div>
         </div>
-        
-        <div className="pt-8 border-t border-gray-50 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
-          <p>© 2024 MagicTales. All rights reserved.</p>
-          <div className="flex items-center space-x-1 mt-4 md:mt-0">
-            <span>Made with</span>
-            <Heart className="w-4 h-4 text-primary fill-current" />
-            <span>for little dreamers</span>
+      </div>
+
+      {/* Bottom Bar */}
+      <div className="border-t border-gray-100 bg-gray-50/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-gray-500 text-sm">
+              © {currentYear} StoryGift. All rights reserved.
+            </p>
+            <div className="flex items-center gap-1 text-gray-500 text-sm">
+              <span>Made with</span>
+              <Heart className="w-4 h-4 text-primary fill-current mx-1" />
+              <span>for little dreamers everywhere</span>
+            </div>
           </div>
         </div>
       </div>

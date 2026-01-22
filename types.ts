@@ -2,7 +2,12 @@
 export enum ThemeType {
   ENCHANTED_FOREST = 'Enchanted Forest',
   MAGIC_CASTLE = 'Magic Castle',
-  SPY_MISSION = 'Spy Mission'
+  COSMIC_DREAMER = 'Cosmic Adventure',
+  MIGHTY_GUARDIAN = 'Mighty Guardian',
+  OCEAN_EXPLORER = 'Ocean Explorer',
+  BIRTHDAY_MAGIC = 'Birthday Magic',
+  SAFARI_ADVENTURE = 'Safari Adventure',
+  DREAM_WEAVER = 'Dream Weaver'
 }
 
 export interface Theme {

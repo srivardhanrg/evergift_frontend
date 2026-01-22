@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sparkles, Loader2, Clock, Flame } from 'lucide-react';
-import { api } from '../src/api/client';
+import { api, isShopifyCustomerLoggedIn } from '../src/api/client';
 import { JobStatus, PageData } from '../src/types/api.types';
 import BookPageCard from '../components/BookPageCard';
 import CoverPageCard from '../components/CoverPageCard';
+import AuthModal, { hasSavePromptBeenShown, markSavePromptShown } from '../components/AuthModal';
 
 // Preview generates first 5 pages (remaining 5 after payment)
 const TOTAL_PAGES = 5;
@@ -59,9 +60,35 @@ const GenerationFeed: React.FC = () => {
     const [funMessage, setFunMessage] = useState(GENERATION_MESSAGES[0]);
     const [messageIndex, setMessageIndex] = useState(0);
     const [todayCount, setTodayCount] = useState(0);
+    const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+    const [pendingPreviewId, setPendingPreviewId] = useState<string | null>(null);
 
     // Ref for auto-scrolling to active card
     const activeCardRef = useRef<HTMLDivElement>(null);
+    const isUserScrollingRef = useRef(false);
+    const lastScrollTimeRef = useRef(0);
+
+    // Track if user is manually scrolling (to avoid hijacking their scroll)
+    useEffect(() => {
+        let scrollTimeout: NodeJS.Timeout;
+
+        const handleScroll = () => {
+            isUserScrollingRef.current = true;
+            lastScrollTimeRef.current = Date.now();
+
+            // Reset user scrolling flag after 2 seconds of no scroll
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                isUserScrollingRef.current = false;
+            }, 2000);
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            clearTimeout(scrollTimeout);
+        };
+    }, []);
 
     // Rotate fun messages every 3 seconds
     useEffect(() => {
@@ -75,14 +102,22 @@ const GenerationFeed: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // Auto-scroll to the last completed page + 1 (the generating one)
+    // Auto-scroll to the newly completed page - with delay and respecting user scroll
     useEffect(() => {
-        if (activeCardRef.current) {
-            activeCardRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
-        }
+        // Skip if user is actively scrolling
+        if (isUserScrollingRef.current) return;
+
+        // Add delay before scrolling to let user see the completed page
+        const timer = setTimeout(() => {
+            if (activeCardRef.current && !isUserScrollingRef.current) {
+                activeCardRef.current.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }
+        }, 800); // 800ms delay before auto-scroll
+
+        return () => clearTimeout(timer);
     }, [completedPages.length, coverData]);
 
     // Poll for job status
@@ -137,11 +172,22 @@ const GenerationFeed: React.FC = () => {
                     }
                 }
 
-                // Handle completion - redirect to preview
+                // Handle completion - check if should show auth prompt for guests
                 if (statusResponse.status === JobStatus.COMPLETED && statusResponse.preview_id) {
-                    setTimeout(() => {
-                        navigate(`/preview/${statusResponse.preview_id}`);
-                    }, 1500);
+                    const isGuest = !isShopifyCustomerLoggedIn();
+                    const hasSeenPrompt = hasSavePromptBeenShown();
+
+                    if (isGuest && !hasSeenPrompt) {
+                        // Show auth prompt for first-time guest
+                        setPendingPreviewId(statusResponse.preview_id);
+                        setShowAuthPrompt(true);
+                        markSavePromptShown();
+                    } else {
+                        // Redirect directly
+                        setTimeout(() => {
+                            navigate(`/preview/${statusResponse.preview_id}`);
+                        }, 1500);
+                    }
                     return;
                 }
 
@@ -202,6 +248,22 @@ const GenerationFeed: React.FC = () => {
             console.error('Retry failed:', err);
             setError(err.message || 'Retry failed. Please create a new story.');
             setCanRetry(false);
+        }
+    };
+
+    // Auth modal handlers
+    const handleAuthClose = () => {
+        setShowAuthPrompt(false);
+        // Still redirect to preview after closing
+        if (pendingPreviewId) {
+            navigate(`/preview/${pendingPreviewId}`);
+        }
+    };
+
+    const handleGuestContinue = () => {
+        setShowAuthPrompt(false);
+        if (pendingPreviewId) {
+            navigate(`/preview/${pendingPreviewId}`);
         }
     };
 
@@ -386,7 +448,13 @@ const GenerationFeed: React.FC = () => {
                     <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl p-8 text-center text-white animate-in fade-in zoom-in duration-500">
                         <div className="text-5xl mb-4">🎉</div>
                         <h2 className="text-2xl font-heading mb-2">Your Story is Ready!</h2>
-                        <p className="opacity-90">Redirecting to your magical creation...</p>
+                        <p className="opacity-90 mb-4">Redirecting to your magical creation...</p>
+                        <button
+                            onClick={() => navigate('/my-creations')}
+                            className="mt-2 px-6 py-2 bg-white/20 hover:bg-white/30 rounded-full text-sm font-medium transition"
+                        >
+                            ← Back to My Creations
+                        </button>
                     </div>
                 )}
             </div>
@@ -394,23 +462,14 @@ const GenerationFeed: React.FC = () => {
             {/* Bottom Spacer for last card visibility */}
             <div className="h-20" />
 
-            {/* Custom CSS for animations */}
-            <style>{`
-                @keyframes shimmer {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(100%); }
-                }
-                .animate-shimmer {
-                    animation: shimmer 2s infinite;
-                }
-                @keyframes fade-in {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                .animate-fade-in {
-                    animation: fade-in 0.5s ease-in-out;
-                }
-            `}</style>
+            {/* Auth Modal for Guest Save Prompt */}
+            <AuthModal
+                isOpen={showAuthPrompt}
+                onClose={handleAuthClose}
+                onGuestContinue={handleGuestContinue}
+                context="save"
+                returnPath={pendingPreviewId ? `/preview/${pendingPreviewId}` : undefined}
+            />
         </div>
     );
 };
