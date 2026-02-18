@@ -9,6 +9,7 @@ import {
     trackFunnelStep,
 } from '../src/services/analytics';
 import type { GenerationPhase } from './usePreviewLoader';
+import { showToast } from '../src/components/Toast';
 
 interface UsePdfDownloadReturn {
     isGeneratingPDF: boolean;
@@ -50,7 +51,7 @@ export function usePdfDownload(
         if (!book || integrityError) return;
 
         if (!isPdfReady) {
-            alert('Your PDF is still being prepared. Please wait a moment and the download button will activate automatically when ready.');
+            showToast('Your PDF is still being prepared. Please wait a moment and the download button will activate automatically when ready.', 'info', 6000);
             return;
         }
 
@@ -65,7 +66,7 @@ export function usePdfDownload(
 
         try {
             if (book.paymentStatus !== 'paid') {
-                alert('Please purchase to download the full PDF.');
+                showToast('Please purchase to download the full PDF.', 'warning');
                 return;
             }
 
@@ -123,30 +124,30 @@ export function usePdfDownload(
                 if (downloadData.status === 'pdf_missing') {
                     // PDF file is missing from R2 — offer to regenerate
                     trackPdfDownloadFailed(book.id, 'pdf_missing');
-                    alert('Your story pages are ready, but the PDF file needs to be recreated. Click the "Retry PDF" button to regenerate it.');
+                    showToast('Your story pages are ready, but the PDF file needs to be recreated. Click the "Retry PDF" button to regenerate it.', 'warning', 8000);
                     return;
                 }
 
                 if (downloadData.status === 'generating') {
                     // Still generating — will retry if attempts remain
-                    console.log(`📄 PDF not ready yet (attempt ${attempt + 1}/${maxRetries})`);
+                    console.log(`PDF not ready yet (attempt ${attempt + 1}/${maxRetries})`);
                     if (attempt === maxRetries - 1) {
                         // Last attempt — give up gracefully
                         trackPdfDownloadFailed(book.id, 'pdf_generating_timeout');
-                        alert('Your PDF is still being prepared. This usually takes 2-3 minutes after payment. Please refresh the page and try again in a moment.');
+                        showToast('Your PDF is still being prepared. This usually takes 2-3 minutes after payment. Please refresh the page and try again in a moment.', 'info', 8000);
                         return;
                     }
                     continue; // Retry
                 }
 
                 if (downloadData.status === 'not_purchased') {
-                    alert('Please purchase to download the full PDF.');
+                    showToast('Please purchase to download the full PDF.', 'warning');
                     return;
                 }
 
                 if (downloadData.status === 'failed') {
                     trackPdfDownloadFailed(book.id, 'generation_failed');
-                    alert('Book generation failed. Please contact support for assistance.');
+                    showToast('Book generation failed. Please contact support for assistance.', 'error', 8000);
                     return;
                 }
 
@@ -157,7 +158,7 @@ export function usePdfDownload(
             // If we exited due to timeout
             if (abortRef.current) {
                 trackPdfDownloadFailed(book.id, 'download_timeout');
-                alert('Download is taking longer than expected. Please refresh the page and try again.');
+                showToast('Download is taking longer than expected. Please refresh the page and try again.', 'warning', 6000);
             }
 
         } catch (e: any) {
@@ -165,11 +166,11 @@ export function usePdfDownload(
             trackPdfDownloadFailed(book.id, e.code || 'unknown_error');
 
             if (generationPhase !== 'complete') {
-                alert("Your book pages are still being generated. This usually takes 1-2 minutes after payment. Please wait and the download button will activate automatically!");
+                showToast("Your book pages are still being generated. This usually takes 1-2 minutes after payment. Please wait and the download button will activate automatically!", 'info', 8000);
             } else if (e.message?.includes('404') || e.code === 'NOT_FOUND') {
-                alert("PDF file not found. Your book is being prepared - please refresh the page in 30 seconds. If this persists after 5 minutes, contact support and we'll help immediately!");
+                showToast("PDF file not found. Your book is being prepared - please refresh the page in 30 seconds.", 'warning', 8000);
             } else {
-                alert("Failed to download PDF. Please check your internet connection and try again. If the problem persists, refresh the page.");
+                showToast("Failed to download PDF. Please check your internet connection and try again.", 'error', 6000);
             }
         } finally {
             clearTimeout(timeoutId);
@@ -203,11 +204,11 @@ export function usePdfDownload(
             }
 
             if (result.status === 'regenerating' || result.status === 'already_generating') {
-                alert('PDF is being regenerated. This usually takes 30-60 seconds. The download button will activate when ready.');
+                showToast('PDF is being regenerated. This usually takes 30-60 seconds. The download button will activate when ready.', 'info', 6000);
             }
         } catch (e: any) {
             console.error('PDF regeneration failed:', e);
-            alert('Failed to start PDF regeneration. Please try again or contact support.');
+            showToast('Failed to start PDF regeneration. Please try again or contact support.', 'error', 6000);
         } finally {
             setIsGeneratingPDF(false);
         }

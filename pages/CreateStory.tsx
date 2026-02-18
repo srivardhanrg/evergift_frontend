@@ -17,6 +17,7 @@ import AuthModal from '../components/AuthModal';
 import OptimizedImage from '../components/OptimizedImage';
 import StyledSelect from '../components/StyledSelect';
 import { getFriendlyError, isPhotoError, FriendlyError } from '../src/utils/errorMessages';
+import { showToast } from '../src/components/Toast';
 import {
   trackPhotoUploadStarted,
   trackPhotoUploadCompleted,
@@ -209,8 +210,8 @@ const CreateStory: React.FC = () => {
         setUploadError(friendlyError);
         setPhotos([]); // Clear the photo so user can re-upload
       } else {
-        // For non-photo errors, show an alert with the friendly message
-        alert(`${friendlyError.icon} ${friendlyError.title}\n\n${friendlyError.message}${friendlyError.suggestion ? `\n\n💡 ${friendlyError.suggestion}` : ''}`);
+        // For non-photo errors, show a toast notification with the friendly message
+        showToast(`${friendlyError.title}: ${friendlyError.message}`, 'error', 8000);
       }
 
       setLoading(false);

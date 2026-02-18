@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'r
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
+import { ToastProvider } from './src/components/Toast';
 import Home from './pages/Home';
 import CreateStory from './pages/CreateStory';
 import PreviewStory from './pages/PreviewStory';
@@ -116,38 +117,40 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
-      {/* Scroll to top on route change */}
-      <ScrollToTop />
-      {/* Track page views in analytics */}
-      <AnalyticsTracker />
-      {/* Handle pending checkout redirect (when Shopify ignores return_to) */}
-      <PendingCheckoutHandler />
-      <ErrorBoundary>
-        <div className="flex flex-col min-h-screen">
-          <Navbar />
-          <main className="flex-grow">
-            <ErrorBoundary>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} />
-                {/* Auth route - always redirect to home (Shopify handles auth) */}
-                <Route path="/auth" element={<Navigate to="/" replace />} />
-                {/* My Creations */}
-                <Route path="/my-creations" element={<MyCreations />} />
-                {/* Redirect old dashboard to my-creations */}
-                <Route path="/dashboard" element={<Navigate to="/my-creations" replace />} />
-                <Route path="/create" element={<CreateStory />} />
-                <Route path="/generating/:jobId" element={<GenerationFeed />} />
-                <Route path="/preview/:id" element={<PreviewStory />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/terms-of-service" element={<TermsOfService />} />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </ErrorBoundary>
-          </main>
-          <Footer />
-        </div>
-      </ErrorBoundary>
+      <ToastProvider>
+        {/* Scroll to top on route change */}
+        <ScrollToTop />
+        {/* Track page views in analytics */}
+        <AnalyticsTracker />
+        {/* Handle pending checkout redirect (when Shopify ignores return_to) */}
+        <PendingCheckoutHandler />
+        <ErrorBoundary>
+          <div className="flex flex-col min-h-screen">
+            <Navbar />
+            <main className="flex-grow">
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/about" element={<About />} />
+                  {/* Auth route - always redirect to home (Shopify handles auth) */}
+                  <Route path="/auth" element={<Navigate to="/" replace />} />
+                  {/* My Creations */}
+                  <Route path="/my-creations" element={<MyCreations />} />
+                  {/* Redirect old dashboard to my-creations */}
+                  <Route path="/dashboard" element={<Navigate to="/my-creations" replace />} />
+                  <Route path="/create" element={<CreateStory />} />
+                  <Route path="/generating/:jobId" element={<GenerationFeed />} />
+                  <Route path="/preview/:id" element={<PreviewStory />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms-of-service" element={<TermsOfService />} />
+                  <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+              </ErrorBoundary>
+            </main>
+            <Footer />
+          </div>
+        </ErrorBoundary>
+      </ToastProvider>
     </HashRouter>
   );
 };

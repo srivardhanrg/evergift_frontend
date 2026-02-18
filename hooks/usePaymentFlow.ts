@@ -11,6 +11,7 @@ import {
     trackPurchaseFailed,
     trackFunnelStep,
 } from '../src/services/analytics';
+import { showToast } from '../src/components/Toast';
 
 interface UsePaymentFlowReturn {
     isPaymentLoading: boolean;
@@ -66,7 +67,7 @@ export function usePaymentFlow(
             console.error('❌ [Shopify] Failed to add to cart:', error);
             trackPurchaseFailed('cart_error', error.message || 'Failed to add to cart');
             setIsPaymentLoading(false);
-            alert('Failed to add to cart. Please try again.');
+            showToast('Failed to add to cart. Please try again.', 'error');
         }
     }, [book, integrityError]);
 

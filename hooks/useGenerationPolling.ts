@@ -7,6 +7,7 @@ import {
     trackFunnelStep,
 } from '../src/services/analytics';
 import type { GenerationPhase, LockedPage } from './usePreviewLoader';
+import { showToast } from '../src/components/Toast';
 
 interface UseGenerationPollingReturn {
     showUnlocking: boolean;
@@ -279,7 +280,7 @@ export function useGenerationPolling(
 
         if (isMountedRef.current) {
             setShowUnlocking(false);
-            alert('Your book is almost ready! We\'ll email you when it\'s complete.');
+            showToast('Your book is almost ready! We\'ll email you when it\'s complete.', 'success', 8000);
         }
     };
 
@@ -368,7 +369,7 @@ export function useGenerationPolling(
             if (isMountedRef.current) {
                 setPollingPayment(false);
                 setShowUnlocking(false);
-                alert('Payment is still processing. Please refresh the page in a moment.');
+                showToast('Payment is still processing. Please refresh the page in a moment.', 'info', 6000);
             }
         };
 
