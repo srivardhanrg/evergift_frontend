@@ -7,7 +7,8 @@ export enum ThemeType {
   OCEAN_EXPLORER = 'Ocean Explorer',
   BIRTHDAY_MAGIC = 'Birthday Magic',
   SAFARI_ADVENTURE = 'Safari Adventure',
-  DREAM_WEAVER = 'Dream Weaver'
+  DREAM_WEAVER = 'Dream Weaver',
+  SECRET_AGENT = 'Secret Agent'
 }
 
 export interface Theme {

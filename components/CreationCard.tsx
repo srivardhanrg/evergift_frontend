@@ -8,6 +8,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Loader2, CheckCircle, AlertCircle, Download, Eye } from 'lucide-react';
 import type { CreationItem } from '../src/api/client';
+import OptimizedImage from './OptimizedImage';
 
 // Theme display names and colors
 const THEME_CONFIG: Record<string, { name: string; icon: string; color: string }> = {
@@ -58,10 +59,11 @@ const CreationCard: React.FC<CreationCardProps> = ({ creation }) => {
             {/* Cover Image */}
             <div className="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-50 relative overflow-hidden">
                 {creation.cover_url ? (
-                    <img
+                    <OptimizedImage
                         src={creation.cover_url}
                         alt={`${creation.child_name}'s story`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        aspectRatio="4/3"
+                        className="group-hover:scale-105 transition-transform duration-500"
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center text-6xl opacity-50">

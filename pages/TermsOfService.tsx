@@ -49,7 +49,7 @@ const TermsOfService: React.FC = () => {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-secondary">•</span>
-                                Complete book: ₹599 for 10 illustrated pages + PDF download
+                                Complete book: 10 illustrated pages + high-resolution PDF download
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-secondary">•</span>
@@ -98,8 +98,8 @@ const TermsOfService: React.FC = () => {
                         </h2>
                         <p className="text-gray-600">
                             For any questions about these terms, please contact us at{' '}
-                            <a href="mailto:support@storygift.in" className="text-secondary hover:underline">
-                                support@storygift.in
+                            <a href="mailto:support@storygift.com" className="text-secondary hover:underline">
+                                support@storygift.com
                             </a>
                         </p>
                     </section>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Lock, Sparkles, Eye, Flame, Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { Lock, Sparkles, Flame } from 'lucide-react';
 
 /**
  * Enhanced Locked Page Card with FOMO-inducing design
@@ -16,32 +16,31 @@ import { Lock, Sparkles, Eye, Flame, Clock } from 'lucide-react';
 interface EnhancedLockedPageCardProps {
     pageNumber: number;
     teaserText: string;
+    childName: string;
     isHottest?: boolean;
 }
 
-// Curiosity hooks for each locked page
-const CURIOSITY_HOOKS: Record<number, string> = {
-    6: "A mysterious discovery awaits...",
-    7: "New magical friends appear...",
-    8: "An unexpected challenge unfolds...",
-    9: "The most magical moment yet...",
-    10: "The perfect ending to remember...",
+// Child-personalized curiosity hooks for each locked page
+const getPersonalizedHook = (pageNumber: number, childName: string): string => {
+    const hooks: Record<number, string> = {
+        6: `${childName} makes a surprising discovery...`,
+        7: `A new friend joins ${childName}'s journey...`,
+        8: `${childName}'s courage is put to the test...`,
+        9: `${childName}'s most magical moment yet...`,
+        10: `The heartwarming finale ${childName} deserves...`,
+    };
+    return hooks[pageNumber] || `${childName}'s adventure continues...`;
 };
 
 const EnhancedLockedPageCard: React.FC<EnhancedLockedPageCardProps> = ({
     pageNumber,
     teaserText,
+    childName,
     isHottest = false,
 }) => {
     const [isHovering, setIsHovering] = useState(false);
-    const [peekCount, setPeekCount] = useState(0);
 
-    // Generate realistic peek count on mount
-    useEffect(() => {
-        setPeekCount(Math.floor(80 + Math.random() * 200));
-    }, []);
-
-    const curiosityHook = CURIOSITY_HOOKS[pageNumber] || "Something magical awaits...";
+    const personalizedHook = getPersonalizedHook(pageNumber, childName);
 
     return (
         <div
@@ -103,7 +102,7 @@ const EnhancedLockedPageCard: React.FC<EnhancedLockedPageCardProps> = ({
                         {/* Mystery message */}
                         <div className="bg-black/40 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
                             <p className="text-white/90 text-sm font-medium mb-1">
-                                🔮 {curiosityHook}
+                                🔮 {personalizedHook}
                             </p>
                             <p className={`text-yellow-300 text-xs flex items-center justify-center gap-1 transition-opacity duration-300 ${isHovering ? 'opacity-100' : 'opacity-70'}`}>
                                 <Sparkles className="w-3 h-3" />
@@ -113,11 +112,11 @@ const EnhancedLockedPageCard: React.FC<EnhancedLockedPageCardProps> = ({
                         </div>
                     </div>
 
-                    {/* Hottest page badge */}
+                    {/* Hottest page badge - personalized */}
                     {isHottest && (
                         <div className="absolute top-3 right-3 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow-lg animate-pulse">
                             <Flame className="w-3 h-3" />
-                            <span>Fan Favorite!</span>
+                            <span>{childName}'s Best Moment!</span>
                         </div>
                     )}
                 </div>
@@ -130,18 +129,14 @@ const EnhancedLockedPageCard: React.FC<EnhancedLockedPageCardProps> = ({
                     "{teaserText}"
                 </p>
 
-                {/* Social proof row */}
-                <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
-                    <span className="flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        <span>{peekCount} parents peeked</span>
+                {/* Page-specific personalized message */}
+                <div className="flex items-center justify-center gap-2 text-xs text-purple-500">
+                    <Sparkles className="w-3 h-3" />
+                    <span className="font-medium">
+                        {pageNumber === 10
+                            ? `${childName}'s grand finale awaits!`
+                            : `Crafted just for ${childName}`}
                     </span>
-                    {pageNumber === 10 && (
-                        <span className="flex items-center gap-1 text-orange-500 font-medium">
-                            <Flame className="w-3 h-3" />
-                            <span>Grand Finale!</span>
-                        </span>
-                    )}
                 </div>
             </div>
         </div>
@@ -156,6 +151,7 @@ interface LockedPagesSectionProps {
         page_number: number;
         story_text: string;
     }>;
+    childName: string;
     onUnlock: () => void;
     price?: string;
     isLoading?: boolean;
@@ -164,16 +160,12 @@ interface LockedPagesSectionProps {
 
 export const LockedPagesSection: React.FC<LockedPagesSectionProps> = ({
     lockedPages,
+    childName,
     onUnlock,
-    price = "₹599",
+    price = "$19",
     isLoading = false,
     daysRemaining = 7
 }) => {
-    const [todayCount, setTodayCount] = useState(0);
-
-    useEffect(() => {
-        setTodayCount(Math.floor(15 + Math.random() * 30));
-    }, []);
 
     if (!lockedPages || lockedPages.length === 0) return null;
 
@@ -201,7 +193,8 @@ export const LockedPagesSection: React.FC<LockedPagesSectionProps> = ({
                         key={page.page_number}
                         pageNumber={page.page_number}
                         teaserText={page.story_text}
-                        isHottest={page.page_number === 9} // Page 9 is "fan favorite"
+                        childName={childName}
+                        isHottest={page.page_number === 9} // Page 9 is the climax
                     />
                 ))}
             </div>
@@ -218,7 +211,7 @@ export const LockedPagesSection: React.FC<LockedPagesSectionProps> = ({
                     <div className="text-5xl mb-4">🎁</div>
 
                     <h3 className="text-white text-2xl font-bold mb-2">
-                        Unlock the Complete Adventure
+                        Unlock {childName}'s Complete Adventure
                     </h3>
 
                     <p className="text-white/80 text-sm mb-6 max-w-sm mx-auto">
@@ -243,14 +236,14 @@ export const LockedPagesSection: React.FC<LockedPagesSectionProps> = ({
                         )}
                     </button>
 
-                    {/* Social proof */}
+                    {/* Value-focused messaging instead of fake social proof */}
                     <div className="flex items-center justify-center gap-4 mt-4 text-white/70 text-sm">
                         <span className="flex items-center gap-1">
-                            <Flame className="w-4 h-4 text-orange-300" />
-                            <span>{todayCount} purchased today</span>
+                            <Sparkles className="w-4 h-4 text-yellow-300" />
+                            <span>Personalized for {childName}</span>
                         </span>
                         <span>•</span>
-                        <span>⭐ 4.9/5 from parents</span>
+                        <span>📄 Print-ready PDF</span>
                     </div>
                 </div>
             </div>

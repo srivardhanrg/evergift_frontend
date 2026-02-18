@@ -1,0 +1,172 @@
+{% comment %}
+  StoryGift App Section
+
+  Performance optimizations:
+  - Preload critical JS/CSS bundles
+  - Preload top theme cover images (breaks waterfall)
+  - Preconnect to R2 CDN and Google Fonts
+  - Instant loading state (replaced by Shadow DOM)
+  - Defensive CSS to hide Shopify chrome
+
+  Update bundle hashes when deploying new builds:
+  - JS: index-[hash].js
+  - CSS: index-[hash].css
+{% endcomment %}
+
+{% comment %} ============================================
+   CONFIGURATION - Update these on each deploy
+   ============================================ {% endcomment %}
+{% assign js_bundle = "index-B88oRYe4.js" %}
+{% assign css_bundle = "index-Ckgvckbw.css" %}
+{% assign r2_base = "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales" %}
+
+{% comment %} ============================================
+   PRECONNECT & PRELOAD HINTS (Critical for performance)
+   ============================================ {% endcomment %}
+
+<!-- Preconnect to critical origins -->
+<link rel="preconnect" href="https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://storygift-backend.onrender.com" crossorigin>
+
+<!-- Preload critical bundles -->
+<link rel="modulepreload" href="{{ r2_base }}/assets/{{ js_bundle }}">
+<link rel="preload" as="style" href="{{ r2_base }}/assets/{{ css_bundle }}" crossorigin>
+
+<!-- Preload theme cover images (top 4 visible on load) -->
+<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/enchanted_forest_cover.png" fetchpriority="high">
+<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/magic_castle_cover.png">
+<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/space.png">
+<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/mighty_guardian.png.png">
+
+{% comment %} ============================================
+   DEFENSIVE CSS - Hide Shopify chrome when app is active
+   ============================================ {% endcomment %}
+<style>
+  /* Hide Shopify header/footer when our app is present */
+  body:has(#zelavo-app) #header-group,
+  body:has(#zelavo-app) .shopify-section-group-header-group,
+  body:has(#zelavo-app) .shopify-section-group-footer-group,
+  body:has(#zelavo-app) .announcement-bar,
+  body:has(#zelavo-app) footer,
+  body:has(#zelavo-app) #shopify-section-footer {
+    display: none !important;
+  }
+
+  body:has(#zelavo-app) #MainContent {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body:has(#zelavo-app) {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Instant loading state styles */
+  #zelavo-app-loader {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FAFAFA;
+    z-index: 9999;
+    transition: opacity 0.2s ease-out;
+  }
+
+  #zelavo-app-loader.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .loader-content {
+    text-align: center;
+    font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .loader-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid #FFF0F5;
+    border-top-color: #FF6B9D;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  .loader-text {
+    color: #6B7280;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+
+{% comment %} ============================================
+   EXTERNAL SCRIPTS (need main document access)
+   ============================================ {% endcomment %}
+<script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
+
+{% comment %} ============================================
+   APP CONTAINER
+   ============================================ {% endcomment %}
+<div id="zelavo-app"
+     data-customer-id="{% if customer %}{{ customer.id }}{% else %}null{% endif %}"
+     data-customer-email="{{ customer.email }}"
+     data-shop-domain="{{ shop.domain }}"
+     data-country-code="{{ localization.country.iso_code }}"
+     data-backend-url="https://storygift-backend.onrender.com"
+     data-css-url="{{ r2_base }}/assets/{{ css_bundle }}">
+
+  {% comment %} Instant loading state - React will dismiss this {% endcomment %}
+  <div id="zelavo-app-loader">
+    <div class="loader-content">
+      <div class="loader-spinner"></div>
+      <p class="loader-text">Loading your story creator...</p>
+    </div>
+  </div>
+</div>
+
+{% comment %} ============================================
+   APP BUNDLE (creates Shadow DOM)
+   ============================================ {% endcomment %}
+<script type="module" src="{{ r2_base }}/assets/{{ js_bundle }}"></script>
+
+{% comment %} ============================================
+   LOADER DISMISSAL
+   React dispatches 'storygift-ready' when mounted
+   ============================================ {% endcomment %}
+<script>
+  // Listen for React app ready signal
+  window.addEventListener('storygift-ready', function() {
+    var loader = document.getElementById('zelavo-app-loader');
+    if (loader) {
+      loader.classList.add('hidden');
+      // Remove from DOM after fade transition
+      setTimeout(function() { loader.remove(); }, 200);
+    }
+  });
+
+  // Fallback: Hide loader after 5 seconds if React fails to signal
+  // This prevents infinite loading state
+  setTimeout(function() {
+    var loader = document.getElementById('zelavo-app-loader');
+    if (loader && !loader.classList.contains('hidden')) {
+      console.warn('[StoryGift] Loader timeout - React may have failed to mount');
+      loader.classList.add('hidden');
+    }
+  }, 5000);
+</script>
+
+{% schema %}
+{
+  "name": "StoryGift App",
+  "tag": "section",
+  "class": "storygift-section",
+  "settings": []
+}
+{% endschema %}

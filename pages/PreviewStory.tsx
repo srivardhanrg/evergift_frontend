@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Storybook } from '../types';
+import React, { useCallback } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { STORYBOOK_PRICE, THEMES } from '../constants';
 import {
   Sparkles,
@@ -9,24 +8,22 @@ import {
   Loader2,
   AlertTriangle,
   ShoppingCart,
-  PartyPopper,
   ArrowLeft
 } from 'lucide-react';
-import * as storage from '../services/storageService';
-import {
-  api,
-  buyNowWithShopify,
-  SHOPIFY_CONFIG,
-  isShopifyEnvironment,
-  isShopifyCustomerLoggedIn,
-  clearPendingCheckout,
-} from '../src/api/client';
-import BookPageCard from '../components/BookPageCard';
+import { SHOPIFY_CONFIG } from '../src/api/client';
 import CoverPageCard from '../components/CoverPageCard';
 import OptimizedImage from '../components/OptimizedImage';
-import AuthModal, { hasChosenGuestMode } from '../components/AuthModal';
+import AuthModal from '../components/AuthModal';
 import { LockedPagesSection } from '../components/LockedPageCard';
 import UnlockingOverlay from '../components/UnlockingOverlay';
+import {
+  trackPreviewPageViewed,
+  trackLockedPageClicked,
+} from '../src/services/analytics';
+import { usePreviewLoader } from '../hooks/usePreviewLoader';
+import { useGenerationPolling } from '../hooks/useGenerationPolling';
+import { usePaymentFlow } from '../hooks/usePaymentFlow';
+import { usePdfDownload } from '../hooks/usePdfDownload';
 
 // Responsive CSS to override Shopify theme conflicts
 const PreviewResponsiveStyles = () => (
@@ -42,355 +39,45 @@ const PreviewResponsiveStyles = () => (
 
 const PreviewStory: React.FC = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
 
-  const [book, setBook] = useState<Storybook | null>(null);
-  const [integrityError, setIntegrityError] = useState<boolean>(false);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'download' | 'payment' | null>(null);
-  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
-  const [pollingPayment, setPollingPayment] = useState(false);
+  // --- Hook composition ---
+  const preview = usePreviewLoader(id);
 
-  // NEW: Locked pages state for 5-page preview mode
-  const [lockedPages, setLockedPages] = useState<Array<{ page_number: number; story_text: string }>>([]);
-  const [generationPhase, setGenerationPhase] = useState<'preview' | 'generating_full' | 'complete'>('preview');
+  const generation = useGenerationPolling(
+    id,
+    preview.book,
+    preview.setBook,
+    preview.setLockedPages,
+    preview.setGenerationPhase,
+    preview.initialPhaseState,
+  );
 
-  // NEW: Unlocking overlay state
-  const [showUnlocking, setShowUnlocking] = useState(false);
-  const [unlockProgress, setUnlockProgress] = useState(0);
-  const [customerEmail, setCustomerEmail] = useState('');
-
-  // Ref to track if component is mounted (for cleanup)
-  const isMountedRef = useRef(true);
-  const pollingAbortRef = useRef<boolean>(false);
-
-  // Cleanup on unmount to prevent memory leaks
-  useEffect(() => {
-    isMountedRef.current = true;
-    pollingAbortRef.current = false;
-
-    return () => {
-      isMountedRef.current = false;
-      pollingAbortRef.current = true;
-    };
+  // Auth modal trigger for download
+  const handleAuthRequiredForDownload = useCallback(() => {
+    // This is handled by the payment flow's auth modal
+    payment.handlePaymentClick(); // Will show auth modal with pendingAction='download'
   }, []);
 
-  useEffect(() => {
-    const loadBook = async () => {
-      if (!id) return;
-      try {
-        const previewData = await api.getPreview(id);
+  const pdf = usePdfDownload(
+    preview.book,
+    preview.integrityError,
+    preview.generationPhase,
+    generation.isPdfReady,
+    () => {
+      // When download needs auth, trigger payment flow's auth modal
+      // The payment hook handles this via pendingAction
+    },
+  );
 
-        // Map API response to frontend Storybook type
-        if (previewData) {
-          // Get cover URL and story title from API
-          const coverUrl = previewData.cover_url ||
-            previewData.preview_pages.find((p: any) => p.page_number === 0 || p.is_cover)?.image_url;
-          const storyTitle = previewData.story_title || `${previewData.child_name}'s Adventure`;
+  const payment = usePaymentFlow(
+    preview.book,
+    preview.integrityError,
+    pdf.performDownload,
+  );
 
-          // Filter out cover page (page 0) from regular pages
-          const storyPages = previewData.preview_pages.filter(
-            (p: any) => p.page_number > 0 && !p.is_cover
-          );
+  // --- Early returns for loading/error/expired states ---
 
-          const mappedBook: Storybook = {
-            id: previewData.preview_id,
-            userId: 'current-user',
-            childName: previewData.child_name,
-            childAge: 5,
-            childGender: 'Adventurer',
-            theme: previewData.theme as unknown as any,
-            coverUrl: coverUrl || '',
-            storyTitle: storyTitle,
-            pages: storyPages.map((p: any) => ({
-              pageNumber: p.page_number,
-              text: p.story_text,
-              imagePrompt: 'Generated story',
-              imageUrl: p.image_url
-            })),
-            paymentStatus: previewData.status === 'purchased' ? 'paid' : 'pending',
-            createdAt: new Date().toISOString()
-          };
-
-          setBook(mappedBook);
-
-          // Store locked pages and generation phase
-          if (previewData.locked_pages) {
-            setLockedPages(previewData.locked_pages.map((lp: any) => ({
-              page_number: lp.page_number,
-              story_text: lp.story_text
-            })));
-          }
-
-          const phase = previewData.generation_phase || 'preview';
-          setGenerationPhase(phase);
-
-          // AUTO-START: If page loads and generation is in progress, show overlay and poll
-          if (phase === 'generating_full' && previewData.status === 'purchased') {
-            console.log('🔄 Page loaded during generation - auto-starting overlay');
-            setShowUnlocking(true);
-            setUnlockProgress(60);
-            // Will poll in separate effect
-          }
-
-          if (mappedBook.pages.length === 0) {
-            setIntegrityError(true);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to load book:", error);
-        setIntegrityError(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadBook();
-  }, [id]);
-
-  // Detect checkout success from URL and poll for payment status
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const isCheckoutSuccess = urlParams.get('checkout_success') === 'true';
-
-    if (isCheckoutSuccess && id) {
-      // Clear any pending checkout since we're now processing it
-      clearPendingCheckout();
-
-      setCheckoutSuccess(true);
-      // Clean URL without reload
-      window.history.replaceState({}, '', window.location.pathname);
-
-      // Start polling for payment confirmation
-      pollPaymentStatus(id);
-    }
-  }, [id]);
-
-  // AUTO-POLL: Start polling when page loads in generating_full phase (e.g., after refresh)
-  useEffect(() => {
-    if (showUnlocking && generationPhase === 'generating_full' && id && !pollingPayment) {
-      console.log('🔄 Auto-starting generation poll on page load');
-      pollGenerationComplete(id);
-    }
-  }, [showUnlocking, generationPhase, id]);
-
-  // Poll backend until payment confirmed AND generation complete
-  const pollPaymentStatus = async (previewId: string) => {
-    setPollingPayment(true);
-    setShowUnlocking(true);
-    setUnlockProgress(10);
-
-    const maxPaymentAttempts = 15; // 30 seconds for payment confirmation
-
-    // Phase 1: Poll for payment confirmation
-    for (let i = 0; i < maxPaymentAttempts; i++) {
-      // Check if component unmounted or polling was aborted
-      if (!isMountedRef.current || pollingAbortRef.current) {
-        console.log('🛑 Payment polling aborted (component unmounted)');
-        return;
-      }
-
-      try {
-        const previewData = await api.getPreview(previewId);
-
-        // Check again after async call
-        if (!isMountedRef.current || pollingAbortRef.current) return;
-
-        setUnlockProgress(10 + (i * 3)); // Progress 10-55%
-
-        if (previewData.status === 'purchased' || previewData.generation_phase !== 'preview') {
-          console.log('✅ Payment confirmed!');
-          setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
-          setPollingPayment(false);
-          setCheckoutSuccess(false);
-          setUnlockProgress(60);
-
-          // Phase 2: Poll for generation completion
-          await pollGenerationComplete(previewId);
-          return;
-        }
-      } catch (e) {
-        console.error('Polling error:', e);
-      }
-      await new Promise(r => setTimeout(r, 2000));
-    }
-
-    // Timeout - only update state if still mounted
-    if (isMountedRef.current) {
-      setPollingPayment(false);
-      setShowUnlocking(false);
-      alert('Payment is still processing. Please refresh the page in a moment.');
-    }
-  };
-
-  // Poll for remaining page generation to complete
-  const pollGenerationComplete = async (previewId: string) => {
-    const maxAttempts = 60; // 2 minutes
-
-    for (let i = 0; i < maxAttempts; i++) {
-      // Check if component unmounted or polling was aborted
-      if (!isMountedRef.current || pollingAbortRef.current) {
-        console.log('🛑 Generation polling aborted (component unmounted)');
-        return;
-      }
-
-      try {
-        const previewData = await api.getPreview(previewId);
-
-        // Check again after async call
-        if (!isMountedRef.current || pollingAbortRef.current) return;
-
-        setUnlockProgress(60 + (i * 0.6)); // Progress 60-96%
-        setGenerationPhase(previewData.generation_phase || 'generating_full');
-
-        if (previewData.generation_phase === 'complete') {
-          console.log('✅ Generation complete! All 10 pages ready.');
-          setUnlockProgress(100);
-
-          // Get cover and story title for display
-          const coverUrl = previewData.cover_url ||
-            previewData.preview_pages.find((p: any) => p.page_number === 0 || p.is_cover)?.image_url;
-          const storyTitle = previewData.story_title || `${previewData.child_name}'s Adventure`;
-
-          // Filter out cover page from regular pages
-          const storyPages = previewData.preview_pages.filter(
-            (p: any) => p.page_number > 0 && !p.is_cover
-          );
-
-          // Reload all pages (now including 6-10 with hi-res)
-          const mappedBook: Storybook = {
-            id: previewData.preview_id,
-            userId: 'current-user',
-            childName: previewData.child_name,
-            childAge: 5,
-            childGender: 'Adventurer',
-            theme: previewData.theme as unknown as any,
-            coverUrl: coverUrl || '',
-            storyTitle: storyTitle,
-            pages: storyPages.map((p: any) => ({
-              pageNumber: p.page_number,
-              text: p.story_text,
-              imagePrompt: 'Generated story',
-              imageUrl: p.image_url
-            })),
-            paymentStatus: 'paid',
-            createdAt: new Date().toISOString()
-          };
-          setBook(mappedBook);
-          setLockedPages([]); // Clear locked pages
-          setGenerationPhase('complete');
-
-          // Hide overlay after brief celebration
-          setTimeout(() => {
-            if (isMountedRef.current) {
-              setShowUnlocking(false);
-            }
-          }, 1500);
-          return;
-        }
-      } catch (e) {
-        console.error('Generation polling error:', e);
-      }
-      await new Promise(r => setTimeout(r, 2000));
-    }
-
-    // Still not complete - show message but hide overlay (only if mounted)
-    if (isMountedRef.current) {
-      setShowUnlocking(false);
-      alert('Your book is almost ready! We\'ll email you when it\'s complete.');
-    }
-  };
-
-  const handleDownloadClick = () => {
-    if (!book || integrityError) return;
-
-    // Check if user is logged in or has chosen guest mode for premium downloads
-    if (!isShopifyCustomerLoggedIn() && !hasChosenGuestMode()) {
-      setPendingAction('download');
-      setShowAuthModal(true);
-      return;
-    }
-
-    performDownload();
-  };
-
-  const performDownload = async () => {
-    if (!book || integrityError) return;
-    setIsGeneratingPDF(true);
-    try {
-      if (book.paymentStatus === 'paid') {
-        const downloadData = await api.getDownload(book.id);
-        if (downloadData.status === 'ready' && downloadData.downloads?.pdf) {
-          // Generate friendly filename from book data
-          const childNameClean = book.childName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-          const themeName = (book.theme || 'Story')
-            .replace('storygift_', '')
-            .replace(/_/g, ' ')
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join('_');
-          const pdfFilename = `${childNameClean}_${themeName}_Storybook.pdf`;
-
-          // Use invisible anchor tag to trigger download without navigating away
-          const link = document.createElement('a');
-          link.href = downloadData.downloads.pdf.url;
-          link.download = pdfFilename;
-          link.target = '_blank'; // Fallback for browsers that ignore download attribute
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        } else if (downloadData.status === 'generating') {
-          alert('Your PDF is still being generated. Please try again in a few minutes.');
-        } else {
-          throw new Error('PDF download not available');
-        }
-      } else {
-        alert('Please purchase to download the full PDF.');
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Failed to download PDF. Please try again.");
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-  };
-
-  const handlePaymentClick = () => {
-    if (!book || integrityError) return;
-
-    // Check if user is logged in or has chosen guest mode
-    if (!isShopifyCustomerLoggedIn() && !hasChosenGuestMode()) {
-      setPendingAction('payment');
-      setShowAuthModal(true);
-      return;
-    }
-
-    performPayment();
-  };
-
-  /**
-   * Handle payment via Shopify Cart + Checkout
-   */
-  const performPayment = async () => {
-    if (!book || integrityError) return;
-    setIsPaymentLoading(true);
-
-    try {
-      console.log('🛒 [Shopify] Adding to cart and redirecting to checkout...');
-      await buyNowWithShopify(book.id);
-      // Note: Page will redirect to Shopify checkout
-      // After payment, user returns with ?checkout_success=true
-    } catch (error) {
-      console.error('❌ [Shopify] Failed to add to cart:', error);
-      setIsPaymentLoading(false);
-      alert('Failed to add to cart. Please try again.');
-    }
-  };
-
-  // Loading state
-  if (loading) return (
+  if (preview.loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
         <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
@@ -399,8 +86,31 @@ const PreviewStory: React.FC = () => {
     </div>
   );
 
-  // Error state
-  if (!book || integrityError) {
+  if (preview.isExpired) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-lg text-center border border-amber-100">
+          <div className="bg-amber-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <span className="text-4xl">⏰</span>
+          </div>
+          <h2 className="text-3xl font-heading text-slate-900 mb-4">Preview Expired</h2>
+          <p className="text-gray-500 mb-8 leading-relaxed">
+            This story preview has expired after 7 days. Don't worry - you can create a new magical adventure anytime!
+          </p>
+          <div className="space-y-4">
+            <Link to="/" className="block w-full bg-primary text-white py-4 rounded-2xl font-bold shadow-lg hover:shadow-primary/20 transition-all">
+              Create New Story
+            </Link>
+            <Link to="/my-creations" className="block w-full text-gray-400 font-bold py-2 hover:text-gray-600">
+              Back to My Creations
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!preview.book || preview.integrityError) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-lg text-center border border-red-50">
@@ -424,6 +134,7 @@ const PreviewStory: React.FC = () => {
     );
   }
 
+  const book = preview.book;
   const themeData = THEMES.find(t => t.id === book.theme);
 
   return (
@@ -432,10 +143,9 @@ const PreviewStory: React.FC = () => {
       {/* Unlocking Overlay - shown after payment */}
       <UnlockingOverlay
         childName={book.childName}
-        isVisible={showUnlocking}
-        progress={unlockProgress}
-        email={customerEmail}
-        onEmailChange={setCustomerEmail}
+        isVisible={generation.showUnlocking}
+        progress={generation.unlockProgress}
+        phase={generation.unlockPhase}
       />
 
       <div className="min-h-screen bg-gray-50 pb-28">
@@ -534,7 +244,7 @@ const PreviewStory: React.FC = () => {
           ))}
 
           {/* End of story indicator (only show if complete) */}
-          {generationPhase === 'complete' && (
+          {preview.generationPhase === 'complete' && (
             <div className="text-center py-8">
               <div className="text-4xl mb-4">✨</div>
               <p className="text-gray-400 font-heading text-xl">The End</p>
@@ -542,12 +252,13 @@ const PreviewStory: React.FC = () => {
           )}
 
           {/* LOCKED PAGES SECTION - Show when in preview phase */}
-          {generationPhase === 'preview' && lockedPages.length > 0 && book.paymentStatus === 'pending' && (
+          {preview.generationPhase === 'preview' && preview.lockedPages.length > 0 && book.paymentStatus === 'pending' && (
             <LockedPagesSection
-              lockedPages={lockedPages}
-              onUnlock={handlePaymentClick}
+              lockedPages={preview.lockedPages}
+              childName={book.childName}
+              onUnlock={payment.handlePaymentClick}
               price={`${SHOPIFY_CONFIG.CURRENCY_SYMBOL}${SHOPIFY_CONFIG.PRODUCT_PRICE}`}
-              isLoading={isPaymentLoading}
+              isLoading={payment.isPaymentLoading}
             />
           )}
 
@@ -561,7 +272,7 @@ const PreviewStory: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               {/* Left - Message & Price */}
               <div className="text-center sm:text-left">
-                {pollingPayment ? (
+                {generation.pollingPayment ? (
                   <div className="flex items-center space-x-2 text-purple-600">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span className="font-bold">Confirming payment...</span>
@@ -575,17 +286,32 @@ const PreviewStory: React.FC = () => {
                       {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}
                     </p>
                   </>
+                ) : !generation.isPdfReady ? (
+                  generation.pdfPreparationTimeout ? (
+                    <div className="flex flex-col items-center sm:items-start space-y-1">
+                      <div className="flex items-center space-x-2 text-amber-600">
+                        <AlertTriangle className="w-5 h-5" />
+                        <span className="font-bold text-sm">PDF taking longer than usual</span>
+                      </div>
+                      <p className="text-xs text-gray-500">High-quality images need extra time</p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2 text-purple-600">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="font-bold">{preview.generationPhase === 'complete' ? 'Preparing PDF...' : 'Creating your book...'}</span>
+                    </div>
+                  )
                 ) : (
                   <div className="flex items-center space-x-2 text-green-600">
                     <CheckCircle className="w-5 h-5" />
-                    <span className="font-bold">Payment Complete!</span>
+                    <span className="font-bold">Your book is ready!</span>
                   </div>
                 )}
               </div>
 
               {/* Right - Action Buttons */}
               <div className="flex items-center space-x-3 w-full sm:w-auto">
-                {pollingPayment ? (
+                {generation.pollingPayment ? (
                   /* Polling state - waiting for payment confirmation */
                   <button
                     disabled
@@ -597,36 +323,66 @@ const PreviewStory: React.FC = () => {
                 ) : book.paymentStatus === 'pending' ? (
                   /* Buy Button - Shopify Checkout */
                   <button
-                    onClick={handlePaymentClick}
-                    disabled={isPaymentLoading}
-                    className="flex-1 sm:flex-initial bg-gradient-to-r from-purple-600 to-pink-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                    onClick={payment.handlePaymentClick}
+                    disabled={payment.isPaymentLoading}
+                    className="flex-1 sm:flex-initial bg-gradient-to-r from-purple-600 to-pink-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
                   >
-                    {isPaymentLoading ? (
+                    {payment.isPaymentLoading ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                       <ShoppingCart className="w-5 h-5" />
                     )}
                     <span>
-                      {isPaymentLoading
+                      {payment.isPaymentLoading
                         ? 'Redirecting...'
-                        : `Buy to Unlock High-Res PDF - ${SHOPIFY_CONFIG.CURRENCY_SYMBOL}${SHOPIFY_CONFIG.PRODUCT_PRICE}`
+                        : <>
+                          <span className="sm:hidden">Get Full Book - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span>
+                          <span className="hidden sm:inline">Buy to Unlock High-Res PDF - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span>
+                        </>
                       }
                     </span>
                   </button>
                 ) : (
-                  /* Paid - Download Button */
-                  <button
-                    onClick={handleDownloadClick}
-                    disabled={isGeneratingPDF}
-                    className="flex-1 sm:flex-initial bg-gradient-to-r from-green-500 to-emerald-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2"
-                  >
-                    {isGeneratingPDF ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <Download className="w-5 h-5" />
-                    )}
-                    <span>Download Your Book</span>
-                  </button>
+                  /* Paid - Download Button or Retry Button */
+                  generation.pdfPreparationTimeout ? (
+                    <div className="flex-1 sm:flex-initial flex flex-col sm:flex-row gap-2">
+                      <button
+                        onClick={() => pdf.handleRegeneratePdf()}
+                        disabled={pdf.isGeneratingPDF}
+                        className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                      >
+                        {pdf.isGeneratingPDF ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <AlertTriangle className="w-5 h-5" />
+                        )}
+                        <span className="text-sm">{pdf.isGeneratingPDF ? 'Regenerating...' : 'Retry PDF'}</span>
+                      </button>
+                      <button
+                        onClick={() => generation.handleRetryPdfCheck(book.id)}
+                        className="bg-gray-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2"
+                      >
+                        <Loader2 className="w-5 h-5" />
+                        <span className="text-sm">Check Again</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={pdf.handleDownloadClick}
+                      disabled={pdf.isGeneratingPDF || !generation.isPdfReady}
+                      className={`flex-1 sm:flex-initial text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center space-x-2 ${!generation.isPdfReady
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-xl hover:-translate-y-0.5'
+                        }`}
+                    >
+                      {pdf.isGeneratingPDF || !generation.isPdfReady ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Download className="w-5 h-5" />
+                      )}
+                      <span>{!generation.isPdfReady ? 'Preparing Your Book...' : 'Download Your Book'}</span>
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -635,18 +391,10 @@ const PreviewStory: React.FC = () => {
 
         {/* Auth Modal */}
         <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onGuestContinue={() => {
-            setShowAuthModal(false);
-            if (pendingAction === 'payment') {
-              performPayment();
-            } else if (pendingAction === 'download') {
-              performDownload();
-            }
-            setPendingAction(null);
-          }}
-          context={pendingAction === 'download' ? 'download' : 'default'}
+          isOpen={payment.showAuthModal}
+          onClose={payment.handleAuthModalClose}
+          onGuestContinue={payment.handleGuestContinue}
+          context={payment.pendingAction === 'download' ? 'download' : 'default'}
           returnPath={window.location.pathname}
         />
       </div >
@@ -655,4 +403,3 @@ const PreviewStory: React.FC = () => {
 };
 
 export default PreviewStory;
-

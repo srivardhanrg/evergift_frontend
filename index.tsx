@@ -122,6 +122,9 @@ if (isShopifyEnvironment) {
       const spinner = shadowRoot?.querySelector('.loading-spinner');
       if (appRoot) appRoot.classList.add('css-loaded');
       if (spinner) spinner.classList.add('hidden');
+
+      // Signal to Liquid template that app is ready (dismiss external loader)
+      window.dispatchEvent(new Event('storygift-ready'));
     };
 
     // Handle CSS load error
@@ -131,11 +134,18 @@ if (isShopifyEnvironment) {
       const spinner = shadowRoot?.querySelector('.loading-spinner');
       if (appRoot) appRoot.classList.add('css-loaded');
       if (spinner) spinner.classList.add('hidden');
+
+      // Still signal ready so loader doesn't hang
+      window.dispatchEvent(new Event('storygift-ready'));
     };
 
     shadowRoot.appendChild(link);
   } else {
     console.warn('[MagicTales] No CSS URL found in data-css-url attribute');
+    // No CSS to load, signal ready immediately after render
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('storygift-ready'));
+    });
   }
 
   // Add Google Fonts inside Shadow DOM
@@ -192,6 +202,11 @@ if (isShopifyEnvironment) {
   console.log('[MagicTales] Local development mode, no Shadow DOM');
   renderTarget = hostElement;
   // CSS is loaded via index.html in local development
+
+  // Signal ready for any listeners (no-op in local dev, but consistent)
+  requestAnimationFrame(() => {
+    window.dispatchEvent(new Event('storygift-ready'));
+  });
 }
 
 // Create React root and render

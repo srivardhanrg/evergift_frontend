@@ -28,10 +28,10 @@ const About: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
           <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold text-primary mb-6 shadow-sm">
             <Award className="w-4 h-4" />
-            Trusted by 10,000+ Parents Worldwide
+            Trusted by Families Worldwide
           </div>
           <h1 className="text-5xl md:text-6xl font-heading mb-6 text-gray-900">
-            Where <span className="text-primary">Magic</span> Meets <span className="text-secondary">Childhood</span>
+            Every Child Deserves to Be a <span className="text-primary">Hero</span>
           </h1>
           <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
             We create personalized storybooks that transform your child into the hero of their own adventure.
@@ -99,7 +99,7 @@ const About: React.FC = () => {
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                GDPR & COPPA compliant
+                Built with privacy in mind
               </li>
             </ul>
           </div>
@@ -177,12 +177,12 @@ const About: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                  <div className="text-3xl font-heading text-primary mb-1">3x</div>
-                  <div className="text-sm text-gray-600">Higher engagement</div>
+                  <div className="text-3xl font-heading text-primary mb-1">More</div>
+                  <div className="text-sm text-gray-600">Engaged reading</div>
                 </div>
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                  <div className="text-3xl font-heading text-secondary mb-1">87%</div>
-                  <div className="text-sm text-gray-600">Want to read again</div>
+                  <div className="text-3xl font-heading text-secondary mb-1">Again!</div>
+                  <div className="text-sm text-gray-600">Kids ask to read it</div>
                 </div>
               </div>
             </div>
@@ -202,7 +202,7 @@ const About: React.FC = () => {
                     <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-xs">👧</div>
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-gray-900">10,000+</div>
+                    <div className="text-sm font-semibold text-gray-900">Loved by</div>
                     <div className="text-xs text-gray-500">Happy families</div>
                   </div>
                 </div>

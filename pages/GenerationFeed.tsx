@@ -1,11 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Sparkles, Loader2, Clock, Flame } from 'lucide-react';
+import { Sparkles, Loader2, Clock, Flame, RefreshCw, PlusCircle } from 'lucide-react';
 import { api, isShopifyCustomerLoggedIn } from '../src/api/client';
 import { JobStatus, PageData } from '../src/types/api.types';
 import BookPageCard from '../components/BookPageCard';
 import CoverPageCard from '../components/CoverPageCard';
 import AuthModal, { hasSavePromptBeenShown, markSavePromptShown } from '../components/AuthModal';
+// DISABLED: Email capture popup feature temporarily disabled
+// import EmailCapturePopup from '../components/EmailCapturePopup';
+import { getFriendlyError } from '../src/utils/errorMessages';
+import {
+    trackPreviewGenerationProgress,
+    trackPreviewGenerationCompleted,
+    trackPreviewGenerationFailed,
+    trackFunnelStep,
+} from '../src/services/analytics';
 
 // Preview generates first 5 pages (remaining 5 after payment)
 const TOTAL_PAGES = 5;
@@ -30,6 +39,26 @@ const GENERATION_MESSAGES = [
 ];
 
 // Messages for each specific page
+
+// DISABLED: Email capture popup feature temporarily disabled
+// ==================
+// Email Popup State Management (per preview)
+// ==================
+// const EMAIL_POPUP_PREFIX = 'magictales_email_popup_';
+//
+// /** Get email popup state for a specific preview */
+// const getEmailPopupState = (previewId: string): 'none' | 'shown' | 'submitted' | 'dismissed' => {
+//     if (typeof localStorage === 'undefined' || !previewId) return 'none';
+//     const state = localStorage.getItem(`${EMAIL_POPUP_PREFIX}${previewId}`);
+//     return (state as 'shown' | 'submitted' | 'dismissed') || 'none';
+// };
+//
+// /** Set email popup state for a specific preview */
+// const setEmailPopupState = (previewId: string, state: 'shown' | 'submitted' | 'dismissed'): void => {
+//     if (typeof localStorage === 'undefined' || !previewId) return;
+//     localStorage.setItem(`${EMAIL_POPUP_PREFIX}${previewId}`, state);
+// };
+
 const PAGE_SPECIFIC_MESSAGES: Record<number, string[]> = {
     0: ["Designing your magical cover...", "Creating the perfect first impression...", "Making it special!"],
     1: ["Opening the enchanted storybook...", "Your hero is waking up!", "Chapter 1 is brewing..."],
@@ -55,18 +84,25 @@ const GenerationFeed: React.FC = () => {
     const [completedPages, setCompletedPages] = useState<PageData[]>([]);
     const [coverData, setCoverData] = useState<{ url: string; childName: string; storyTitle: string } | null>(null);
     const [status, setStatus] = useState<JobStatus>(JobStatus.QUEUED);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<{ title: string; message: string; suggestion?: string; icon: string } | null>(null);
     const [canRetry, setCanRetry] = useState(false);
     const [funMessage, setFunMessage] = useState(GENERATION_MESSAGES[0]);
     const [messageIndex, setMessageIndex] = useState(0);
     const [todayCount, setTodayCount] = useState(0);
     const [showAuthPrompt, setShowAuthPrompt] = useState(false);
     const [pendingPreviewId, setPendingPreviewId] = useState<string | null>(null);
+    // DISABLED: Email capture popup feature temporarily disabled
+    // const [showEmailPopup, setShowEmailPopup] = useState(false);
+    // const [emailSubmitted, setEmailSubmitted] = useState(false);
+    const [childName, setChildName] = useState<string>('');
+    // const [currentPreviewId, setCurrentPreviewId] = useState<string | null>(null);
 
     // Ref for auto-scrolling to active card
     const activeCardRef = useRef<HTMLDivElement>(null);
     const isUserScrollingRef = useRef(false);
     const lastScrollTimeRef = useRef(0);
+    const networkRetryCountRef = useRef(0); // Track network retries without causing re-renders
+    const MAX_NETWORK_RETRIES = 3;
 
     // Track if user is manually scrolling (to avoid hijacking their scroll)
     useEffect(() => {
@@ -102,6 +138,37 @@ const GenerationFeed: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // DISABLED: Email capture popup feature temporarily disabled
+    // Show email popup after 30 seconds if still generating
+    // Only show ONCE per preview - check localStorage for state
+    // useEffect(() => {
+    //     // Need preview_id to track popup state per preview
+    //     if (!currentPreviewId) return;
+    //
+    //     // Check if popup was already shown/dismissed/submitted for this preview
+    //     const popupState = getEmailPopupState(currentPreviewId);
+    //     if (popupState !== 'none') {
+    //         // Already shown for this preview - restore emailSubmitted if needed
+    //         if (popupState === 'submitted') {
+    //             setEmailSubmitted(true);
+    //         }
+    //         return; // Don't show again
+    //     }
+    //
+    //     // Only show if still processing and popup not currently open
+    //     if (status === JobStatus.PROCESSING && !showEmailPopup) {
+    //         const timer = setTimeout(() => {
+    //             // Double-check status hasn't changed
+    //             if (status === JobStatus.PROCESSING) {
+    //                 setShowEmailPopup(true);
+    //                 setEmailPopupState(currentPreviewId, 'shown');
+    //             }
+    //         }, 30000); // 30 seconds
+    //
+    //         return () => clearTimeout(timer);
+    //     }
+    // }, [status, currentPreviewId, showEmailPopup]);
+
     // Auto-scroll to the newly completed page - with delay and respecting user scroll
     useEffect(() => {
         // Skip if user is actively scrolling
@@ -120,6 +187,22 @@ const GenerationFeed: React.FC = () => {
         return () => clearTimeout(timer);
     }, [completedPages.length, coverData]);
 
+    // Store job ID for recovery if user navigates away
+    useEffect(() => {
+        if (jobId && status !== JobStatus.COMPLETED && status !== JobStatus.FAILED) {
+            localStorage.setItem('magictales_current_job', JSON.stringify({
+                jobId,
+                childName: childName || 'Your child',
+                timestamp: Date.now()
+            }));
+        }
+
+        // Clear on completion or failure
+        if (status === JobStatus.COMPLETED || status === JobStatus.FAILED) {
+            localStorage.removeItem('magictales_current_job');
+        }
+    }, [jobId, status, childName]);
+
     // Poll for job status
     useEffect(() => {
         if (!jobId) return;
@@ -133,6 +216,9 @@ const GenerationFeed: React.FC = () => {
 
                 if (!isActive) return;
 
+                // Reset network retry counter on success
+                networkRetryCountRef.current = 0;
+
                 setProgress(statusResponse.progress);
                 setStatus(statusResponse.status);
 
@@ -143,6 +229,8 @@ const GenerationFeed: React.FC = () => {
                 // Store preview_id when available
                 if (statusResponse.preview_id) {
                     previewId = statusResponse.preview_id;
+                    // DISABLED: Email capture popup feature temporarily disabled
+                    // setCurrentPreviewId(statusResponse.preview_id);
                 }
 
                 // Fetch preview data to get ACTUAL completed pages
@@ -150,6 +238,11 @@ const GenerationFeed: React.FC = () => {
                     try {
                         const previewData = await api.getPreview(previewId);
                         if (previewData) {
+                            // Capture child name for email popup
+                            if (previewData.child_name) {
+                                setChildName(previewData.child_name);
+                            }
+
                             // Extract cover page (page 0) if available
                             const coverPage = previewData.preview_pages?.find((p: any) => p.page_number === 0 || p.is_cover);
                             if (coverPage && previewData.child_name) {
@@ -174,6 +267,19 @@ const GenerationFeed: React.FC = () => {
 
                 // Handle completion - check if should show auth prompt for guests
                 if (statusResponse.status === JobStatus.COMPLETED && statusResponse.preview_id) {
+                    // Track generation completed
+                    const generationDuration = Date.now() - (window as any).__generationStartTime || 0;
+                    trackPreviewGenerationCompleted(
+                        generationDuration,
+                        completedPages.length || TOTAL_PAGES,
+                        'unknown' // Theme not available in job status
+                    );
+                    trackFunnelStep('preview_ready', {
+                        preview_id: statusResponse.preview_id,
+                        pages_count: completedPages.length || TOTAL_PAGES,
+                        duration_ms: generationDuration,
+                    });
+
                     const isGuest = !isShopifyCustomerLoggedIn();
                     const hasSeenPrompt = hasSavePromptBeenShown();
 
@@ -193,7 +299,15 @@ const GenerationFeed: React.FC = () => {
 
                 // Handle failure
                 if (statusResponse.status === JobStatus.FAILED) {
-                    setError(statusResponse.error || 'Generation failed. Please try again.');
+                    // Track generation failed
+                    trackPreviewGenerationFailed(
+                        'JOB_FAILED',
+                        statusResponse.error || 'Unknown error',
+                        completedPages.length
+                    );
+
+                    const friendlyError = getFriendlyError('JOB_FAILED', statusResponse.error);
+                    setError(friendlyError);
                     setCanRetry(statusResponse.can_retry ?? false);
                     return;
                 }
@@ -205,9 +319,32 @@ const GenerationFeed: React.FC = () => {
                 }
             } catch (err: any) {
                 console.error('Status poll error:', err);
-                if (isActive) {
-                    setError(err.message || 'Failed to check generation status.');
+
+                if (!isActive) return;
+
+                // Handle job not found (404) - don't retry, show specific error
+                if (err.code === 'NOT_FOUND' || err.message?.toLowerCase().includes('not found') || err.status === 404) {
+                    setError({
+                        title: 'Story Not Found',
+                        message: 'This story generation could not be found. It may have expired or the link is incorrect.',
+                        suggestion: 'Check My Creations for your existing stories.',
+                        icon: '🔍'
+                    });
+                    return; // Stop polling
                 }
+
+                // Auto-retry on network errors (up to 3 times with exponential backoff)
+                if (networkRetryCountRef.current < MAX_NETWORK_RETRIES) {
+                    networkRetryCountRef.current += 1;
+                    const retryDelay = Math.pow(2, networkRetryCountRef.current) * 1000; // 2s, 4s, 8s
+                    console.log(`Network error, retrying in ${retryDelay}ms (attempt ${networkRetryCountRef.current}/${MAX_NETWORK_RETRIES})`);
+                    setTimeout(pollStatus, retryDelay);
+                    return;
+                }
+
+                // All retries exhausted - show error
+                const friendlyError = getFriendlyError(err.code || 'NETWORK_ERROR', err.message);
+                setError(friendlyError);
             }
         };
 
@@ -267,16 +404,46 @@ const GenerationFeed: React.FC = () => {
         }
     };
 
+    // DISABLED: Email capture popup feature temporarily disabled
+    // Handle email submission for notification
+    // const handleEmailSubmit = async (email: string): Promise<boolean> => {
+    //     const previewId = currentPreviewId;
+    //     if (!previewId) {
+    //         console.error('No preview_id available for email notification');
+    //         return false;
+    //     }
+    //
+    //     try {
+    //         const result = await api.saveNotificationEmail(previewId, email);
+    //         if (result.success) {
+    //             setEmailSubmitted(true);
+    //             setEmailPopupState(previewId, 'submitted');
+    //             return true;
+    //         }
+    //         return false;
+    //     } catch (err) {
+    //         console.error('Failed to save notification email:', err);
+    //         return false;
+    //     }
+    // };
+
     // Error state with retry option
     if (error) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-3xl shadow-xl p-10 max-w-md text-center">
-                    <div className="text-5xl mb-6">😢</div>
-                    <h2 className="text-2xl font-heading text-gray-900 mb-4">
-                        Oh no! A magical mishap
+                    <div className="text-5xl mb-6">{error.icon}</div>
+                    <h2 className="text-2xl font-heading text-gray-900 mb-3">
+                        {error.title}
                     </h2>
-                    <p className="text-gray-500 mb-8">{error}</p>
+                    <p className="text-gray-600 mb-2">{error.message}</p>
+                    {error.suggestion && (
+                        <p className="text-gray-400 text-sm mb-8 flex items-center justify-center">
+                            <span className="mr-1">💡</span>
+                            {error.suggestion}
+                        </p>
+                    )}
+                    {!error.suggestion && <div className="mb-8" />}
 
                     <div className="space-y-3">
                         {canRetry && (
@@ -284,18 +451,19 @@ const GenerationFeed: React.FC = () => {
                                 onClick={handleRetry}
                                 className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-2xl font-bold hover:opacity-90 transition-all flex items-center justify-center space-x-2"
                             >
-                                <span>✨</span>
-                                <span>Retry Magic</span>
+                                <RefreshCw className="w-5 h-5" />
+                                <span>Try Again</span>
                             </button>
                         )}
                         <button
                             onClick={() => navigate('/create')}
-                            className={`w-full px-8 py-4 rounded-2xl font-bold transition-all ${canRetry
+                            className={`w-full px-8 py-4 rounded-2xl font-bold transition-all flex items-center justify-center space-x-2 ${canRetry
                                 ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 : 'bg-primary text-white hover:bg-opacity-90'
                                 }`}
                         >
-                            {canRetry ? 'Start Fresh' : 'Create New Story'}
+                            <PlusCircle className="w-5 h-5" />
+                            <span>{canRetry ? 'Start Fresh' : 'Create New Story'}</span>
                         </button>
                     </div>
 
@@ -340,7 +508,7 @@ const GenerationFeed: React.FC = () => {
                     </div>
 
                     {/* FOMO Elements Row */}
-                    <div className="flex items-center justify-between mt-3">
+                    <div className="flex flex-wrap items-center justify-between mt-3 gap-2">
                         {/* Fun rotating message */}
                         <p className="text-sm text-purple-600 font-medium flex items-center space-x-2 animate-fade-in">
                             <span>{funMessage}</span>
@@ -470,6 +638,20 @@ const GenerationFeed: React.FC = () => {
                 context="save"
                 returnPath={pendingPreviewId ? `/preview/${pendingPreviewId}` : undefined}
             />
+
+            {/* DISABLED: Email capture popup feature temporarily disabled */}
+            {/* <EmailCapturePopup
+                isOpen={showEmailPopup}
+                onClose={() => {
+                    setShowEmailPopup(false);
+                    // Persist dismissed state per preview in localStorage
+                    if (currentPreviewId) {
+                        setEmailPopupState(currentPreviewId, 'dismissed');
+                    }
+                }}
+                onSubmit={handleEmailSubmit}
+                childName={childName || 'your child'}
+            /> */}
         </div>
     );
 };

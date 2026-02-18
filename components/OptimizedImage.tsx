@@ -1,5 +1,36 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+/**
+ * Preload a critical image to improve LCP (Largest Contentful Paint).
+ * Call this early (e.g., in useEffect) for above-the-fold images.
+ */
+export function preloadImage(src: string, fetchPriority: 'high' | 'low' = 'high'): void {
+    if (typeof document === 'undefined' || !src) return;
+
+    // Check if already preloaded
+    const existingLink = document.querySelector(`link[href="${src}"][rel="preload"]`);
+    if (existingLink) return;
+
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = src;
+    // @ts-ignore - fetchpriority is valid on link elements
+    link.fetchpriority = fetchPriority;
+
+    document.head.appendChild(link);
+}
+
+/**
+ * Preload multiple images (e.g., for a carousel or gallery).
+ * Only preloads the first few for performance.
+ */
+export function preloadImages(srcs: string[], limit: number = 3): void {
+    srcs.slice(0, limit).forEach((src, index) => {
+        preloadImage(src, index === 0 ? 'high' : 'low');
+    });
+}
+
 interface OptimizedImageProps {
     src: string;
     alt: string;
@@ -16,6 +47,14 @@ interface OptimizedImageProps {
     onError?: () => void;
     /** Priority loading (eager) for above-the-fold images */
     priority?: boolean;
+    /** Image width hint for responsive sizing (improves LCP) */
+    width?: number;
+    /** Image height hint for responsive sizing */
+    height?: number;
+    /** Sizes attribute for responsive images */
+    sizes?: string;
+    /** Fetch priority for critical images (high for LCP images) */
+    fetchPriority?: 'high' | 'low' | 'auto';
 }
 
 /**
@@ -39,6 +78,10 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     onLoad,
     onError,
     priority = false,
+    width,
+    height,
+    sizes,
+    fetchPriority,
 }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
@@ -107,6 +150,13 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
                     onError={handleError}
                     loading={priority ? 'eager' : 'lazy'}
                     decoding="async"
+                    // Responsive sizing hints for better LCP
+                    width={width}
+                    height={height}
+                    sizes={sizes}
+                    // Fetch priority for critical images (LCP optimization)
+                    // @ts-ignore - fetchpriority is valid HTML attribute
+                    fetchpriority={fetchPriority || (priority ? 'high' : undefined)}
                     // Prevent partially loaded image from showing
                     style={{ visibility: isLoaded ? 'visible' : 'hidden' }}
                 />

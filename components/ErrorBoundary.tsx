@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
@@ -15,8 +15,11 @@ interface State {
 /**
  * Error Boundary component to catch JavaScript errors in child components.
  * Prevents the entire app from crashing when a component fails.
+ * 
+ * Note: Error boundaries must be class components as there's no hook equivalent
+ * for componentDidCatch/getDerivedStateFromError.
  */
-class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {

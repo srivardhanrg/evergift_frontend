@@ -80,6 +80,7 @@ const BookPageCard: React.FC<BookPageCardProps> = ({
                                     onError={() => setImageError(true)}
                                     loading="eager"
                                     decoding="async"
+                                    style={{ visibility: imageLoaded ? 'visible' : 'hidden' }}
                                 />
                             </>
                         ) : (

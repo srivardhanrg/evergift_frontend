@@ -21,7 +21,8 @@ export enum Theme {
     STORYGIFT_BIRTHDAY_MAGIC = 'storygift_birthday_magic',
     // Newest premium themes (Safari & Dream Weaver)
     STORYGIFT_SAFARI_ADVENTURE = 'storygift_safari_adventure',
-    STORYGIFT_DREAM_WEAVER = 'storygift_dream_weaver',
+    // STORYGIFT_DREAM_WEAVER = 'storygift_dream_weaver',  // REMOVED
+    STORYGIFT_SECRET_AGENT = 'storygift_secret_agent',
     // Legacy themes
     MAGIC_CASTLE = 'magic_castle',
 }
@@ -118,7 +119,7 @@ export interface PreviewResponse {
     locked_pages_count: number;
     expires_at: string;
     days_remaining: number;
-    generation_phase?: 'preview' | 'generating_full' | 'complete';
+    generation_phase?: 'preview' | 'generating_full' | 'pages_complete' | 'generating_pdf' | 'complete' | 'pdf_failed';
     purchase: {
         price: number;
         currency: string;
@@ -127,7 +128,7 @@ export interface PreviewResponse {
 }
 
 export interface DownloadResponse {
-    status: 'generating' | 'ready' | 'failed';
+    status: 'generating' | 'ready' | 'failed' | 'pdf_missing' | 'not_purchased';
     downloads?: {
         pdf: {
             url: string;

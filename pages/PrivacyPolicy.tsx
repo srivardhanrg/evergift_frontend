@@ -103,15 +103,15 @@ const PrivacyPolicy: React.FC = () => {
                         </h2>
                         <p className="text-gray-600">
                             If you have any questions about our privacy practices, please contact us at{' '}
-                            <a href="mailto:privacy@storygift.in" className="text-primary hover:underline">
-                                privacy@storygift.in
+                            <a href="mailto:privacy@storygift.com" className="text-primary hover:underline">
+                                privacy@storygift.com
                             </a>
                         </p>
                     </section>
 
                     <div className="pt-4 border-t border-gray-100 text-center">
                         <p className="text-sm text-gray-500">
-                            We are GDPR and COPPA compliant. Your child's safety is our top priority.
+                            We follow industry best practices for data protection and children's privacy. Your child's safety is our top priority.
                         </p>
                     </div>
                 </div>

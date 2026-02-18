@@ -6,15 +6,29 @@ declare const __DEV_MODE__: boolean;
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ThemeType, ChildDetails, Theme } from '../types';
 import { THEMES } from '../constants';
-import { Upload, Trash2, ChevronRight, Sparkles, Loader2, ArrowLeft, Camera } from 'lucide-react';
+import { Upload, Trash2, ChevronRight, Sparkles, Loader2, ArrowLeft, Camera, AlertCircle } from 'lucide-react';
 import { api } from '../src/api/client';
 import { Theme as ApiTheme, BookStyle } from '../src/types/api.types';
 import AuthModal from '../components/AuthModal';
+import OptimizedImage from '../components/OptimizedImage';
 import StyledSelect from '../components/StyledSelect';
+import { getFriendlyError, isPhotoError, FriendlyError } from '../src/utils/errorMessages';
+import {
+  trackPhotoUploadStarted,
+  trackPhotoUploadCompleted,
+  trackPhotoUploadFailed,
+  trackFaceDetectionSuccess,
+  trackFaceDetectionFailed,
+  trackChildDetailsEntered,
+  trackArtStyleSelected,
+  trackPreviewGenerationStarted,
+  trackFunnelStep,
+  trackApiError,
+} from '../src/services/analytics';
 
 // Responsive CSS to override Shopify theme conflicts
 const CreateResponsiveStyles = () => (
@@ -45,6 +59,7 @@ const CreateStory: React.FC = () => {
   const [loadingMessage, setLoadingMessage] = useState(WHIMSICAL_MESSAGES[0]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [guestLimitReached, setGuestLimitReached] = useState(false);
+  const [uploadError, setUploadError] = useState<FriendlyError | null>(null);
 
   const [photos, setPhotos] = useState<File[]>([]);
   const [childDetails, setChildDetails] = useState<ChildDetails>({
@@ -81,6 +96,26 @@ const CreateStory: React.FC = () => {
     }
   }, [loading]);
 
+  // Warn user about unsaved changes when navigating away
+  useEffect(() => {
+    const hasData = photos.length > 0 || childDetails.name.trim().length > 0;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasData && !loading) {
+        e.preventDefault();
+        e.returnValue = ''; // Required for Chrome
+      }
+    };
+
+    if (hasData && !loading) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [photos, childDetails.name, loading]);
+
   // Map frontend ThemeType to backend API Theme
   const mapThemeToApi = (frontendTheme: ThemeType): ApiTheme => {
     const themeMap: Record<string, ApiTheme> = {
@@ -92,6 +127,7 @@ const CreateStory: React.FC = () => {
       'Birthday Magic': ApiTheme.STORYGIFT_BIRTHDAY_MAGIC,
       'Safari Adventure': ApiTheme.STORYGIFT_SAFARI_ADVENTURE,
       'Dream Weaver': ApiTheme.STORYGIFT_DREAM_WEAVER,
+      'Secret Agent': ApiTheme.STORYGIFT_SECRET_AGENT,
     };
     return themeMap[frontendTheme] || ApiTheme.STORYGIFT_ENCHANTED_FOREST;
   };
@@ -109,13 +145,34 @@ const CreateStory: React.FC = () => {
     setProgress(5);
     setLoadingMessage("Uploading your hero's photo...");
 
+    const uploadStartTime = Date.now();
+    trackPhotoUploadStarted();
+
     try {
       const uploadResponse = await api.uploadPhoto(photos[0]);
       setProgress(15);
       setLoadingMessage("Photo validated! Starting the magic...");
 
+      // Track successful upload and face detection
+      const uploadDuration = Date.now() - uploadStartTime;
+      trackPhotoUploadCompleted(photos[0].size, uploadDuration);
+      trackFaceDetectionSuccess();
+      trackFunnelStep('photo_uploaded', { file_size: photos[0].size });
+      trackFunnelStep('face_detected');
+
+      // Track child details
+      trackChildDetailsEntered(String(childDetails.age), childDetails.gender);
+      trackFunnelStep('details_entered', { age: childDetails.age, gender: childDetails.gender });
+
+      // Track art style
+      trackArtStyleSelected(artStyle === 'cartoon_3d' ? '3d_cartoon' : 'photorealistic');
+
       const mapGender = (g: string): 'male' | 'female' =>
         g.toLowerCase() === 'boy' ? 'male' : 'female';
+
+      // Track generation started
+      trackPreviewGenerationStarted(selectedThemeId, artStyle);
+      trackFunnelStep('generation_started', { theme_id: selectedThemeId, art_style: artStyle });
 
       const { job_id, preview_id } = await api.createPreview({
         photo_url: uploadResponse.photo_url,
@@ -131,6 +188,9 @@ const CreateStory: React.FC = () => {
     } catch (error: any) {
       console.error('Story generation failed:', error);
 
+      // Track the error
+      trackApiError('create_preview', error.code || 'unknown', error.message || 'Unknown error');
+
       // Check if guest limit reached - show auth modal instead of generic alert
       if (error.code === 'GUEST_LIMIT_REACHED') {
         setGuestLimitReached(true);
@@ -139,7 +199,20 @@ const CreateStory: React.FC = () => {
         return;
       }
 
-      alert(error.message || "The magic hit a snag. Please try again!");
+      // Get friendly error message
+      const friendlyError = getFriendlyError(error.code, error.message);
+
+      // If it's a photo error, track face detection failure and show inline
+      if (isPhotoError(error.code)) {
+        trackFaceDetectionFailed(error.code, error.message);
+        trackPhotoUploadFailed(error.code, error.message);
+        setUploadError(friendlyError);
+        setPhotos([]); // Clear the photo so user can re-upload
+      } else {
+        // For non-photo errors, show an alert with the friendly message
+        alert(`${friendlyError.icon} ${friendlyError.title}\n\n${friendlyError.message}${friendlyError.suggestion ? `\n\n💡 ${friendlyError.suggestion}` : ''}`);
+      }
+
       setLoading(false);
     }
   };
@@ -220,10 +293,13 @@ const CreateStory: React.FC = () => {
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-300/50 to-gray-400/30 rounded-2xl blur-2xl translate-y-4 scale-90 opacity-60"></div>
 
                   {/* Book Image */}
-                  <img
+                  <OptimizedImage
                     src={selectedTheme.defaultCover}
                     alt={`${selectedTheme.title} Theme Cover`}
-                    className="relative w-full object-cover rounded-xl shadow-xl transform transition-all duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
+                    aspectRatio="4/3"
+                    containerClassName="rounded-xl shadow-xl overflow-hidden"
+                    className="transform transition-all duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
+                    priority={true}
                   />
 
                   {/* Subtle Gloss */}
@@ -254,7 +330,7 @@ const CreateStory: React.FC = () => {
                   <div className="absolute inset-0 rounded-xl border border-amber-400/20 animate-pulse-slow pointer-events-none"></div>
 
                   {/* Visual Cue Badge */}
-                  <div className="absolute -right-3 top-6 bg-primary text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg whitespace-nowrap transform rotate-3">
+                  <div className="absolute right-1 sm:-right-3 top-6 bg-primary text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg whitespace-nowrap transform rotate-3">
                     <Camera className="w-3 h-3 inline mr-1" />
                     Your Child Here!
                   </div>
@@ -268,7 +344,7 @@ const CreateStory: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2 text-gray-600 text-xs">
                     <span className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">👀</span>
-                    <span>Full preview before purchase</span>
+                    <span>Preview before purchase</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600 text-xs">
                     <span className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">✨</span>
@@ -325,9 +401,12 @@ const CreateStory: React.FC = () => {
                             const file = e.target.files?.[0];
                             if (!file) return;
 
+                            // Clear any previous error
+                            setUploadError(null);
+
                             // Validate file size (10MB max)
                             if (file.size > MAX_FILE_SIZE_BYTES) {
-                              alert(`File too large! Please upload an image smaller than ${MAX_FILE_SIZE_MB}MB.\nYour file: ${(file.size / 1024 / 1024).toFixed(1)}MB`);
+                              setUploadError(getFriendlyError('FILE_TOO_LARGE'));
                               e.target.value = ''; // Reset input
                               return;
                             }
@@ -338,11 +417,48 @@ const CreateStory: React.FC = () => {
                       </label>
                     )}
 
-                    {/* Tips */}
-                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex-1">
-                      <p className="text-amber-800 text-xs font-semibold mb-1">📸 Photo Tips</p>
-                      <p className="text-amber-700 text-xs leading-relaxed">Front-facing photos with good lighting work best!</p>
-                    </div>
+                    {/* Tips or Error */}
+                    {uploadError ? (
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex-1">
+                        <div className="flex items-start space-x-2">
+                          <span className="text-lg">{uploadError.icon}</span>
+                          <div>
+                            <p className="text-red-800 text-xs font-bold mb-0.5">{uploadError.title}</p>
+                            <p className="text-red-600 text-xs leading-relaxed">{uploadError.message}</p>
+                            {uploadError.suggestion && (
+                              <p className="text-red-500 text-xs mt-1 flex items-center">
+                                <span className="mr-1">💡</span>
+                                {uploadError.suggestion}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setUploadError(null)}
+                          className="mt-2 text-red-600 text-xs underline hover:text-red-800"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-3 flex-1">
+                        <p className="text-amber-800 text-xs font-bold mb-2">📸 Photo Tips</p>
+                        <div className="space-y-1.5 text-[11px]">
+                          <div className="flex items-center space-x-1.5 text-green-700">
+                            <span className="text-green-500">✓</span>
+                            <span>Clear, front-facing shot</span>
+                          </div>
+                          <div className="flex items-center space-x-1.5 text-green-700">
+                            <span className="text-green-500">✓</span>
+                            <span>Face fills most of photo</span>
+                          </div>
+                          <div className="flex items-center space-x-1.5 text-amber-700">
+                            <span className="text-amber-500">💡</span>
+                            <span>Photo clarity directly affects your story quality</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -410,8 +526,8 @@ const CreateStory: React.FC = () => {
                       value={childDetails.gender}
                       onChange={(val) => setChildDetails({ ...childDetails, gender: String(val) })}
                       options={[
-                        { value: 'Boy', label: '👦 Boy' },
-                        { value: 'Girl', label: '👧 Girl' },
+                        { value: 'Boy', label: 'Boy' },
+                        { value: 'Girl', label: 'Girl' },
                       ]}
                       icon={childDetails.gender === 'Boy' ? '👦' : '👧'}
                     />
@@ -442,10 +558,11 @@ const CreateStory: React.FC = () => {
                   className="group bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg hover:border-primary/20 hover:-translate-y-1 transition-all text-left"
                 >
                   <div className="aspect-[4/3] overflow-hidden bg-gray-100">
-                    <img
+                    <OptimizedImage
                       src={theme.defaultCover}
                       alt={theme.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      aspectRatio="4/3"
+                      className="group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
                   <div className="p-3">

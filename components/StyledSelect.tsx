@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Check } from 'lucide-react';
+import { usePortalContainer } from '../src/ShadowContext';
 
 interface Option {
     value: string | number;
@@ -34,6 +35,7 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
     const triggerRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
+    const portalContainer = usePortalContainer();
 
     // Find selected option label
     const selectedOption = options.find(opt => opt.value === value);
@@ -41,15 +43,32 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
     // Estimate menu height (options * item height + padding)
     const estimatedMenuHeight = Math.min(options.length * 36, 208) + 8;
 
-    // Calculate menu position - ALWAYS open above the trigger
-    useEffect(() => {
-        if (isOpen && triggerRef.current) {
+    // Calculate menu position relative to viewport (for fixed positioning)
+    const updateMenuPosition = () => {
+        if (triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
+            // Use viewport-relative positions for fixed positioning (no scrollY/scrollX)
             setMenuPosition({
-                top: rect.top + window.scrollY - estimatedMenuHeight - 4,
-                left: rect.left + window.scrollX,
+                top: rect.top - estimatedMenuHeight - 4,
+                left: rect.left,
                 width: rect.width,
             });
+        }
+    };
+
+    // Update position when dropdown opens and on scroll/resize
+    useEffect(() => {
+        if (isOpen) {
+            updateMenuPosition();
+
+            // Update position on scroll/resize to keep dropdown attached
+            window.addEventListener('scroll', updateMenuPosition, true);
+            window.addEventListener('resize', updateMenuPosition);
+
+            return () => {
+                window.removeEventListener('scroll', updateMenuPosition, true);
+                window.removeEventListener('resize', updateMenuPosition);
+            };
         }
     }, [isOpen, estimatedMenuHeight]);
 
@@ -97,6 +116,10 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
                 left: menuPosition.left,
                 width: menuPosition.width,
             }}
+            onMouseDown={(e) => {
+                // Prevent any parent handlers from intercepting
+                e.stopPropagation();
+            }}
         >
             <div className="max-h-52 overflow-y-auto">
                 {options.map((option) => {
@@ -105,10 +128,20 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
                         <button
                             key={option.value}
                             type="button"
-                            onClick={() => handleSelect(option.value)}
+                            onMouseDown={(e) => {
+                                // Use onMouseDown for more reliable click detection
+                                // This fires before blur events that might close the dropdown
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleSelect(option.value);
+                            }}
                             className={`
                                 w-full flex items-center gap-2 px-3 py-2 text-left text-sm
-                                transition-colors
+                                transition-colors cursor-pointer
                                 ${isSelected
                                     ? 'bg-gradient-to-r from-primary to-pink-400 text-white font-medium'
                                     : 'text-gray-700 hover:bg-primary/10 hover:text-primary'
@@ -122,7 +155,7 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
                 })}
             </div>
         </div>,
-        document.body
+        portalContainer
     ) : null;
 
     return (

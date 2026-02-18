@@ -1,141 +1,30 @@
-{% comment %}
-  MagicTales Story Creator Page Template
-
-  This template embeds the MagicTales React app in your Shopify store.
-
-  Setup:
-  1. Go to Online Store > Themes > Edit Code
-  2. Create this file: templates/page.story-creator.liquid
-  3. Create a new page: Pages > Add Page
-     - Title: Create Your Story
-     - URL handle: create-story
-     - Template: page.story-creator
-  4. Add to navigation: Online Store > Navigation
-{% endcomment %}
-
-{% comment %} Disable the default page content since React app takes over {% endcomment %}
-{% layout none %}
-
-<!DOCTYPE html>
-<html lang="{{ request.locale.iso_code }}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
-  <title>{{ page.title }} - {{ shop.name }}</title>
-  <meta name="description" content="Create a personalized storybook for your child with AI-powered illustrations">
-
-  {% comment %} Favicon and theme color from Shopify {% endcomment %}
-  <link rel="icon" type="image/png" href="{{ 'favicon.png' | asset_url }}">
-  <meta name="theme-color" content="{{ settings.colors_accent_1 }}">
-
-  {% comment %} Prevent indexing of app pages {% endcomment %}
-  <meta name="robots" content="noindex, nofollow">
-
-  {% comment %} Preconnect to R2 CDN for faster asset loading {% endcomment %}
-  <link rel="preconnect" href="https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev">
-
-  {% comment %}
-    Load React app CSS from R2 CDN
-    Updated with actual build hash
-  {% endcomment %}
-  <link rel="stylesheet" href="https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/assets/index-DHk3-tbY.css?v={{ 'now' | date: '%s' }}">
-
-  {% comment %} Tailwind CSS CDN (for any missing styles) {% endcomment %}
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#FF6B9D',
-            softPink: '#FFF0F5'
-          },
-          fontFamily: {
-            heading: ['Fredoka One', 'cursive'],
-            body: ['Nunito', 'sans-serif']
-          }
-        }
-      }
+/*
+ * ------------------------------------------------------------
+ * StoryGift Story Creator Page Template
+ *
+ * This JSON template embeds the StoryGift React app.
+ * The actual content is in sections/zelavoapp.liquid
+ *
+ * Setup:
+ * 1. Upload both this file and sections/zelavoapp.liquid
+ * 2. Create page: Pages > Add Page
+ *    - Title: Create Your Story
+ *    - URL handle: create-story
+ *    - Template: page.story-creator
+ * 3. Add to navigation: Online Store > Navigation
+ *
+ * To update bundle hashes after deploy:
+ * Edit sections/zelavoapp.liquid and update js_bundle/css_bundle
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "zelavoapp",
+      "settings": {}
     }
-  </script>
-
-  {% comment %} Google Fonts {% endcomment %}
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-
-  <style>
-    body {
-      font-family: 'Nunito', sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-
-    /* Loading state */
-    #zelavo-app-loading {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #FFF0F5;
-    }
-
-    .loading-spinner {
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-  </style>
-</head>
-<body>
-  {% comment %}
-    Main app container
-    Data attributes pass Shopify customer info to the React app
-    The React app reads these to link previews to customers
-  {% endcomment %}
-  <div
-    id="zelavo-app"
-    data-customer-id="{{ customer.id | json | remove: '"' }}"
-    data-customer-email="{{ customer.email | json | remove: '"' }}"
-    data-customer-name="{{ customer.first_name | json | remove: '"' }}"
-    data-shop-domain="{{ shop.permanent_domain | json | remove: '"' }}"
-    data-logged-in="{{ customer | json | default: 'false' }}"
-  >
-    {% comment %} Loading state shown while React loads {% endcomment %}
-    <div id="zelavo-app-loading">
-      <div class="text-center">
-        <svg class="loading-spinner w-12 h-12 text-pink-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p class="text-gray-600 font-medium animate-pulse">Loading story creator...</p>
-      </div>
-    </div>
-  </div>
-
-  {% comment %}
-    Load React app from R2 CDN
-    Updated with actual build hash
-    The ?v= parameter ensures cache busting when you deploy updates
-  {% endcomment %}
-  <script type="module" crossorigin src="https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/assets/index-CWhVc3oq.js?v={{ 'now' | date: '%s' }}"></script>
-
-  {% comment %} Hide loading state once React mounts {% endcomment %}
-  <script>
-    // Wait for React to mount and hide loading
-    window.addEventListener('DOMContentLoaded', function() {
-      // Give React a moment to initialize
-      setTimeout(function() {
-        var loading = document.getElementById('zelavo-app-loading');
-        if (loading && document.querySelector('#zelavo-app > div:not(#zelavo-app-loading)')) {
-          loading.style.display = 'none';
-        }
-      }, 1000);
-    });
-  </script>
-</body>
-</html>
+  },
+  "order": [
+    "main"
+  ]
+}

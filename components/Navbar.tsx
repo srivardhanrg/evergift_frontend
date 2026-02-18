@@ -4,25 +4,28 @@ import { Link } from 'react-router-dom';
 import { LayoutDashboard, Star, User as UserIcon, Menu, X, LogOut, ChevronDown } from 'lucide-react';
 import { isShopifyCustomerLoggedIn, getShopifyCustomerContext } from '../src/api/client';
 
+// Hardcoded shop domain as ultimate fallback
+const SHOP_DOMAIN = 'storygift-2061.myshopify.com';
+
+// Get the shop domain from context or use fallback
+const getShopDomain = (): string => {
+  const contextDomain = getShopifyCustomerContext().shopDomain;
+  return contextDomain || SHOP_DOMAIN;
+};
+
 // Get Shopify login URL - redirects to Shopify's customer account login
 const getShopifyLoginUrl = (): string => {
-  if (typeof window === 'undefined') return '/account/login';
-  const shopDomain = getShopifyCustomerContext().shopDomain;
-  if (shopDomain) {
-    return `https://${shopDomain}/account/login`;
-  }
-  // Fallback for local development
-  return '/account/login';
+  return `https://${getShopDomain()}/account/login`;
 };
 
 // Get Shopify logout URL
 const getShopifyLogoutUrl = (): string => {
-  if (typeof window === 'undefined') return '/account/logout';
-  const shopDomain = getShopifyCustomerContext().shopDomain;
-  if (shopDomain) {
-    return `https://${shopDomain}/account/logout`;
-  }
-  return '/account/logout';
+  return `https://${getShopDomain()}/account/logout`;
+};
+
+// Get Shopify orders URL
+const getShopifyOrdersUrl = (): string => {
+  return `https://${getShopDomain()}/account/orders`;
 };
 
 const Navbar: React.FC = () => {
@@ -32,7 +35,7 @@ const Navbar: React.FC = () => {
 
   // Check Shopify login status
   const isLoggedIn = isShopifyCustomerLoggedIn();
-  const shopDomain = getShopifyCustomerContext().shopDomain || 'storygift-2061.myshopify.com';
+  // Using getShopDomain() for all Shopify URLs
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -94,30 +97,43 @@ const Navbar: React.FC = () => {
 
                   {/* Account Dropdown */}
                   {accountDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
-                      <a
-                        href={`https://${shopDomain}/account`}
-                        className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition"
+                    <div
+                      className="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setAccountDropdownOpen(false);
+                          window.location.href = getShopifyOrdersUrl();
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition text-left cursor-pointer"
                       >
                         <UserIcon className="w-4 h-4" />
-                        <span>My Account</span>
-                      </a>
-                      <Link
-                        to="/my-creations"
-                        onClick={() => setAccountDropdownOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition"
-                      >
-                        <LayoutDashboard className="w-4 h-4" />
-                        <span>My Creations</span>
-                      </Link>
-                      <hr className="my-2 border-gray-100" />
-                      <a
-                        href={getShopifyLogoutUrl()}
-                        className="flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition"
+                        <span>Order History</span>
+                      </button>
+                      <button
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setAccountDropdownOpen(false);
+                          window.location.href = getShopifyLogoutUrl();
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition text-left cursor-pointer"
                       >
                         <LogOut className="w-4 h-4" />
                         <span>Logout</span>
-                      </a>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -135,12 +151,13 @@ const Navbar: React.FC = () => {
             {/* Mobile Menu Button */}
             <div id="sg-mobile-nav" className="items-center gap-3">
               {isLoggedIn && (
-                <a
-                  href={`https://${getShopifyCustomerContext().shopDomain || 'storygift-2061.myshopify.com'}/account`}
+                <button
+                  onClick={() => window.location.href = getShopifyOrdersUrl()}
                   className="flex items-center justify-center w-9 h-9 bg-gray-100 rounded-full"
+                  aria-label="Order History"
                 >
                   <UserIcon className="w-4 h-4 text-gray-600" />
-                </a>
+                </button>
               )}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -191,22 +208,27 @@ const Navbar: React.FC = () => {
               )}
               {isLoggedIn && (
                 <>
-                  <a
-                    href={`https://${shopDomain}/account`}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-900 hover:bg-gray-50 font-medium"
-                    onClick={() => setMobileMenuOpen(false)}
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      window.location.href = getShopifyOrdersUrl();
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-gray-900 hover:bg-gray-50 font-medium text-left"
                   >
                     <UserIcon className="w-4 h-4" />
-                    My Account
-                  </a>
+                    Order History
+                  </button>
                   <hr className="my-2 border-gray-100 mx-3" />
-                  <a
-                    href={getShopifyLogoutUrl()}
-                    className="flex items-center gap-2 mx-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 font-medium"
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      window.location.href = getShopifyLogoutUrl();
+                    }}
+                    className="w-full flex items-center gap-2 mx-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 font-medium text-left"
                   >
                     <LogOut className="w-4 h-4" />
                     Logout
-                  </a>
+                  </button>
                 </>
               )}
             </div>

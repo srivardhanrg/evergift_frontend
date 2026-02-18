@@ -12,6 +12,53 @@ import MyCreations from './pages/MyCreations';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import { api, isShopifyCustomerLoggedIn, getPendingCheckout, clearPendingCheckout } from './src/api/client';
+import { initAnalytics, trackPageView, identifyUser } from './src/services/analytics';
+
+/**
+ * ScrollToTop - Scrolls to top on every route change
+ * Fixes the issue where navigating to a new page keeps the scroll position
+ */
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+};
+
+/**
+ * Analytics page tracking on route changes
+ */
+const AnalyticsTracker: React.FC = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    // Map routes to readable page names
+    const pageNames: Record<string, string> = {
+      '/': 'Home',
+      '/about': 'About',
+      '/create': 'Create Story',
+      '/my-creations': 'My Creations',
+      '/privacy-policy': 'Privacy Policy',
+      '/terms-of-service': 'Terms of Service',
+    };
+
+    let pageName = pageNames[pathname] || pathname;
+
+    // Handle dynamic routes
+    if (pathname.startsWith('/preview/')) {
+      pageName = 'Preview Story';
+    } else if (pathname.startsWith('/generating/')) {
+      pageName = 'Generation Feed';
+    }
+
+    trackPageView(pageName, { path: pathname });
+  }, [pathname]);
+
+  return null;
+};
 
 /**
  * Component to handle pending checkout redirect
@@ -39,11 +86,22 @@ const PendingCheckoutHandler: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // Initialize analytics on app load
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
   // Link guest session creations to Shopify customer account after login
   useEffect(() => {
     const linkGuestCreations = async () => {
       if (isShopifyCustomerLoggedIn()) {
         try {
+          // Identify user in analytics
+          const customerId = (window as any).ShopifyAnalytics?.meta?.page?.customerId;
+          if (customerId) {
+            identifyUser(customerId);
+          }
+
           const result = await api.linkSession();
           if (result.linked_count > 0) {
             console.log(`Linked ${result.linked_count} guest creation(s) to account`);
@@ -58,6 +116,10 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
+      {/* Scroll to top on route change */}
+      <ScrollToTop />
+      {/* Track page views in analytics */}
+      <AnalyticsTracker />
       {/* Handle pending checkout redirect (when Shopify ignores return_to) */}
       <PendingCheckoutHandler />
       <ErrorBoundary>

@@ -53,20 +53,20 @@ const CoverPageCard: React.FC<CoverPageCardProps> = ({
                     </span>
                 </div>
 
-                {/* Cover Image with Text Overlays - 4:3 aspect to match story pages */}
+                {/* Cover Image with Text Overlays - 1:1 aspect for PDF compatibility */}
                 <div className="relative">
-                    {/* 4:3 aspect ratio for consistency with story pages */}
+                    {/* 1:1 aspect ratio matches PDF page dimensions */}
                     <div className="relative">
                         <OptimizedImage
                             src={imageUrl}
                             alt={`Cover for ${storyTitle} story starring ${childName}`}
-                            aspectRatio="4/3"
+                            aspectRatio="1/1"
                             priority={true}
                         />
 
                         {/* Top Gradient + Title Overlay */}
                         <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-black/70 via-black/40 to-transparent flex items-start justify-center pt-6 px-4 z-10">
-                            <h2 className="text-2xl md:text-3xl font-heading text-amber-400 text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-tight uppercase tracking-wide">
+                            <h2 className="text-xl sm:text-2xl md:text-3xl font-heading text-amber-400 text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-tight uppercase tracking-wide">
                                 {displayTitle || 'The Adventure'}
                             </h2>
                         </div>

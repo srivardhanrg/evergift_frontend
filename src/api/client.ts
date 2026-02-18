@@ -40,11 +40,29 @@ const isShopifyTestMode = (): boolean => {
 
 /**
  * Detect if running inside Shopify storefront (or test mode)
+ * Checks multiple signals:
+ * 1. Domain ends with myshopify.com
+ * 2. Shopify-injected data attributes exist (for custom domains)
+ * 3. Shopify global object exists
+ * 4. Test mode is enabled
  */
 export const isShopifyEnvironment = (): boolean => {
     if (typeof window === 'undefined') return false;
-    // Real Shopify OR test mode
-    return window.location.hostname.endsWith('myshopify.com') || isShopifyTestMode();
+
+    // Test mode
+    if (isShopifyTestMode()) return true;
+
+    // Check domain (works for *.myshopify.com)
+    if (window.location.hostname.endsWith('myshopify.com')) return true;
+
+    // Check for Shopify-injected app element (works for custom domains)
+    const appElement = document.getElementById('zelavo-app');
+    if (appElement?.dataset.shopDomain) return true;
+
+    // Check for Shopify global object (injected by Shopify themes)
+    if (typeof (window as any).Shopify !== 'undefined') return true;
+
+    return false;
 };
 
 /**
@@ -280,6 +298,17 @@ export async function getDownload(orderId: string): Promise<DownloadResponse> {
 }
 
 /**
+ * Trigger PDF regeneration for a preview with all pages but missing PDF
+ */
+export async function regeneratePdf(previewId: string): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${DIRECT_API_BASE}/preview/${previewId}/regenerate-pdf`, {
+        method: 'POST',
+        headers: buildHeaders(),
+    });
+    return handleResponse<{ status: string; message: string }>(response);
+}
+
+/**
  * Retry a failed generation job
  * Returns a new job_id to poll for status
  */
@@ -289,6 +318,19 @@ export async function retryJob(jobId: string): Promise<JobStartResponse> {
         headers: buildHeaders(),
     });
     return handleResponse<JobStartResponse>(response);
+}
+
+/**
+ * Save email for preview completion notification.
+ * User can leave the page and get notified when story is ready.
+ */
+export async function saveNotificationEmail(previewId: string, email: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${DIRECT_API_BASE}/preview/${previewId}/email`, {
+        method: 'POST',
+        headers: buildHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ email }),
+    });
+    return handleResponse<{ success: boolean; message: string }>(response);
 }
 
 // ==================
@@ -420,15 +462,129 @@ export async function pollJobUntilComplete(
 // ==================
 
 /**
- * Shopify product configuration
- * UPDATE THIS with your actual Shopify product variant ID
+ * Shopify product configuration with theme-specific variant IDs
+ * Each theme has its own product variant in Shopify
  */
+export const THEME_VARIANT_MAP: Record<string, number> = {
+    'storygift_magic_castle': 51903524536596,
+    'storygift_enchanted_forest': 51852877529364,
+    'storygift_cosmic_dreamer': 51903530795284,
+    'storygift_ocean_explorer': 51903532007700,     // Fixed: was using image ID 54562628960532
+    'storygift_mighty_guardian': 51903531254036,     // Fixed: was using image ID 54562622406932
+    'storygift_birthday_magic': 51903533449492,      // Fixed: was using image ID 54562636857620
+    'storygift_safari_adventure': 51903534203156,
+    // 'storygift_dream_weaver': 51903538823444,  // REMOVED
+    'storygift_secret_agent': 51903538823444, // TODO: Replace with actual Shopify variant ID
+    // Legacy fallback
+    'magic_castle': 51903524536596,
+};
+
+/**
+ * Get the Shopify variant ID for a given theme
+ * Falls back to enchanted_forest if theme not found
+ */
+export const getVariantIdForTheme = (theme: string): number => {
+    const variantId = THEME_VARIANT_MAP[theme];
+    if (!variantId) {
+        console.warn(`[Shopify] Unknown theme "${theme}", using fallback variant`);
+        return THEME_VARIANT_MAP['storygift_enchanted_forest']; // Default fallback
+    }
+    return variantId;
+};
+// ==================
+// Region-based Pricing
+// ==================
+
+interface PricingConfig {
+    price: number;
+    currency: string;
+    symbol: string;
+    countryCode: string;
+}
+
+const PRICING_BY_REGION: Record<string, PricingConfig> = {
+    // India
+    'IN': { price: 599, currency: 'INR', symbol: '₹', countryCode: 'IN' },
+    // USA & Canada
+    'US': { price: 19, currency: 'USD', symbol: '$', countryCode: 'US' },
+    'CA': { price: 19, currency: 'USD', symbol: '$', countryCode: 'CA' },
+    // UK
+    'GB': { price: 15, currency: 'GBP', symbol: '£', countryCode: 'GB' },
+    // Europe (Euro)
+    'DE': { price: 17, currency: 'EUR', symbol: '€', countryCode: 'DE' },
+    'FR': { price: 17, currency: 'EUR', symbol: '€', countryCode: 'FR' },
+    // Default fallback (USD)
+    'DEFAULT': { price: 19, currency: 'USD', symbol: '$', countryCode: 'US' },
+};
+
+/**
+ * Detect user's country from:
+ * 1. Shopify Liquid template injection (data-country-code on #zelavo-app)
+ * 2. Browser locale/language
+ * 3. Timezone heuristics
+ */
+const detectUserCountry = (): string => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+        return 'DEFAULT';
+    }
+
+    // 1. Check Shopify-injected country code (most reliable in Shopify)
+    const appElement = document.getElementById('zelavo-app');
+    const shopifyCountry = appElement?.dataset.countryCode;
+    if (shopifyCountry) {
+        console.log('[Pricing] Country from Shopify:', shopifyCountry);
+        return shopifyCountry.toUpperCase();
+    }
+
+    // 2. Check browser locale
+    const locale = navigator.language || (navigator as any).userLanguage || '';
+    // Format: "en-US", "en-IN", "fr-FR"
+    const countryFromLocale = locale.split('-')[1]?.toUpperCase();
+    if (countryFromLocale && PRICING_BY_REGION[countryFromLocale]) {
+        console.log('[Pricing] Country from browser locale:', countryFromLocale);
+        return countryFromLocale;
+    }
+
+    // 3. Timezone-based detection for India
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (timezone?.includes('Kolkata') || timezone?.includes('Calcutta') || timezone?.includes('Asia/Kolkata')) {
+        console.log('[Pricing] Country from timezone (India)');
+        return 'IN';
+    }
+
+    // 4. Check if locale language suggests India
+    if (locale.toLowerCase().includes('in') || locale.toLowerCase() === 'hi') {
+        console.log('[Pricing] Country from language hint (India)');
+        return 'IN';
+    }
+
+    console.log('[Pricing] Using default region');
+    return 'DEFAULT';
+};
+
+/**
+ * Get pricing configuration based on user's detected region
+ */
+export const getPricingForRegion = (): PricingConfig => {
+    const country = detectUserCountry();
+    return PRICING_BY_REGION[country] || PRICING_BY_REGION['DEFAULT'];
+};
+
+/**
+ * Get formatted price string (e.g., "₹499" or "$19")
+ */
+export const getFormattedPrice = (): string => {
+    const pricing = getPricingForRegion();
+    return `${pricing.symbol}${pricing.price}`;
+};
+
 export const SHOPIFY_CONFIG = {
-    // The numeric variant ID of your "Personalized StoryGift Storybook" product
-    // Store: storygift-2061.myshopify.com
-    PRODUCT_VARIANT_ID: 51852877529364, // Correct Variant ID
-    PRODUCT_PRICE: 599, // Price in INR
-    CURRENCY_SYMBOL: '₹',
+    // Legacy single variant (kept for backward compatibility) 
+    PRODUCT_VARIANT_ID: 51852877529364, // Default: Enchanted Forest
+    // Dynamic pricing - use getPricingForRegion() for actual values
+    get PRODUCT_PRICE() { return getPricingForRegion().price; },
+    get CURRENCY_SYMBOL() { return getPricingForRegion().symbol; },
+    get CURRENCY() { return getPricingForRegion().currency; },
 };
 
 // ==================
@@ -496,9 +652,26 @@ export function clearPendingCheckout(): void {
  * Add the storybook to Shopify cart with preview_id as line item property
  * This allows the webhook to link the order to the specific preview
  *
+ * @param previewId - The preview ID to link with the order
+ * @param theme - The story theme (used to get the correct product variant)
+ * 
  * In test mode, calls the backend mock cart endpoint instead
  */
-export async function addToShopifyCart(previewId: string): Promise<{ success: boolean; error?: string; errorCode?: string; testOrderId?: string }> {
+export async function addToShopifyCart(previewId: string, theme?: string): Promise<{ success: boolean; error?: string; errorCode?: string; testOrderId?: string }> {
+    // Get the correct variant ID for this theme
+    const variantId = theme ? getVariantIdForTheme(theme) : SHOPIFY_CONFIG.PRODUCT_VARIANT_ID;
+
+    // Debug logging
+    const isShopify = isShopifyEnvironment();
+    console.log(`[Shopify Cart] Environment check:`, {
+        isShopifyEnvironment: isShopify,
+        hostname: window.location.hostname,
+        theme: theme || 'default',
+        variantId,
+        hasShopifyGlobal: typeof (window as any).Shopify !== 'undefined',
+        hasAppElement: !!document.getElementById('zelavo-app')
+    });
+
     // In test mode, call our backend mock endpoint
     if (isShopifyTestMode()) {
         console.log('[Shopify Test] Using mock cart endpoint for testing');
@@ -508,7 +681,7 @@ export async function addToShopifyCart(previewId: string): Promise<{ success: bo
                 headers: buildHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     preview_id: previewId,
-                    variant_id: SHOPIFY_CONFIG.PRODUCT_VARIANT_ID || 'test-variant',
+                    variant_id: variantId || 'test-variant',
                 }),
             });
 
@@ -533,8 +706,8 @@ export async function addToShopifyCart(previewId: string): Promise<{ success: bo
         return { success: false, error: 'Not in Shopify environment' };
     }
 
-    if (SHOPIFY_CONFIG.PRODUCT_VARIANT_ID === 0) {
-        console.error('[Shopify Cart] PRODUCT_VARIANT_ID not configured!');
+    if (!variantId || variantId === 0) {
+        console.error('[Shopify Cart] Variant ID not configured for theme:', theme);
         return { success: false, error: 'Product not configured' };
     }
 
@@ -546,7 +719,7 @@ export async function addToShopifyCart(previewId: string): Promise<{ success: bo
             },
             body: JSON.stringify({
                 items: [{
-                    id: SHOPIFY_CONFIG.PRODUCT_VARIANT_ID,
+                    id: variantId,
                     quantity: 1,
                     properties: {
                         '_preview_id': previewId, // Underscore prefix hides from customer but available to backend
@@ -591,7 +764,7 @@ export async function addToShopifyCart(previewId: string): Promise<{ success: bo
             return { success: false, error: errorMessage, errorCode };
         }
 
-        console.log('[Shopify Cart] Successfully added to cart with preview_id:', previewId);
+        console.log('[Shopify Cart] Successfully added to cart with preview_id:', previewId, 'variant:', variantId);
         return { success: true };
     } catch (error) {
         console.error('[Shopify Cart] Network error:', error);
@@ -629,10 +802,12 @@ export function redirectToShopifyCheckout(previewId: string, testOrderId?: strin
 
 /**
  * Add to cart and immediately redirect to checkout (Buy Now flow)
+ * @param previewId - The preview ID
+ * @param theme - The story theme (used to get the correct product variant)
  * In test mode, simulates the entire payment flow
  */
-export async function buyNowWithShopify(previewId: string): Promise<void> {
-    const result = await addToShopifyCart(previewId);
+export async function buyNowWithShopify(previewId: string, theme?: string): Promise<void> {
+    const result = await addToShopifyCart(previewId, theme);
     if (result.success) {
         if (isShopifyTestMode()) {
             // In test mode, trigger the test webhook and show success
@@ -675,6 +850,7 @@ export const api = {
     getPreview,
     getDownload,
     retryJob,
+    saveNotificationEmail,
     pollJobUntilComplete,
     ApiError,
     // Shopify integration
@@ -685,6 +861,11 @@ export const api = {
     redirectToShopifyCheckout,
     buyNowWithShopify,
     SHOPIFY_CONFIG,
+    THEME_VARIANT_MAP,
+    getVariantIdForTheme,
+    // Dynamic pricing
+    getPricingForRegion,
+    getFormattedPrice,
     // Checkout tracking (fallback for Shopify redirect issues)
     setPendingCheckout,
     getPendingCheckout,
@@ -693,6 +874,7 @@ export const api = {
     getMyCreations,
     linkSession,
     getCreationCount,
+    regeneratePdf,
 };
 
 export default api;

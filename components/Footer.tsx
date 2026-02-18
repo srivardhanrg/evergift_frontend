@@ -10,7 +10,7 @@ const Footer: React.FC = () => {
     <footer className="bg-white border-t border-gray-100">
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12">
           {/* Brand Column */}
           <div className="col-span-2 md:col-span-2">
             <Link to="/" className="flex items-center space-x-2 mb-6">
@@ -64,7 +64,7 @@ const Footer: React.FC = () => {
             <h4 className="font-heading text-lg text-gray-800 mb-6">Support</h4>
             <ul className="space-y-3">
               <li>
-                <a href="mailto:hello@storygift.in" className="text-gray-500 hover:text-primary transition font-medium flex items-center gap-2">
+                <a href="mailto:hello@storygift.com" className="text-gray-500 hover:text-primary transition font-medium flex items-center gap-2">
                   <Mail className="w-4 h-4" /> Contact Us
                 </a>
               </li>

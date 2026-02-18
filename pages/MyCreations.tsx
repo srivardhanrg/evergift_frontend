@@ -7,10 +7,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, BookOpen, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Plus, BookOpen, Loader2, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
 import { api, isShopifyCustomerLoggedIn, getPendingCheckout, clearPendingCheckout } from '../src/api/client';
 import type { CreationItem, MyCreationsResponse } from '../src/api/client';
 import CreationCard from '../components/CreationCard';
+import { SkeletonGrid } from '../components/SkeletonCard';
 import { getShopifyLoginUrl } from '../components/AuthModal';
 
 const MyCreations: React.FC = () => {
@@ -22,6 +23,27 @@ const MyCreations: React.FC = () => {
     const [total, setTotal] = useState(0);
 
     const isLoggedIn = isShopifyCustomerLoggedIn();
+
+    // Check for in-progress job that user may have navigated away from
+    const [currentJob, setCurrentJob] = useState<{ jobId: string; childName: string } | null>(null);
+
+    // Check for in-progress job on mount
+    useEffect(() => {
+        try {
+            const storedJob = localStorage.getItem('magictales_current_job');
+            if (storedJob) {
+                const { jobId, childName, timestamp } = JSON.parse(storedJob);
+                // Only show if less than 15 minutes old
+                if (Date.now() - timestamp < 15 * 60 * 1000) {
+                    setCurrentJob({ jobId, childName });
+                } else {
+                    localStorage.removeItem('magictales_current_job');
+                }
+            }
+        } catch (e) {
+            // Ignore parse errors
+        }
+    }, []);
 
     // Check for pending checkout on mount (fallback for when Shopify ignores return_to)
     useEffect(() => {
@@ -69,13 +91,22 @@ const MyCreations: React.FC = () => {
         navigate('/');
     };
 
-    // Loading state
+    // Loading state - shows skeleton cards
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-softPink/30 to-white flex items-center justify-center">
-                <div className="text-center">
-                    <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium">Loading your magical stories...</p>
+            <div className="min-h-screen bg-gradient-to-b from-softPink/30 to-white">
+                <div className="max-w-6xl mx-auto px-4 py-8">
+                    {/* Header skeleton */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                        <div>
+                            <div className="h-8 w-48 bg-gray-200 rounded-lg animate-pulse mb-2" />
+                            <div className="h-4 w-32 bg-gray-100 rounded-lg animate-pulse" />
+                        </div>
+                        <div className="h-12 w-40 bg-gray-200 rounded-full animate-pulse" />
+                    </div>
+
+                    {/* Skeleton grid */}
+                    <SkeletonGrid count={6} />
                 </div>
             </div>
         );
@@ -160,6 +191,31 @@ const MyCreations: React.FC = () => {
                         </div>
                     )}
                 </div>
+
+                {/* In-progress job recovery banner */}
+                {currentJob && (
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 mb-6 flex items-center justify-between flex-wrap gap-4 border border-purple-100">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-purple-100 p-2 rounded-full">
+                                <Sparkles className="w-5 h-5 text-purple-600 animate-pulse" />
+                            </div>
+                            <div>
+                                <p className="text-gray-900 font-bold">Story in Progress!</p>
+                                <p className="text-gray-600 text-sm">{currentJob.childName}'s story is still being created</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setCurrentJob(null);
+                                navigate(`/generating/${currentJob.jobId}`);
+                            }}
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full font-bold text-sm hover:opacity-90 transition flex items-center gap-2"
+                        >
+                            <Sparkles className="w-4 h-4" />
+                            View Progress
+                        </button>
+                    </div>
+                )}
 
                 {/* Guest banner */}
                 {!isLoggedIn && creations.length > 0 && (
