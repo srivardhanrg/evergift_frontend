@@ -33,8 +33,13 @@ import { JobStatus } from '../types/api.types';
 const isShopifyTestMode = (): boolean => {
     if (typeof window === 'undefined') return false;
     // Check for test mode flag (set via Vite define or URL param)
+    // Persist in sessionStorage so it survives redirects (e.g. after payment success)
     const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('shopify_test') === 'true' ||
+    if (urlParams.get('shopify_test') === 'true') {
+        sessionStorage.setItem('shopify_test_mode', 'true');
+        return true;
+    }
+    return sessionStorage.getItem('shopify_test_mode') === 'true' ||
         (window as any).__SHOPIFY_TEST_MODE__ === true;
 };
 
@@ -401,6 +406,38 @@ export async function getCreationCount(): Promise<{ count: number }> {
 }
 
 // ==================
+// Print Order Status
+// ==================
+
+export interface PrintOrderStatus {
+    print_order_id: string;
+    order_id: string;
+    preview_id: string;
+    lulu_status: string | null;
+    tracking_number: string | null;
+    estimated_delivery: string | null;
+    shipped_at: string | null;
+    delivered_at: string | null;
+    created_at: string;
+}
+
+/**
+ * Get print order status for a preview (returns null if no physical order exists)
+ */
+export async function getPrintOrderByPreview(previewId: string): Promise<PrintOrderStatus | null> {
+    try {
+        const response = await fetch(`${DIRECT_API_BASE}/print/by-preview/${previewId}`, {
+            headers: buildHeaders(),
+        });
+        if (response.status === 404) return null;
+        const data = await handleResponse<{ success: boolean; print_order: PrintOrderStatus }>(response);
+        return data.print_order;
+    } catch {
+        return null;
+    }
+}
+
+// ==================
 // Polling Helpers
 // ==================
 
@@ -469,12 +506,12 @@ export const THEME_VARIANT_MAP: Record<string, number> = {
     'storygift_magic_castle': 51903524536596,
     'storygift_enchanted_forest': 51852877529364,
     'storygift_cosmic_dreamer': 51903530795284,
-    'storygift_ocean_explorer': 51903532007700,     // Fixed: was using image ID 54562628960532
-    'storygift_mighty_guardian': 51903531254036,     // Fixed: was using image ID 54562622406932
-    'storygift_birthday_magic': 51903533449492,      // Fixed: was using image ID 54562636857620
+    'storygift_ocean_explorer': 51903532007700,
+    'storygift_mighty_guardian': 51903531254036,
+    'storygift_birthday_magic': 51903533449492,
     'storygift_safari_adventure': 51903534203156,
     // 'storygift_dream_weaver': 51903538823444,  // REMOVED
-    'storygift_secret_agent': 51903538823444, // TODO: Replace with actual Shopify variant ID
+    'storygift_secret_agent': 51903538823444,
     // Legacy fallback
     'magic_castle': 51903524536596,
 };
@@ -579,12 +616,15 @@ export const getFormattedPrice = (): string => {
 };
 
 export const SHOPIFY_CONFIG = {
-    // Legacy single variant (kept for backward compatibility) 
+    // Legacy single variant (kept for backward compatibility)
     PRODUCT_VARIANT_ID: 51852877529364, // Default: Enchanted Forest
     // Dynamic pricing - use getPricingForRegion() for actual values
     get PRODUCT_PRICE() { return getPricingForRegion().price; },
     get CURRENCY_SYMBOL() { return getPricingForRegion().symbol; },
     get CURRENCY() { return getPricingForRegion().currency; },
+    // Physical Book (Lulu print-on-demand)
+    PHYSICAL_VARIANT_ID: 51975725482260,
+    PHYSICAL_PRICE: 39.99,
 };
 
 // ==================
@@ -681,7 +721,7 @@ export async function addToShopifyCart(previewId: string, theme?: string): Promi
                 headers: buildHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     preview_id: previewId,
-                    variant_id: variantId || 'test-variant',
+                    variant_id: String(variantId || 'test-variant'),
                 }),
             });
 
@@ -801,6 +841,100 @@ export function redirectToShopifyCheckout(previewId: string, testOrderId?: strin
 }
 
 /**
+ * Add the physical book to Shopify cart with order_type=physical
+ * The backend webhook detects this variant and routes to Lulu instead of digital PDF
+ */
+export async function addPhysicalBookToCart(previewId: string): Promise<{ success: boolean; error?: string; testOrderId?: string }> {
+    if (SHOPIFY_CONFIG.PHYSICAL_VARIANT_ID === 0) {
+        console.error('[Shopify Cart] PHYSICAL_VARIANT_ID not configured in SHOPIFY_CONFIG!');
+        return { success: false, error: 'Physical book product not configured yet' };
+    }
+
+    if (isShopifyTestMode()) {
+        try {
+            const response = await fetch(`${API_BASE}/test/cart/add`, {
+                method: 'POST',
+                headers: buildHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({
+                    preview_id: previewId,
+                    variant_id: String(SHOPIFY_CONFIG.PHYSICAL_VARIANT_ID),
+                }),
+            });
+            if (!response.ok) return { success: false, error: 'Failed to add physical book to cart' };
+            const data = await response.json();
+            return { success: true, testOrderId: data.order_id };
+        } catch {
+            return { success: false, error: 'Network error' };
+        }
+    }
+
+    if (!isShopifyEnvironment()) {
+        return { success: false, error: 'Not in Shopify environment' };
+    }
+
+    try {
+        const response = await fetch('/cart/add.js', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                items: [{
+                    id: SHOPIFY_CONFIG.PHYSICAL_VARIANT_ID,
+                    quantity: 1,
+                    properties: {
+                        '_preview_id': previewId,
+                        '_order_type': 'physical',        // triggers Lulu in backend webhook
+                        'Child\'s Story': 'Personalised Printed Storybook',
+                    },
+                }],
+            }),
+        });
+
+        if (!response.ok) return { success: false, error: 'Failed to add physical book to cart' };
+        return { success: true };
+    } catch {
+        return { success: false, error: 'Network error' };
+    }
+}
+
+/**
+ * Buy Physical Book — add physical variant to cart and redirect to Shopify checkout
+ */
+export async function buyPhysicalBook(previewId: string): Promise<void> {
+    const result = await addPhysicalBookToCart(previewId);
+    if (!result.success) {
+        throw new ApiError(result.error || 'Failed to add physical book to cart', 'CART_ERROR');
+    }
+    // Redirect to checkout; return_to brings user back to preview page with checkout_success=true
+    if (isShopifyTestMode() && result.testOrderId) {
+        // Simulate payment (same as digital flow) so preview gets marked as purchased
+        console.log('[Shopify Test] Triggering test payment webhook for physical book...');
+        try {
+            const webhookResponse = await fetch(`${API_BASE}/test/simulate-payment`, {
+                method: 'POST',
+                headers: buildHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({
+                    preview_id: previewId,
+                    order_id: result.testOrderId,
+                }),
+            });
+            if (webhookResponse.ok) {
+                const data = await webhookResponse.json();
+                console.log('[Shopify Test] Physical book payment simulation complete:', data);
+            }
+        } catch (error) {
+            console.error('[Shopify Test] Physical book payment simulation failed:', error);
+        }
+        // Redirect back to preview with checkout_success (same param as digital)
+        window.location.href = `/preview/${previewId}?checkout_success=true&order_id=${result.testOrderId}`;
+        return;
+    }
+    if (isShopifyEnvironment()) {
+        const returnUrl = encodeURIComponent(`/apps/zelavo/preview/${previewId}?checkout_success=true`);
+        window.location.href = `/checkout?return_to=${returnUrl}`;
+    }
+}
+
+/**
  * Add to cart and immediately redirect to checkout (Buy Now flow)
  * @param previewId - The preview ID
  * @param theme - The story theme (used to get the correct product variant)
@@ -858,8 +992,10 @@ export const api = {
     getShopifyCustomerContext,
     isShopifyCustomerLoggedIn,
     addToShopifyCart,
+    addPhysicalBookToCart,
     redirectToShopifyCheckout,
     buyNowWithShopify,
+    buyPhysicalBook,
     SHOPIFY_CONFIG,
     THEME_VARIANT_MAP,
     getVariantIdForTheme,

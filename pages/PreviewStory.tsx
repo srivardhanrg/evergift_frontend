@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { STORYBOOK_PRICE, THEMES } from '../constants';
 import {
@@ -10,7 +10,8 @@ import {
   ShoppingCart,
   ArrowLeft
 } from 'lucide-react';
-import { SHOPIFY_CONFIG } from '../src/api/client';
+import { SHOPIFY_CONFIG, buyPhysicalBook, getPrintOrderByPreview } from '../src/api/client';
+import type { PrintOrderStatus } from '../src/api/client';
 import CoverPageCard from '../components/CoverPageCard';
 import OptimizedImage from '../components/OptimizedImage';
 import AuthModal from '../components/AuthModal';
@@ -76,6 +77,30 @@ const PreviewStory: React.FC = () => {
   );
 
   // --- Early returns for loading/error/expired states ---
+
+  // Print order tracking state
+  const [printOrder, setPrintOrder] = useState<PrintOrderStatus | null>(null);
+
+  useEffect(() => {
+    if (preview.book && preview.book.paymentStatus === 'paid') {
+      getPrintOrderByPreview(preview.book.id).then(setPrintOrder);
+    }
+  }, [preview.book?.id, preview.book?.paymentStatus]);
+
+  // Physical book state and handler
+  const [isPhysicalLoading, setIsPhysicalLoading] = useState(false);
+  const handlePhysicalBookClick = async () => {
+    if (!preview.book) return;
+    setIsPhysicalLoading(true);
+    try {
+      await buyPhysicalBook(preview.book.id);
+    } catch (error) {
+      console.error('[Physical Book] Failed:', error);
+      alert('Could not add physical book to cart. Please try again.');
+    } finally {
+      setIsPhysicalLoading(false);
+    }
+  };
 
   if (preview.loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -251,6 +276,59 @@ const PreviewStory: React.FC = () => {
             </div>
           )}
 
+          {/* Print Order Tracking Banner */}
+          {printOrder && (
+            <div className="bg-white rounded-2xl shadow-lg border border-amber-100 p-5">
+              <div className="flex items-start gap-3">
+                <div className="bg-amber-50 w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-xl">
+                    {printOrder.lulu_status === 'shipped' ? '🚚' :
+                     printOrder.lulu_status === 'delivered' ? '✅' :
+                     printOrder.lulu_status === 'in_production' ? '🏭' :
+                     printOrder.lulu_status === 'failed' || printOrder.lulu_status === 'rejected' ? '⚠️' :
+                     '📦'}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-heading text-lg text-slate-900 mb-1">Physical Book Order</h3>
+                  {(!printOrder.lulu_status || printOrder.lulu_status === 'pending' || printOrder.lulu_status === 'submitted') && (
+                    <p className="text-gray-600 text-sm">Your printed book order has been placed! We'll update you when it ships.</p>
+                  )}
+                  {(printOrder.lulu_status === 'accepted') && (
+                    <p className="text-gray-600 text-sm">Your book has been accepted and is queued for printing.</p>
+                  )}
+                  {printOrder.lulu_status === 'in_production' && (
+                    <p className="text-purple-600 text-sm font-medium">Your book is being printed!</p>
+                  )}
+                  {printOrder.lulu_status === 'shipped' && (
+                    <div>
+                      <p className="text-green-600 text-sm font-medium mb-2">Your book has shipped!</p>
+                      {printOrder.tracking_number && (
+                        <a
+                          href={`https://parcelsapp.com/en/tracking/${printOrder.tracking_number}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-green-100 transition-colors"
+                        >
+                          Track your order →
+                        </a>
+                      )}
+                      {printOrder.estimated_delivery && (
+                        <p className="text-gray-500 text-xs mt-2">Estimated delivery: {new Date(printOrder.estimated_delivery).toLocaleDateString()}</p>
+                      )}
+                    </div>
+                  )}
+                  {printOrder.lulu_status === 'delivered' && (
+                    <p className="text-green-600 text-sm font-medium">Your book has been delivered!</p>
+                  )}
+                  {(printOrder.lulu_status === 'failed' || printOrder.lulu_status === 'rejected' || printOrder.lulu_status === 'cancelled') && (
+                    <p className="text-red-600 text-sm">There was an issue with your print order. Please contact support.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* LOCKED PAGES SECTION - Show when in preview phase */}
           {preview.generationPhase === 'preview' && preview.lockedPages.length > 0 && book.paymentStatus === 'pending' && (
             <LockedPagesSection
@@ -321,27 +399,53 @@ const PreviewStory: React.FC = () => {
                     <span>Verifying...</span>
                   </button>
                 ) : book.paymentStatus === 'pending' ? (
-                  /* Buy Button - Shopify Checkout */
-                  <button
-                    onClick={payment.handlePaymentClick}
-                    disabled={payment.isPaymentLoading}
-                    className="flex-1 sm:flex-initial bg-gradient-to-r from-purple-600 to-pink-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
-                  >
-                    {payment.isPaymentLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <ShoppingCart className="w-5 h-5" />
-                    )}
-                    <span>
-                      {payment.isPaymentLoading
-                        ? 'Redirecting...'
-                        : <>
-                          <span className="sm:hidden">Get Full Book - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span>
-                          <span className="hidden sm:inline">Buy to Unlock High-Res PDF - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span>
-                        </>
-                      }
-                    </span>
-                  </button>
+                  /* Buy Buttons - Digital PDF + Physical Book */
+                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    {/* Digital PDF button */}
+                    <button
+                      onClick={payment.handlePaymentClick}
+                      disabled={payment.isPaymentLoading || isPhysicalLoading}
+                      className="flex-1 sm:flex-initial bg-gradient-to-r from-purple-600 to-pink-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                    >
+                      {payment.isPaymentLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <ShoppingCart className="w-5 h-5" />
+                      )}
+                      <span>
+                        {payment.isPaymentLoading
+                          ? 'Redirecting...'
+                          : <>
+                            <span className="sm:hidden">Get Full Book - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span>
+                            <span className="hidden sm:inline">Buy to Unlock High-Res PDF - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span>
+                          </>
+                        }
+                      </span>
+                    </button>
+
+                    {/* Physical Book button */}
+                    <button
+                      onClick={handlePhysicalBookClick}
+                      disabled={isPhysicalLoading || payment.isPaymentLoading}
+                      className="flex-1 sm:flex-initial bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                      title="We'll print and ship a beautiful hardcopy to your door"
+                    >
+                      {isPhysicalLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <span className="text-lg">📦</span>
+                      )}
+                      <span>
+                        {isPhysicalLoading
+                          ? 'Redirecting...'
+                          : <>
+                            <span className="sm:hidden">Physical Book - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PHYSICAL_PRICE}</span>
+                            <span className="hidden sm:inline">Order Physical Book - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PHYSICAL_PRICE}</span>
+                          </>
+                        }
+                      </span>
+                    </button>
+                  </div>
                 ) : (
                   /* Paid - Download Button or Retry Button */
                   generation.pdfPreparationTimeout ? (
