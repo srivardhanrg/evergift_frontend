@@ -51,6 +51,8 @@ export function useGenerationPolling(
 
     const isMountedRef = useRef(true);
     const pollingAbortRef = useRef(false);
+    // Prevents verifyAndPoll from starting when startPaymentPolling is already active
+    const activePollingRef = useRef(false);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -69,26 +71,32 @@ export function useGenerationPolling(
         }
     }, [initialPhaseState.loadedComplete]);
 
-    // If page loaded during generation, verify it's still generating before showing overlay
+    // If page loaded during generation, verify it's still generating before showing overlay.
+    // Skipped entirely if startPaymentPolling is already running (checkout_success flow).
     useEffect(() => {
         if (initialPhaseState.loadedDuringGeneration && previewId) {
-            // Quick check: generation may have completed since the initial load
+            // Don't start a second polling loop if checkout_success flow is active
+            if (activePollingRef.current) return;
+
             const verifyAndPoll = async () => {
                 try {
                     const previewData = await api.getPreview(previewId);
-                    if (!isMountedRef.current) return;
+                    if (!isMountedRef.current || activePollingRef.current) return;
 
                     if (previewData.generation_phase === 'complete') {
-                        // Already done — just set final state, no overlay
-                        console.log('📖 Generation already complete — skipping overlay');
+                        // Already done — verify PDF then set ready (no full overlay)
+                        console.log('📖 Generation already complete — verifying PDF');
                         setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
                         setGenerationPhase('complete');
-                        setIsPdfReady(true);
+                        setShowUnlocking(true);
+                        setUnlockPhase('preparing_pdf');
+                        setUnlockProgress(95);
+                        pollPdfReady(previewId);
                         return;
                     }
 
                     if (previewData.generation_phase === 'pages_complete') {
-                        // Pages done, PDF still pending — skip to PDF polling
+                        // Pages done, PDF still pending — show overlay and poll for PDF
                         console.log('📖 Pages complete — polling for PDF');
                         setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
                         setGenerationPhase('pages_complete');
@@ -108,17 +116,19 @@ export function useGenerationPolling(
                         return;
                     }
 
-                    // Still generating — show overlay and poll
+                    // Still generating pages — show overlay and poll
                     setShowUnlocking(true);
                     setUnlockPhase('generating');
                     setUnlockProgress(50);
                     pollGenerationComplete(previewId);
                 } catch (e) {
                     // If check fails, show overlay as fallback
-                    setShowUnlocking(true);
-                    setUnlockPhase('generating');
-                    setUnlockProgress(50);
-                    pollGenerationComplete(previewId);
+                    if (!activePollingRef.current) {
+                        setShowUnlocking(true);
+                        setUnlockPhase('generating');
+                        setUnlockProgress(50);
+                        pollGenerationComplete(previewId);
+                    }
                 }
             };
             verifyAndPoll();
@@ -134,6 +144,9 @@ export function useGenerationPolling(
             clearPendingCheckout();
             setCheckoutSuccess(true);
             window.history.replaceState({}, '', window.location.pathname);
+            // Mark polling active BEFORE clearing URL so verifyAndPoll effect
+            // (which fires after usePreviewLoader API call completes) skips itself
+            activePollingRef.current = true;
             startPaymentPolling(previewId);
         }
     }, [previewId]);
@@ -287,18 +300,23 @@ export function useGenerationPolling(
     // --- Poll for payment confirmation ---
     const startPaymentPolling = useCallback((id: string) => {
         const poll = async () => {
-            // FAST PATH: Check if everything is already complete before showing overlay
-            // This handles page refreshes / revisits after generation finished
+            // FAST PATH: Check if everything is already complete before showing overlay.
+            // Even if complete, we still go through pollPdfReady to confirm PDF is on R2
+            // and to show the "Preparing PDF → Complete" overlay transition.
             try {
                 const quickCheck = await api.getPreview(id);
                 if (!isMountedRef.current) return;
 
                 if (quickCheck.generation_phase === 'complete' && quickCheck.status === 'purchased') {
-                    console.log('⚡ Already complete — skipping overlay entirely');
+                    console.log('⚡ Already complete — verifying PDF on R2');
                     setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
                     setGenerationPhase('complete');
-                    setIsPdfReady(true);
                     setCheckoutSuccess(false);
+                    setShowUnlocking(true);
+                    setUnlockPhase('preparing_pdf');
+                    setUnlockProgress(95);
+                    await pollPdfReady(id);
+                    activePollingRef.current = false;
                     return;
                 }
             } catch (e) {
@@ -316,6 +334,7 @@ export function useGenerationPolling(
             for (let i = 0; i < maxPaymentAttempts; i++) {
                 if (!isMountedRef.current || pollingAbortRef.current) {
                     console.log('🛑 Payment polling aborted (component unmounted)');
+                    activePollingRef.current = false;
                     return;
                 }
 
@@ -345,19 +364,14 @@ export function useGenerationPolling(
                         setPollingPayment(false);
                         setCheckoutSuccess(false);
 
-                        // Check if generation already complete (fast path)
-                        if (previewData.generation_phase === 'complete') {
-                            console.log('⚡ Generation already complete during payment check');
-                            setGenerationPhase('complete');
-                            setIsPdfReady(true);
-                            setShowUnlocking(false);
-                            return;
-                        }
-
+                        // Always route through pollGenerationComplete which handles all
+                        // phases (generating_full, pages_complete, complete) and waits
+                        // for pollPdfReady before closing the overlay.
                         setUnlockPhase('generating');
                         setUnlockProgress(30);
 
                         await pollGenerationComplete(id);
+                        activePollingRef.current = false;
                         return;
                     }
                 } catch (e) {
@@ -371,6 +385,7 @@ export function useGenerationPolling(
                 setShowUnlocking(false);
                 showToast('Payment is still processing. Please refresh the page in a moment.', 'info', 6000);
             }
+            activePollingRef.current = false;
         };
 
         poll();
