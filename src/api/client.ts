@@ -469,8 +469,8 @@ export const THEME_VARIANT_MAP: Record<string, number> = {
     'storygift_magic_castle': 51903524536596,
     'storygift_enchanted_forest': 51852877529364,
     'storygift_cosmic_dreamer': 51903530795284,
-    'storygift_ocean_explorer': 51903532007700,     // Fixed: was using image ID 54562628960532
-    'storygift_mighty_guardian': 51903531254036,     // Fixed: was using image ID 54562622406932
+    'storygift_ocean_explorer': 51975725482260,
+    'storygift_mighty_guardian': 51975004029204,
     'storygift_birthday_magic': 51903533449492,      // Fixed: was using image ID 54562636857620
     'storygift_safari_adventure': 51903534203156,
     // 'storygift_dream_weaver': 51903538823444,  // REMOVED
