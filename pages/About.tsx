@@ -56,8 +56,8 @@ const About: React.FC = () => {
             </div>
             <div className="flex flex-col items-center text-center">
               <Clock className="w-8 h-8 text-purple-600 mb-2" />
-              <span className="text-sm font-semibold text-gray-700">Ready in Minutes</span>
-              <span className="text-xs text-gray-500">Instant digital delivery</span>
+              <span className="text-sm font-semibold text-gray-700">Fast Delivery</span>
+              <span className="text-xs text-gray-500">Digital instant, print ships in days</span>
             </div>
             <div className="flex flex-col items-center text-center">
               <Heart className="w-8 h-8 text-pink-600 mb-2" />
@@ -124,7 +124,7 @@ const About: React.FC = () => {
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5 shrink-0" />
-                Print-ready PDF format
+                Digital PDF + printed book available
               </li>
             </ul>
           </div>
@@ -145,7 +145,7 @@ const About: React.FC = () => {
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                Unlimited re-downloads
+                Unlimited re-downloads + print option
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
@@ -245,7 +245,7 @@ const About: React.FC = () => {
                 <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary text-white text-xs font-bold rounded-full flex items-center justify-center">3</div>
               </div>
               <h3 className="text-xl font-heading text-gray-900 mb-2">Get Your Book</h3>
-              <p className="text-gray-600 text-sm">Download your personalized storybook instantly. Print or read digitally!</p>
+              <p className="text-gray-600 text-sm">Get your storybook as a digital PDF instantly — or order a beautiful printed book delivered to your door!</p>
             </div>
           </div>
         </div>

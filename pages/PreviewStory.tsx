@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { STORYBOOK_PRICE, THEMES } from '../constants';
 import {
@@ -15,6 +15,7 @@ import type { PrintOrderStatus } from '../src/api/client';
 import CoverPageCard from '../components/CoverPageCard';
 import OptimizedImage from '../components/OptimizedImage';
 import AuthModal from '../components/AuthModal';
+import OrderConfirmationModal from '../components/OrderConfirmationModal';
 import { LockedPagesSection } from '../components/LockedPageCard';
 import UnlockingOverlay from '../components/UnlockingOverlay';
 import {
@@ -81,11 +82,49 @@ const PreviewStory: React.FC = () => {
   // Print order tracking state
   const [printOrder, setPrintOrder] = useState<PrintOrderStatus | null>(null);
 
+  // Order confirmation modal state
+  const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
+  const [orderType, setOrderType] = useState<'digital' | 'physical'>('digital');
+  const hasShownConfirmationRef = useRef(false);
+
+  // Track if we came from checkout success
+  const checkoutSuccessRef = useRef(false);
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('checkout_success') === 'true' || urlParams.get('payment_success') === 'true') {
+      checkoutSuccessRef.current = true;
+    }
+  }, []);
+
   useEffect(() => {
     if (preview.book && preview.book.paymentStatus === 'paid') {
-      getPrintOrderByPreview(preview.book.id).then(setPrintOrder);
+      getPrintOrderByPreview(preview.book.id).then((order) => {
+        setPrintOrder(order);
+        // If there's a print order, this was a physical order
+        if (order) {
+          setOrderType('physical');
+        }
+      });
     }
   }, [preview.book?.id, preview.book?.paymentStatus]);
+
+  // Show confirmation modal after unlock overlay completes (only on checkout success)
+  useEffect(() => {
+    if (
+      checkoutSuccessRef.current &&
+      !generation.showUnlocking &&
+      generation.isPdfReady &&
+      preview.book?.paymentStatus === 'paid' &&
+      !hasShownConfirmationRef.current
+    ) {
+      // Small delay to ensure smooth transition from overlay
+      const timer = setTimeout(() => {
+        hasShownConfirmationRef.current = true;
+        setShowOrderConfirmation(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [generation.showUnlocking, generation.isPdfReady, preview.book?.paymentStatus]);
 
   // Physical book state and handler
   const [isPhysicalLoading, setIsPhysicalLoading] = useState(false);
@@ -261,7 +300,7 @@ const PreviewStory: React.FC = () => {
                     {page.text}
                   </p>
                   {page.text && page.text.length > 120 && (
-                    <p className="text-xs text-gray-400 text-center mt-1 italic">...full story in your PDF</p>
+                    <p className="text-xs text-gray-400 text-center mt-1 italic">...full story in your book</p>
                   )}
                 </div>
               </div>
@@ -283,10 +322,10 @@ const PreviewStory: React.FC = () => {
                 <div className="bg-amber-50 w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
                   <span className="text-xl">
                     {printOrder.lulu_status === 'shipped' ? '🚚' :
-                     printOrder.lulu_status === 'delivered' ? '✅' :
-                     printOrder.lulu_status === 'in_production' ? '🏭' :
-                     printOrder.lulu_status === 'failed' || printOrder.lulu_status === 'rejected' ? '⚠️' :
-                     '📦'}
+                      printOrder.lulu_status === 'delivered' ? '✅' :
+                        printOrder.lulu_status === 'in_production' ? '🏭' :
+                          printOrder.lulu_status === 'failed' || printOrder.lulu_status === 'rejected' ? '⚠️' :
+                            '📦'}
                   </span>
                 </div>
                 <div className="flex-1">
@@ -305,7 +344,7 @@ const PreviewStory: React.FC = () => {
                       <p className="text-green-600 text-sm font-medium mb-2">Your book has shipped!</p>
                       {printOrder.tracking_number && (
                         <a
-                          href={`https://parcelsapp.com/en/tracking/${printOrder.tracking_number}`}
+                          href={printOrder.tracking_url || `https://parcelsapp.com/en/tracking/${printOrder.tracking_number}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-green-100 transition-colors"
@@ -313,8 +352,11 @@ const PreviewStory: React.FC = () => {
                           Track your order →
                         </a>
                       )}
+                      {printOrder.carrier && (
+                        <p className="text-gray-500 text-xs mt-1">Shipped via {printOrder.carrier}</p>
+                      )}
                       {printOrder.estimated_delivery && (
-                        <p className="text-gray-500 text-xs mt-2">Estimated delivery: {new Date(printOrder.estimated_delivery).toLocaleDateString()}</p>
+                        <p className="text-gray-500 text-xs mt-1">Estimated delivery: {new Date(printOrder.estimated_delivery).toLocaleDateString()}</p>
                       )}
                     </div>
                   )}
@@ -360,8 +402,8 @@ const PreviewStory: React.FC = () => {
                     <p className="text-gray-600 font-medium">
                       Love this story? Keep it forever.
                     </p>
-                    <p className="text-2xl font-heading text-primary">
-                      {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}
+                    <p className="text-sm text-gray-500 mt-1">
+                      Digital from <span className="font-bold text-primary">{SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span> · Printed from <span className="font-bold text-amber-600">{SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PHYSICAL_PRICE}</span>
                     </p>
                   </>
                 ) : !generation.isPdfReady ? (
@@ -369,14 +411,14 @@ const PreviewStory: React.FC = () => {
                     <div className="flex flex-col items-center sm:items-start space-y-1">
                       <div className="flex items-center space-x-2 text-amber-600">
                         <AlertTriangle className="w-5 h-5" />
-                        <span className="font-bold text-sm">PDF taking longer than usual</span>
+                        <span className="font-bold text-sm">Book taking longer than usual</span>
                       </div>
                       <p className="text-xs text-gray-500">High-quality images need extra time</p>
                     </div>
                   ) : (
                     <div className="flex items-center space-x-2 text-purple-600">
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span className="font-bold">{preview.generationPhase === 'complete' ? 'Preparing PDF...' : 'Creating your book...'}</span>
+                      <span className="font-bold">{preview.generationPhase === 'complete' ? 'Preparing your download...' : 'Creating your book...'}</span>
                     </div>
                   )
                 ) : (
@@ -416,8 +458,8 @@ const PreviewStory: React.FC = () => {
                         {payment.isPaymentLoading
                           ? 'Redirecting...'
                           : <>
-                            <span className="sm:hidden">Get Full Book - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span>
-                            <span className="hidden sm:inline">Buy to Unlock High-Res PDF - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span>
+                            <span className="sm:hidden">Digital Book - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span>
+                            <span className="hidden sm:inline">Digital Book (PDF) - {SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span>
                           </>
                         }
                       </span>
@@ -500,6 +542,15 @@ const PreviewStory: React.FC = () => {
           onGuestContinue={payment.handleGuestContinue}
           context={payment.pendingAction === 'download' ? 'download' : 'default'}
           returnPath={window.location.pathname}
+        />
+
+        {/* Order Confirmation Modal - shown after successful checkout */}
+        <OrderConfirmationModal
+          isOpen={showOrderConfirmation}
+          onClose={() => setShowOrderConfirmation(false)}
+          orderType={orderType}
+          childName={book.childName}
+          orderId={printOrder?.order_id}
         />
       </div >
     </>

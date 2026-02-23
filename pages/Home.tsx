@@ -185,7 +185,7 @@ const Home: React.FC = () => {
                 <span>✨</span> Premium Quality
               </span>
               <span className="flex items-center gap-2">
-                <span>📧</span> Instant Digital Delivery
+                <span>📧</span> Digital Download or <span>📦</span> Printed Book
               </span>
             </div>
           </div>

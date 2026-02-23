@@ -415,6 +415,8 @@ export interface PrintOrderStatus {
     preview_id: string;
     lulu_status: string | null;
     tracking_number: string | null;
+    tracking_url: string | null;
+    carrier: string | null;
     estimated_delivery: string | null;
     shipped_at: string | null;
     delivered_at: string | null;
@@ -833,8 +835,7 @@ export function redirectToShopifyCheckout(previewId: string, testOrderId?: strin
 
     if (isShopifyEnvironment()) {
         // Redirect to checkout with return URL that brings user back to preview
-        const returnUrl = encodeURIComponent(`/apps/zelavo/preview/${previewId}?checkout_success=true`);
-        window.location.href = `/checkout?return_to=${returnUrl}`;
+        window.location.href = `/checkout?return_to=/apps/zelavo/preview/${previewId}?checkout_success=true`;
     } else {
         console.warn('[Shopify] Not in Shopify environment, cannot redirect to checkout');
     }
@@ -929,8 +930,7 @@ export async function buyPhysicalBook(previewId: string): Promise<void> {
         return;
     }
     if (isShopifyEnvironment()) {
-        const returnUrl = encodeURIComponent(`/apps/zelavo/preview/${previewId}?checkout_success=true`);
-        window.location.href = `/checkout?return_to=${returnUrl}`;
+        window.location.href = `/checkout?return_to=/apps/zelavo/preview/${previewId}?checkout_success=true`;
     }
 }
 
@@ -1011,6 +1011,8 @@ export const api = {
     linkSession,
     getCreationCount,
     regeneratePdf,
+    // Print Orders
+    getPrintOrderByPreview,
 };
 
 export default api;

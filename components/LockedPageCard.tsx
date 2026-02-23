@@ -215,7 +215,7 @@ export const LockedPagesSection: React.FC<LockedPagesSectionProps> = ({
                     </h3>
 
                     <p className="text-white/80 text-sm mb-6 max-w-sm mx-auto">
-                        Get all 10 pages + High-Resolution PDF for printing
+                        Get all 10 pages — download digital PDF or order a printed book
                     </p>
 
                     <button
@@ -243,7 +243,7 @@ export const LockedPagesSection: React.FC<LockedPagesSectionProps> = ({
                             <span>Personalized for {childName}</span>
                         </span>
                         <span>•</span>
-                        <span>📄 Print-ready PDF</span>
+                        <span>📄 PDF or 📦 Printed Book</span>
                     </div>
                 </div>
             </div>

@@ -1,28 +1,49 @@
 /**
  * MyCreations Page
  *
- * Dashboard showing all user's story creations.
+ * Dashboard showing all user's story creations with tabs:
+ * - "All Stories" - Browse and preview creations
+ * - "Ordered" - Track physical book orders and download digital purchases
+ *
  * Works for both logged-in Shopify customers and guest sessions.
  */
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Plus, BookOpen, Loader2, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, BookOpen, Loader2, RefreshCw, AlertCircle, Sparkles, Package } from 'lucide-react';
 import { api, isShopifyCustomerLoggedIn, getPendingCheckout, clearPendingCheckout } from '../src/api/client';
 import type { CreationItem, MyCreationsResponse } from '../src/api/client';
 import CreationCard from '../components/CreationCard';
+import OrdersList from '../components/OrdersList';
 import { SkeletonGrid } from '../components/SkeletonCard';
 import { getShopifyLoginUrl } from '../components/AuthModal';
 
+type TabType = 'stories' | 'ordered';
+
 const MyCreations: React.FC = () => {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [creations, setCreations] = useState<CreationItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [canCreateMore, setCanCreateMore] = useState(true);
     const [total, setTotal] = useState(0);
 
+    // Tab state - defaults to 'ordered' if ?tab=ordered in URL, else 'stories'
+    const urlTab = searchParams.get('tab');
+    const [activeTab, setActiveTab] = useState<TabType>(urlTab === 'ordered' ? 'ordered' : 'stories');
+
     const isLoggedIn = isShopifyCustomerLoggedIn();
+
+    // Update URL when tab changes
+    const handleTabChange = (tab: TabType) => {
+        setActiveTab(tab);
+        if (tab === 'ordered') {
+            setSearchParams({ tab: 'ordered' });
+        } else {
+            setSearchParams({});
+        }
+    };
 
     // Check for in-progress job that user may have navigated away from
     const [currentJob, setCurrentJob] = useState<{ jobId: string; childName: string } | null>(null);
@@ -163,7 +184,7 @@ const MyCreations: React.FC = () => {
         <div className="min-h-screen bg-gradient-to-b from-softPink/30 to-white">
             <div className="max-w-6xl mx-auto px-4 py-8">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
                         <h1 className="text-3xl font-heading text-gray-900">My Creations</h1>
                         <p className="text-gray-500 mt-1">
@@ -192,8 +213,34 @@ const MyCreations: React.FC = () => {
                     )}
                 </div>
 
+                {/* Tabs */}
+                <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 w-fit">
+                    <button
+                        onClick={() => handleTabChange('stories')}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                            activeTab === 'stories'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        <BookOpen className="w-4 h-4" />
+                        All Stories
+                    </button>
+                    <button
+                        onClick={() => handleTabChange('ordered')}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                            activeTab === 'ordered'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        <Package className="w-4 h-4" />
+                        Ordered
+                    </button>
+                </div>
+
                 {/* In-progress job recovery banner */}
-                {currentJob && (
+                {currentJob && activeTab === 'stories' && (
                     <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 mb-6 flex items-center justify-between flex-wrap gap-4 border border-purple-100">
                         <div className="flex items-center gap-3">
                             <div className="bg-purple-100 p-2 rounded-full">
@@ -218,7 +265,7 @@ const MyCreations: React.FC = () => {
                 )}
 
                 {/* Guest banner */}
-                {!isLoggedIn && creations.length > 0 && (
+                {!isLoggedIn && creations.length > 0 && activeTab === 'stories' && (
                     <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-2xl p-4 mb-8 flex items-center justify-between flex-wrap gap-4">
                         <div className="flex items-center gap-3">
                             <span className="text-2xl">📚</span>
@@ -233,12 +280,18 @@ const MyCreations: React.FC = () => {
                     </div>
                 )}
 
-                {/* Creations Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {creations.map((creation) => (
-                        <CreationCard key={creation.preview_id} creation={creation} />
-                    ))}
-                </div>
+                {/* Tab Content */}
+                {activeTab === 'stories' ? (
+                    /* All Stories Tab - Creations Grid */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {creations.map((creation) => (
+                            <CreationCard key={creation.preview_id} creation={creation} />
+                        ))}
+                    </div>
+                ) : (
+                    /* Ordered Tab - Orders List */
+                    <OrdersList creations={creations} />
+                )}
             </div>
         </div>
     );

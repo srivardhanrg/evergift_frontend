@@ -49,7 +49,7 @@ const TermsOfService: React.FC = () => {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-secondary">•</span>
-                                Complete book: 10 illustrated pages + high-resolution PDF download
+                                Complete book: 10 illustrated pages (digital PDF download or printed book delivered)
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-secondary">•</span>

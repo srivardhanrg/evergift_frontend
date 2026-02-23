@@ -91,7 +91,7 @@ const PrivacyPolicy: React.FC = () => {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
-                                Purchased PDFs: Available for 1 year after purchase
+                                Purchased digital books: PDF available for 1 year after purchase
                             </li>
                         </ul>
                     </section>
