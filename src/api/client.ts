@@ -928,15 +928,15 @@ export async function buyPhysicalBook(previewId: string): Promise<void> {
         } catch (error) {
             console.error('[Shopify Test] Physical book payment simulation failed:', error);
         }
-        // Redirect back to preview with checkout_success (same param as digital)
-        window.location.href = `/preview/${previewId}?checkout_success=true&order_id=${result.testOrderId}`;
+        // Redirect back to preview with checkout_success + order_type=physical
+        window.location.href = `/preview/${previewId}?checkout_success=true&order_type=physical&order_id=${result.testOrderId}`;
         return;
     }
     if (isShopifyEnvironment()) {
         // Store pending checkout BEFORE redirecting (fallback for when Shopify ignores return_to)
         setPendingCheckout(previewId);
         // CRITICAL: return_to value MUST be URL-encoded (see redirectToShopifyCheckout)
-        const returnPath = encodeURIComponent(`/apps/zelavo/preview/${previewId}?checkout_success=true`);
+        const returnPath = encodeURIComponent(`/apps/zelavo/preview/${previewId}?checkout_success=true&order_type=physical`);
         window.location.href = `/checkout?return_to=${returnPath}`;
     }
 }

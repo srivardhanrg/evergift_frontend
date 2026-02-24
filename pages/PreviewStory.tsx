@@ -8,7 +8,8 @@ import {
   Loader2,
   AlertTriangle,
   ShoppingCart,
-  ArrowLeft
+  ArrowLeft,
+  Package
 } from 'lucide-react';
 import { SHOPIFY_CONFIG, buyPhysicalBook, getPrintOrderByPreview, isShopifyCustomerLoggedIn } from '../src/api/client';
 import type { PrintOrderStatus } from '../src/api/client';
@@ -87,12 +88,17 @@ const PreviewStory: React.FC = () => {
   const [orderType, setOrderType] = useState<'digital' | 'physical'>('digital');
   const hasShownConfirmationRef = useRef(false);
 
-  // Track if we came from checkout success
+  // Track if we came from checkout success and detect order type from URL
   const checkoutSuccessRef = useRef(false);
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('checkout_success') === 'true' || urlParams.get('payment_success') === 'true') {
       checkoutSuccessRef.current = true;
+
+      // Detect order type from URL param (set by buyPhysicalBook redirect)
+      if (urlParams.get('order_type') === 'physical') {
+        setOrderType('physical');
+      }
     }
   }, []);
 
@@ -432,10 +438,20 @@ const PreviewStory: React.FC = () => {
                     </div>
                   )
                 ) : (
-                  <div className="flex items-center space-x-2 text-green-600">
-                    <CheckCircle className="w-5 h-5" />
-                    <span className="font-bold">Your book is ready!</span>
-                  </div>
+                  orderType === 'physical' ? (
+                    <div className="flex flex-col items-center sm:items-start">
+                      <div className="flex items-center space-x-2 text-green-600">
+                        <CheckCircle className="w-5 h-5" />
+                        <span className="font-bold">Book ready! Print order submitted 📦</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">We'll email you when it ships</p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2 text-green-600">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="font-bold">Your book is ready!</span>
+                    </div>
+                  )
                 )}
               </div>
 
@@ -523,21 +539,34 @@ const PreviewStory: React.FC = () => {
                       </button>
                     </div>
                   ) : (
-                    <button
-                      onClick={pdf.handleDownloadClick}
-                      disabled={pdf.isGeneratingPDF || !generation.isPdfReady}
-                      className={`flex-1 sm:flex-initial text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center space-x-2 ${!generation.isPdfReady
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-xl hover:-translate-y-0.5'
-                        }`}
-                    >
-                      {pdf.isGeneratingPDF || !generation.isPdfReady ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <Download className="w-5 h-5" />
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={pdf.handleDownloadClick}
+                        disabled={pdf.isGeneratingPDF || !generation.isPdfReady}
+                        className={`flex-1 sm:flex-initial text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center space-x-2 ${!generation.isPdfReady
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-xl hover:-translate-y-0.5'
+                          }`}
+                      >
+                        {pdf.isGeneratingPDF || !generation.isPdfReady ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Download className="w-5 h-5" />
+                        )}
+                        <span>{!generation.isPdfReady ? 'Preparing Your Book...' : 'Download Your Book'}</span>
+                      </button>
+
+                      {/* Track Order button — only for physical orders after PDF is ready */}
+                      {orderType === 'physical' && generation.isPdfReady && (
+                        <Link
+                          to="/my-creations?tab=ordered"
+                          className="flex-shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2"
+                        >
+                          <Package className="w-5 h-5" />
+                          <span className="hidden sm:inline">Track Order</span>
+                        </Link>
                       )}
-                      <span>{!generation.isPdfReady ? 'Preparing Your Book...' : 'Download Your Book'}</span>
-                    </button>
+                    </div>
                   )
                 )}
               </div>
