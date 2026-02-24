@@ -624,8 +624,8 @@ export const SHOPIFY_CONFIG = {
     get PRODUCT_PRICE() { return getPricingForRegion().price; },
     get CURRENCY_SYMBOL() { return getPricingForRegion().symbol; },
     get CURRENCY() { return getPricingForRegion().currency; },
-    // Physical Book (Lulu print-on-demand)
-    PHYSICAL_VARIANT_ID: 51975725482260,
+    // Physical Book (Lulu print-on-demand) — "Storygift book" product in Shopify
+    PHYSICAL_VARIANT_ID: 51990213624084,
     PHYSICAL_PRICE: 39.99,
 };
 
@@ -835,7 +835,10 @@ export function redirectToShopifyCheckout(previewId: string, testOrderId?: strin
 
     if (isShopifyEnvironment()) {
         // Redirect to checkout with return URL that brings user back to preview
-        window.location.href = `/checkout?return_to=/apps/zelavo/preview/${previewId}?checkout_success=true`;
+        // CRITICAL: return_to value MUST be URL-encoded, otherwise Shopify parses
+        // checkout_success=true as a param of /checkout (two unescaped ? chars)
+        const returnPath = encodeURIComponent(`/apps/zelavo/preview/${previewId}?checkout_success=true`);
+        window.location.href = `/checkout?return_to=${returnPath}`;
     } else {
         console.warn('[Shopify] Not in Shopify environment, cannot redirect to checkout');
     }
@@ -930,7 +933,11 @@ export async function buyPhysicalBook(previewId: string): Promise<void> {
         return;
     }
     if (isShopifyEnvironment()) {
-        window.location.href = `/checkout?return_to=/apps/zelavo/preview/${previewId}?checkout_success=true`;
+        // Store pending checkout BEFORE redirecting (fallback for when Shopify ignores return_to)
+        setPendingCheckout(previewId);
+        // CRITICAL: return_to value MUST be URL-encoded (see redirectToShopifyCheckout)
+        const returnPath = encodeURIComponent(`/apps/zelavo/preview/${previewId}?checkout_success=true`);
+        window.location.href = `/checkout?return_to=${returnPath}`;
     }
 }
 
