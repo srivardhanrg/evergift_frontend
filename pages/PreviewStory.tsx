@@ -10,7 +10,7 @@ import {
   ShoppingCart,
   ArrowLeft
 } from 'lucide-react';
-import { SHOPIFY_CONFIG, buyPhysicalBook, getPrintOrderByPreview } from '../src/api/client';
+import { SHOPIFY_CONFIG, buyPhysicalBook, getPrintOrderByPreview, isShopifyCustomerLoggedIn } from '../src/api/client';
 import type { PrintOrderStatus } from '../src/api/client';
 import CoverPageCard from '../components/CoverPageCard';
 import OptimizedImage from '../components/OptimizedImage';
@@ -128,8 +128,18 @@ const PreviewStory: React.FC = () => {
 
   // Physical book state and handler
   const [isPhysicalLoading, setIsPhysicalLoading] = useState(false);
+  const [showPhysicalAuthModal, setShowPhysicalAuthModal] = useState(false);
+
   const handlePhysicalBookClick = async () => {
     if (!preview.book) return;
+
+    // Physical orders REQUIRE login — user needs an account to track
+    // shipping updates and access order history
+    if (!isShopifyCustomerLoggedIn()) {
+      setShowPhysicalAuthModal(true);
+      return;
+    }
+
     setIsPhysicalLoading(true);
     try {
       await buyPhysicalBook(preview.book.id);
@@ -535,12 +545,24 @@ const PreviewStory: React.FC = () => {
           </div>
         </div>
 
-        {/* Auth Modal */}
+        {/* Auth Modal (digital — allows guest) */}
         <AuthModal
           isOpen={payment.showAuthModal}
           onClose={payment.handleAuthModalClose}
           onGuestContinue={payment.handleGuestContinue}
           context={payment.pendingAction === 'download' ? 'download' : 'default'}
+          returnPath={window.location.pathname}
+        />
+
+        {/* Auth Modal (physical — login required, no guest option) */}
+        <AuthModal
+          isOpen={showPhysicalAuthModal}
+          onClose={() => setShowPhysicalAuthModal(false)}
+          onGuestContinue={() => { }} // never called — guest option is hidden
+          hideGuestOption={true}
+          context="default"
+          title="📦 Sign In to Order Physical Book"
+          subtitle="You'll need an account to track your order and receive shipping updates."
           returnPath={window.location.pathname}
         />
 
