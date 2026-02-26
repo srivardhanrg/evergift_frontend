@@ -405,8 +405,14 @@ const PreviewStory: React.FC = () => {
         {/* Sticky Action Bar */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] z-50">
           <div className="max-w-3xl mx-auto px-4 py-4">
+            {/* Pending payment: message above buttons */}
+            {!generation.pollingPayment && book.paymentStatus === 'pending' && (
+              <p className="text-gray-600 font-medium text-center mb-3">
+                Love this story? Keep it forever.
+              </p>
+            )}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Left - Message & Price */}
+              {/* Left - Message (non-pending states only) */}
               <div className="text-center sm:text-left">
                 {generation.pollingPayment ? (
                   <div className="flex items-center space-x-2 text-purple-600">
@@ -414,14 +420,7 @@ const PreviewStory: React.FC = () => {
                     <span className="font-bold">Confirming payment...</span>
                   </div>
                 ) : book.paymentStatus === 'pending' ? (
-                  <>
-                    <p className="text-gray-600 font-medium">
-                      Love this story? Keep it forever.
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Digital from <span className="font-bold text-primary">{SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PRODUCT_PRICE}</span> · Printed from <span className="font-bold text-amber-600">{SHOPIFY_CONFIG.CURRENCY_SYMBOL}{SHOPIFY_CONFIG.PHYSICAL_PRICE}</span>
-                    </p>
-                  </>
+                  null
                 ) : !generation.isPdfReady ? (
                   generation.pdfPreparationTimeout ? (
                     <div className="flex flex-col items-center sm:items-start space-y-1">
