@@ -19,6 +19,7 @@ import AuthModal from '../components/AuthModal';
 import OrderConfirmationModal from '../components/OrderConfirmationModal';
 import { LockedPagesSection } from '../components/LockedPageCard';
 import UnlockingOverlay from '../components/UnlockingOverlay';
+import PrintOrderStatusCard from '../components/PrintOrderStatusCard';
 import {
   trackPreviewPageViewed,
   trackLockedPageClicked,
@@ -80,13 +81,22 @@ const PreviewStory: React.FC = () => {
 
   // --- Early returns for loading/error/expired states ---
 
-  // Print order tracking state
+  // Print order tracking state (use polling hook's state for real-time updates)
   const [printOrder, setPrintOrder] = useState<PrintOrderStatus | null>(null);
 
   // Order confirmation modal state
   const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
-  const [orderType, setOrderType] = useState<'digital' | 'physical'>('digital');
+  // Use polling hook's orderType if available, fallback to local state
+  const [localOrderType, setLocalOrderType] = useState<'digital' | 'physical'>('digital');
+  const orderType = generation.orderType || localOrderType;
   const hasShownConfirmationRef = useRef(false);
+
+  // Sync print order status from polling hook (real-time during generation)
+  useEffect(() => {
+    if (generation.printOrderStatus) {
+      setPrintOrder(generation.printOrderStatus as PrintOrderStatus);
+    }
+  }, [generation.printOrderStatus]);
 
   // Track if we came from checkout success and detect order type from URL
   // NOTE: With HashRouter, query params appear after the # (e.g., /#/preview/id?checkout_success=true)
@@ -101,7 +111,7 @@ const PreviewStory: React.FC = () => {
 
       // Detect order type from URL param (set by buyPhysicalBook redirect)
       if (urlParams.get('order_type') === 'physical') {
-        setOrderType('physical');
+        setLocalOrderType('physical');
       }
     }
   }, []);
@@ -112,18 +122,23 @@ const PreviewStory: React.FC = () => {
         setPrintOrder(order);
         // If there's a print order, this was a physical order
         if (order) {
-          setOrderType('physical');
+          setLocalOrderType('physical');
         }
       });
     }
   }, [preview.book?.id, preview.book?.paymentStatus]);
 
   // Show confirmation modal after unlock overlay completes (only on checkout success)
+  // For digital: when PDF is ready
+  // For physical: when print is submitted (unlockPhase === 'print_submitted')
   useEffect(() => {
+    const isPhysicalComplete = orderType === 'physical' && generation.unlockPhase === 'print_submitted';
+    const isDigitalComplete = orderType !== 'physical' && generation.isPdfReady;
+
     if (
       checkoutSuccessRef.current &&
       !generation.showUnlocking &&
-      generation.isPdfReady &&
+      (isDigitalComplete || isPhysicalComplete) &&
       preview.book?.paymentStatus === 'paid' &&
       !hasShownConfirmationRef.current
     ) {
@@ -134,7 +149,7 @@ const PreviewStory: React.FC = () => {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [generation.showUnlocking, generation.isPdfReady, preview.book?.paymentStatus]);
+  }, [generation.showUnlocking, generation.isPdfReady, generation.unlockPhase, preview.book?.paymentStatus, orderType]);
 
   // Physical book state and handler
   const [isPhysicalLoading, setIsPhysicalLoading] = useState(false);
@@ -335,60 +350,12 @@ const PreviewStory: React.FC = () => {
             </div>
           )}
 
-          {/* Print Order Tracking Banner */}
-          {printOrder && (
-            <div className="bg-white rounded-2xl shadow-lg border border-amber-100 p-5">
-              <div className="flex items-start gap-3">
-                <div className="bg-amber-50 w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-xl">
-                    {printOrder.lulu_status === 'shipped' ? '🚚' :
-                      printOrder.lulu_status === 'delivered' ? '✅' :
-                        printOrder.lulu_status === 'in_production' ? '🏭' :
-                          printOrder.lulu_status === 'failed' || printOrder.lulu_status === 'rejected' ? '⚠️' :
-                            '📦'}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-heading text-lg text-slate-900 mb-1">Physical Book Order</h3>
-                  {(!printOrder.lulu_status || printOrder.lulu_status === 'pending' || printOrder.lulu_status === 'submitted') && (
-                    <p className="text-gray-600 text-sm">Your printed book order has been placed! We'll update you when it ships.</p>
-                  )}
-                  {(printOrder.lulu_status === 'accepted') && (
-                    <p className="text-gray-600 text-sm">Your book has been accepted and is queued for printing.</p>
-                  )}
-                  {printOrder.lulu_status === 'in_production' && (
-                    <p className="text-purple-600 text-sm font-medium">Your book is being printed!</p>
-                  )}
-                  {printOrder.lulu_status === 'shipped' && (
-                    <div>
-                      <p className="text-green-600 text-sm font-medium mb-2">Your book has shipped!</p>
-                      {printOrder.tracking_number && (
-                        <a
-                          href={printOrder.tracking_url || `https://parcelsapp.com/en/tracking/${printOrder.tracking_number}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-green-100 transition-colors"
-                        >
-                          Track your order →
-                        </a>
-                      )}
-                      {printOrder.carrier && (
-                        <p className="text-gray-500 text-xs mt-1">Shipped via {printOrder.carrier}</p>
-                      )}
-                      {printOrder.estimated_delivery && (
-                        <p className="text-gray-500 text-xs mt-1">Estimated delivery: {new Date(printOrder.estimated_delivery).toLocaleDateString()}</p>
-                      )}
-                    </div>
-                  )}
-                  {printOrder.lulu_status === 'delivered' && (
-                    <p className="text-green-600 text-sm font-medium">Your book has been delivered!</p>
-                  )}
-                  {(printOrder.lulu_status === 'failed' || printOrder.lulu_status === 'rejected' || printOrder.lulu_status === 'cancelled') && (
-                    <p className="text-red-600 text-sm">There was an issue with your print order. Please contact support.</p>
-                  )}
-                </div>
-              </div>
-            </div>
+          {/* Print Order Tracking Card - uses new component */}
+          {printOrder && printOrder.lulu_status && (
+            <PrintOrderStatusCard
+              printOrder={printOrder}
+              childName={book.childName}
+            />
           )}
 
           {/* LOCKED PAGES SECTION - Show when in preview phase */}
@@ -425,7 +392,7 @@ const PreviewStory: React.FC = () => {
                   </div>
                 ) : book.paymentStatus === 'pending' ? (
                   null
-                ) : !generation.isPdfReady ? (
+                ) : !generation.isPdfReady && generation.unlockPhase !== 'print_submitted' ? (
                   generation.pdfPreparationTimeout ? (
                     <div className="flex flex-col items-center sm:items-start space-y-1">
                       <div className="flex items-center space-x-2 text-amber-600">
@@ -437,7 +404,15 @@ const PreviewStory: React.FC = () => {
                   ) : (
                     <div className="flex items-center space-x-2 text-purple-600">
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span className="font-bold">{preview.generationPhase === 'complete' ? 'Preparing your download...' : 'Creating your book...'}</span>
+                      <span className="font-bold">
+                        {orderType === 'physical' && generation.unlockPhase === 'preparing_print'
+                          ? 'Preparing your book for print...'
+                          : orderType === 'physical' && generation.unlockPhase === 'submitting_print'
+                          ? 'Submitting to print facility...'
+                          : preview.generationPhase === 'complete'
+                          ? 'Preparing your download...'
+                          : 'Creating your book...'}
+                      </span>
                     </div>
                   )
                 ) : (

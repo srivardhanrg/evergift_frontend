@@ -410,17 +410,51 @@ export async function getCreationCount(): Promise<{ count: number }> {
 // ==================
 
 export interface PrintOrderStatus {
-    print_order_id: string;
-    order_id: string;
-    preview_id: string;
+    print_order_id: string | null;
+    order_id?: string | null;
+    preview_id?: string | null;
     lulu_status: string | null;
+    lulu_print_job_id: string | null;
     tracking_number: string | null;
     tracking_url: string | null;
     carrier: string | null;
     estimated_delivery: string | null;
     shipped_at: string | null;
     delivered_at: string | null;
-    created_at: string;
+    created_at?: string | null;
+}
+
+// ==================
+// Full Status (Combined preview + order + print status)
+// ==================
+
+export interface FullStatusResponse {
+    preview_id: string;
+    generation_phase: string;
+    order_type: string | null;  // "digital" or "physical"
+
+    // Preview info
+    preview_status: string;
+    child_name: string | null;
+    theme: string | null;
+    pdf_url: string | null;
+
+    // Order info
+    order_id: string | null;
+    order_status: string | null;
+
+    // Print order info (for physical orders)
+    print_order: PrintOrderStatus | null;
+
+    // UI helper flags
+    is_generating: boolean;
+    is_complete: boolean;
+    is_failed: boolean;
+    can_retry: boolean;
+    error_message: string | null;
+
+    // User-friendly status message
+    status_message: string;
 }
 
 /**
@@ -437,6 +471,18 @@ export async function getPrintOrderByPreview(previewId: string): Promise<PrintOr
     } catch {
         return null;
     }
+}
+
+/**
+ * Get comprehensive status for a preview including order and print status.
+ * This is the primary endpoint for frontend polling after checkout.
+ * Returns all information needed to display the appropriate UI state.
+ */
+export async function getFullStatus(previewId: string): Promise<FullStatusResponse> {
+    const response = await fetch(`${DIRECT_API_BASE}/full-status/${previewId}`, {
+        headers: buildHeaders(),
+    });
+    return handleResponse<FullStatusResponse>(response);
 }
 
 // ==================
@@ -1020,6 +1066,8 @@ export const api = {
     regeneratePdf,
     // Print Orders
     getPrintOrderByPreview,
+    // Full Status (combined preview + order + print)
+    getFullStatus,
 };
 
 export default api;

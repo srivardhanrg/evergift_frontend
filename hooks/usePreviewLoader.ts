@@ -7,7 +7,18 @@ export interface LockedPage {
     story_text: string;
 }
 
-export type GenerationPhase = 'preview' | 'generating_full' | 'pages_complete' | 'generating_pdf' | 'complete' | 'pdf_failed';
+export type GenerationPhase =
+    | 'preview'
+    | 'generating_full'
+    | 'pages_complete'
+    | 'generating_pdf'
+    | 'complete'
+    | 'pdf_failed'
+    // Physical order phases
+    | 'preparing_print'
+    | 'submitting_print'
+    | 'print_submitted'
+    | 'print_failed';
 
 export interface InitialPhaseState {
     /** Page loaded while generation was in progress */

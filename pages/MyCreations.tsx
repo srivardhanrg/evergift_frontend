@@ -8,7 +8,7 @@
  * Works for both logged-in Shopify customers and guest sessions.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, BookOpen, Loader2, RefreshCw, AlertCircle, Sparkles, Package } from 'lucide-react';
 import { api, isShopifyCustomerLoggedIn, getPendingCheckout, clearPendingCheckout } from '../src/api/client';
@@ -32,6 +32,10 @@ const MyCreations: React.FC = () => {
     // Tab state - defaults to 'ordered' if ?tab=ordered in URL, else 'stories'
     const urlTab = searchParams.get('tab');
     const [activeTab, setActiveTab] = useState<TabType>(urlTab === 'ordered' ? 'ordered' : 'stories');
+    // Ordered tab refresh tracking
+    const [orderedLastUpdated, setOrderedLastUpdated] = useState<Date | null>(null);
+    const [isRefreshingOrders, setIsRefreshingOrders] = useState(false);
+    const [orderedRefreshKey, setOrderedRefreshKey] = useState(0);
 
     const isLoggedIn = isShopifyCustomerLoggedIn();
 
@@ -40,10 +44,31 @@ const MyCreations: React.FC = () => {
         setActiveTab(tab);
         if (tab === 'ordered') {
             setSearchParams({ tab: 'ordered' });
+            // Auto-set lastUpdated when user first opens the tab
+            if (!orderedLastUpdated) {
+                setOrderedLastUpdated(new Date());
+            }
         } else {
             setSearchParams({});
         }
     };
+
+    // Refresh handler for the Ordered tab
+    const handleRefreshOrders = useCallback(async () => {
+        if (isRefreshingOrders) return;
+        setIsRefreshingOrders(true);
+        // Re-fetch the creations list so OrdersList gets fresh data
+        try {
+            const response: MyCreationsResponse = await api.getMyCreations();
+            setCreations(response.creations);
+        } catch {
+            // Silently fail — existing data stays
+        } finally {
+            setOrderedLastUpdated(new Date());
+            setOrderedRefreshKey(k => k + 1); // forces OrdersList to re-fetch print statuses
+            setIsRefreshingOrders(false);
+        }
+    }, [isRefreshingOrders]);
 
     // Check for in-progress job that user may have navigated away from
     const [currentJob, setCurrentJob] = useState<{ jobId: string; childName: string } | null>(null);
@@ -99,7 +124,13 @@ const MyCreations: React.FC = () => {
         // Only fetch if we're not redirecting due to pending checkout
         const pendingCheckout = getPendingCheckout();
         if (!pendingCheckout) {
-            fetchCreations();
+            fetchCreations().then(() => {
+                // If page loaded directly on the ordered tab (e.g. from "Track Order" button),
+                // set the initial lastUpdated so the timestamp shows correctly
+                if (urlTab === 'ordered') {
+                    setOrderedLastUpdated(new Date());
+                }
+            });
         }
     }, []);
 
@@ -214,29 +245,42 @@ const MyCreations: React.FC = () => {
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 w-fit">
-                    <button
-                        onClick={() => handleTabChange('stories')}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-                            activeTab === 'stories'
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+                        <button
+                            onClick={() => handleTabChange('stories')}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all ${activeTab === 'stories'
                                 ? 'bg-white text-gray-900 shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        <BookOpen className="w-4 h-4" />
-                        All Stories
-                    </button>
-                    <button
-                        onClick={() => handleTabChange('ordered')}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-                            activeTab === 'ordered'
+                                }`}
+                        >
+                            <BookOpen className="w-4 h-4" />
+                            All Stories
+                        </button>
+                        <button
+                            onClick={() => handleTabChange('ordered')}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all ${activeTab === 'ordered'
                                 ? 'bg-white text-gray-900 shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        <Package className="w-4 h-4" />
-                        Ordered
-                    </button>
+                                }`}
+                        >
+                            <Package className="w-4 h-4" />
+                            Ordered
+                        </button>
+                    </div>
+
+                    {/* Refresh button — only visible on Ordered tab */}
+                    {activeTab === 'ordered' && (
+                        <button
+                            onClick={handleRefreshOrders}
+                            disabled={isRefreshingOrders}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                            title="Refresh order status"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${isRefreshingOrders ? 'animate-spin' : ''}`} />
+                            {isRefreshingOrders ? 'Refreshing...' : 'Refresh'}
+                        </button>
+                    )}
                 </div>
 
                 {/* In-progress job recovery banner */}
@@ -290,7 +334,11 @@ const MyCreations: React.FC = () => {
                     </div>
                 ) : (
                     /* Ordered Tab - Orders List */
-                    <OrdersList creations={creations} />
+                    <OrdersList
+                        key={orderedRefreshKey}
+                        creations={creations}
+                        lastUpdated={orderedLastUpdated}
+                    />
                 )}
             </div>
         </div>

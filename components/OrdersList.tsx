@@ -28,6 +28,8 @@ import OptimizedImage from './OptimizedImage';
 
 interface OrdersListProps {
     creations: CreationItem[];
+    /** Timestamp (Date) of last data fetch — shown as "Last updated X ago" */
+    lastUpdated?: Date | null;
 }
 
 interface OrderWithPrintStatus extends CreationItem {
@@ -35,7 +37,7 @@ interface OrderWithPrintStatus extends CreationItem {
     loadingPrintStatus: boolean;
 }
 
-const OrdersList: React.FC<OrdersListProps> = ({ creations }) => {
+const OrdersList: React.FC<OrdersListProps> = ({ creations, lastUpdated }) => {
     const [ordersWithStatus, setOrdersWithStatus] = useState<OrderWithPrintStatus[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -120,11 +122,23 @@ const OrdersList: React.FC<OrdersListProps> = ({ creations }) => {
         );
     }
 
+    const formatLastUpdated = () => {
+        if (!lastUpdated) return null;
+        const diffMs = Date.now() - lastUpdated.getTime();
+        const diffSec = Math.floor(diffMs / 1000);
+        if (diffSec < 60) return 'Updated just now';
+        const diffMin = Math.floor(diffSec / 60);
+        return `Updated ${diffMin} min ago`;
+    };
+
     return (
         <div className="space-y-4">
             {ordersWithStatus.map((order) => (
                 <OrderCard key={order.preview_id} order={order} />
             ))}
+            {lastUpdated && (
+                <p className="text-center text-xs text-gray-400 pt-2">{formatLastUpdated()}</p>
+            )}
         </div>
     );
 };

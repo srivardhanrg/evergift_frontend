@@ -119,7 +119,7 @@ export interface PreviewResponse {
     locked_pages_count: number;
     expires_at: string;
     days_remaining: number;
-    generation_phase?: 'preview' | 'generating_full' | 'pages_complete' | 'generating_pdf' | 'complete' | 'pdf_failed';
+    generation_phase?: 'preview' | 'generating_full' | 'pages_complete' | 'generating_pdf' | 'complete' | 'pdf_failed' | 'preparing_print' | 'submitting_print' | 'print_submitted' | 'print_failed';
     purchase: {
         price: number;
         currency: string;

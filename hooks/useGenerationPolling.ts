@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Storybook } from '../types';
-import { api, SHOPIFY_CONFIG, clearPendingCheckout } from '../src/api/client';
+import { api, SHOPIFY_CONFIG, clearPendingCheckout, getFullStatus, FullStatusResponse } from '../src/api/client';
 import { UnlockPhase } from '../components/UnlockingOverlay';
 import {
     trackPurchaseCompleted,
@@ -8,6 +8,27 @@ import {
 } from '../src/services/analytics';
 import type { GenerationPhase, LockedPage } from './usePreviewLoader';
 import { showToast } from '../src/components/Toast';
+
+// Map backend generation_phase to frontend UnlockPhase
+const mapGenerationPhaseToUnlockPhase = (phase: string): UnlockPhase => {
+    switch (phase) {
+        case 'generating_full':
+            return 'generating';
+        case 'pages_complete':
+        case 'pdf_failed':
+            return 'preparing_pdf';
+        case 'complete':
+            return 'complete';
+        case 'preparing_print':
+            return 'preparing_print';
+        case 'submitting_print':
+            return 'submitting_print';
+        case 'print_submitted':
+            return 'print_submitted';
+        default:
+            return 'generating';
+    }
+};
 
 interface UseGenerationPollingReturn {
     showUnlocking: boolean;
@@ -17,8 +38,12 @@ interface UseGenerationPollingReturn {
     pollingPayment: boolean;
     isPdfReady: boolean;
     pdfPreparationTimeout: boolean;
+    /** Order type: 'digital' or 'physical' */
+    orderType: 'digital' | 'physical' | null;
+    /** Print order status for physical orders */
+    printOrderStatus: FullStatusResponse['print_order'] | null;
     /** Start payment polling (called when checkout_success=true detected) */
-    startPaymentPolling: (previewId: string) => void;
+    startPaymentPolling: (previewId: string, orderType?: 'digital' | 'physical') => void;
     /** Start generation polling (called when page loads during generating_full) */
     startGenerationPolling: (previewId: string) => void;
     /** Retry PDF readiness check */
@@ -48,6 +73,8 @@ export function useGenerationPolling(
     const [pollingPayment, setPollingPayment] = useState(false);
     const [isPdfReady, setIsPdfReady] = useState(false);
     const [pdfPreparationTimeout, setPdfPreparationTimeout] = useState(false);
+    const [orderType, setOrderType] = useState<'digital' | 'physical' | null>(null);
+    const [printOrderStatus, setPrintOrderStatus] = useState<FullStatusResponse['print_order'] | null>(null);
 
     const isMountedRef = useRef(true);
     const pollingAbortRef = useRef(false);
@@ -143,17 +170,21 @@ export function useGenerationPolling(
         const hashQuery = hashParts.length > 1 ? hashParts[1] : '';
         const urlParams = new URLSearchParams(hashQuery);
         const isCheckoutSuccess = urlParams.get('checkout_success') === 'true';
+        const urlOrderType = urlParams.get('order_type') as 'digital' | 'physical' | null;
 
         if (isCheckoutSuccess && previewId) {
             clearPendingCheckout();
             setCheckoutSuccess(true);
+            if (urlOrderType) {
+                setOrderType(urlOrderType);
+            }
             // Clean URL by removing query params from hash
             const cleanHash = hashParts[0];
             window.history.replaceState({}, '', window.location.pathname + cleanHash);
             // Mark polling active BEFORE clearing URL so verifyAndPoll effect
             // (which fires after usePreviewLoader API call completes) skips itself
             activePollingRef.current = true;
-            startPaymentPolling(previewId);
+            startPaymentPolling(previewId, urlOrderType || undefined);
         }
     }, [previewId]);
 
@@ -214,8 +245,72 @@ export function useGenerationPolling(
         }
     };
 
+    // --- Poll for physical order print submission ---
+    const pollPhysicalOrderComplete = async (id: string) => {
+        const maxAttempts = 120; // 4 minutes for physical order
+        console.log('📦 Starting physical order polling...');
+
+        for (let i = 0; i < maxAttempts; i++) {
+            if (!isMountedRef.current || pollingAbortRef.current) {
+                console.log('🛑 Physical order polling aborted');
+                return;
+            }
+
+            try {
+                const fullStatus = await getFullStatus(id);
+
+                if (!isMountedRef.current || pollingAbortRef.current) return;
+
+                // Update print order status for UI
+                if (fullStatus.print_order) {
+                    setPrintOrderStatus(fullStatus.print_order);
+                }
+
+                // Map phase to unlock phase and update progress
+                const phase = fullStatus.generation_phase;
+                setUnlockPhase(mapGenerationPhaseToUnlockPhase(phase));
+
+                // Progress based on phase
+                if (phase === 'preparing_print') {
+                    setUnlockProgress(75 + Math.min(i * 0.3, 10));
+                } else if (phase === 'submitting_print') {
+                    setUnlockProgress(88 + Math.min(i * 0.2, 8));
+                } else if (phase === 'print_submitted') {
+                    console.log('✅ Physical order submitted to Lulu!');
+                    setUnlockProgress(100);
+                    setUnlockPhase('print_submitted');
+
+                    // Show success for a moment then hide overlay
+                    setTimeout(() => {
+                        if (isMountedRef.current) {
+                            setShowUnlocking(false);
+                            showToast('Your printed book order has been submitted! You\'ll receive tracking info soon.', 'success', 8000);
+                        }
+                    }, 3000);
+                    return;
+                } else if (phase === 'print_failed') {
+                    console.log('⚠️ Print submission failed');
+                    setShowUnlocking(false);
+                    showToast('Print order failed. Your PDF is ready for download. We\'ll retry printing automatically.', 'error', 8000);
+                    return;
+                }
+
+                console.log(`📦 Physical order phase: ${phase} (attempt ${i + 1}/${maxAttempts})`);
+            } catch (e) {
+                console.error('Physical order polling error:', e);
+            }
+            await new Promise(r => setTimeout(r, 2000));
+        }
+
+        // Timeout
+        if (isMountedRef.current) {
+            setShowUnlocking(false);
+            showToast('Your print order is processing. Check back soon for tracking info!', 'info', 6000);
+        }
+    };
+
     // --- Poll for generation completion ---
-    const pollGenerationComplete = async (id: string) => {
+    const pollGenerationComplete = async (id: string, isPhysical: boolean = false) => {
         const maxAttempts = 60; // 2 minutes
 
         for (let i = 0; i < maxAttempts; i++) {
@@ -232,7 +327,8 @@ export function useGenerationPolling(
                 setUnlockProgress(30 + (i * 0.9));
                 setGenerationPhase(previewData.generation_phase || 'generating_full');
 
-                if (previewData.generation_phase === 'complete') {
+                // For digital orders: complete means done
+                if (previewData.generation_phase === 'complete' && !isPhysical) {
                     console.log('✅ Generation complete! All 10 pages ready.');
                     setUnlockProgress(100);
 
@@ -274,8 +370,18 @@ export function useGenerationPolling(
                     return;
                 }
 
-                // Pages are all generated but PDF creation is pending or failed
-                if (previewData.generation_phase === 'pages_complete') {
+                // For physical orders: pages_complete or preparing_print means transition to physical polling
+                const physicalPhases = ['pages_complete', 'preparing_print', 'submitting_print', 'print_submitted'];
+                if (isPhysical && physicalPhases.includes(previewData.generation_phase)) {
+                    console.log('📦 Transitioning to physical order polling...');
+                    setUnlockPhase('preparing_print');
+                    setUnlockProgress(70);
+                    await pollPhysicalOrderComplete(id);
+                    return;
+                }
+
+                // Pages are all generated but PDF creation is pending or failed (digital only)
+                if (previewData.generation_phase === 'pages_complete' && !isPhysical) {
                     console.log('✅ All pages generated! Now waiting for PDF...');
                     setGenerationPhase('pages_complete');
                     setUnlockPhase('preparing_pdf');
@@ -304,8 +410,14 @@ export function useGenerationPolling(
     };
 
     // --- Poll for payment confirmation ---
-    const startPaymentPolling = useCallback((id: string) => {
+    const startPaymentPolling = useCallback((id: string, passedOrderType?: 'digital' | 'physical') => {
         const poll = async () => {
+            // Determine order type from URL or passed parameter
+            const isPhysical = passedOrderType === 'physical';
+            if (passedOrderType) {
+                setOrderType(passedOrderType);
+            }
+
             // FAST PATH: Check if everything is already complete before showing overlay.
             // Even if complete, we still go through pollPdfReady to confirm PDF is on R2
             // and to show the "Preparing PDF → Complete" overlay transition.
@@ -313,7 +425,8 @@ export function useGenerationPolling(
                 const quickCheck = await api.getPreview(id);
                 if (!isMountedRef.current) return;
 
-                if (quickCheck.generation_phase === 'complete' && quickCheck.status === 'purchased') {
+                // For digital: check if complete
+                if (!isPhysical && quickCheck.generation_phase === 'complete' && quickCheck.status === 'purchased') {
                     console.log('⚡ Already complete — verifying PDF on R2');
                     setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
                     setGenerationPhase('complete');
@@ -322,6 +435,23 @@ export function useGenerationPolling(
                     setUnlockPhase('preparing_pdf');
                     setUnlockProgress(95);
                     await pollPdfReady(id);
+                    activePollingRef.current = false;
+                    return;
+                }
+
+                // For physical: check if print is already submitted
+                if (isPhysical && quickCheck.generation_phase === 'print_submitted') {
+                    console.log('⚡ Physical order already submitted to Lulu');
+                    setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
+                    setCheckoutSuccess(false);
+                    setShowUnlocking(true);
+                    setUnlockPhase('print_submitted');
+                    setUnlockProgress(100);
+                    setTimeout(() => {
+                        if (isMountedRef.current) {
+                            setShowUnlocking(false);
+                        }
+                    }, 3000);
                     activePollingRef.current = false;
                     return;
                 }
@@ -370,13 +500,13 @@ export function useGenerationPolling(
                         setPollingPayment(false);
                         setCheckoutSuccess(false);
 
-                        // Always route through pollGenerationComplete which handles all
-                        // phases (generating_full, pages_complete, complete) and waits
-                        // for pollPdfReady before closing the overlay.
+                        // Route through pollGenerationComplete which handles both
+                        // digital (generating_full → complete → PDF) and
+                        // physical (generating_full → preparing_print → print_submitted)
                         setUnlockPhase('generating');
                         setUnlockProgress(30);
 
-                        await pollGenerationComplete(id);
+                        await pollGenerationComplete(id, isPhysical);
                         activePollingRef.current = false;
                         return;
                     }
@@ -420,6 +550,8 @@ export function useGenerationPolling(
         pollingPayment,
         isPdfReady,
         pdfPreparationTimeout,
+        orderType,
+        printOrderStatus,
         startPaymentPolling,
         startGenerationPolling,
         handleRetryPdfCheck,
