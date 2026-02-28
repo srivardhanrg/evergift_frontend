@@ -136,14 +136,20 @@ export function useGenerationPolling(
     }, [initialPhaseState.loadedDuringGeneration, previewId]);
 
     // Detect checkout success from URL
+    // NOTE: With HashRouter, query params appear after the # (e.g., /#/preview/id?checkout_success=true)
+    // so we must parse from hash, not window.location.search
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
+        const hashParts = window.location.hash.split('?');
+        const hashQuery = hashParts.length > 1 ? hashParts[1] : '';
+        const urlParams = new URLSearchParams(hashQuery);
         const isCheckoutSuccess = urlParams.get('checkout_success') === 'true';
 
         if (isCheckoutSuccess && previewId) {
             clearPendingCheckout();
             setCheckoutSuccess(true);
-            window.history.replaceState({}, '', window.location.pathname);
+            // Clean URL by removing query params from hash
+            const cleanHash = hashParts[0];
+            window.history.replaceState({}, '', window.location.pathname + cleanHash);
             // Mark polling active BEFORE clearing URL so verifyAndPoll effect
             // (which fires after usePreviewLoader API call completes) skips itself
             activePollingRef.current = true;

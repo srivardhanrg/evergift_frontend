@@ -89,9 +89,13 @@ const PreviewStory: React.FC = () => {
   const hasShownConfirmationRef = useRef(false);
 
   // Track if we came from checkout success and detect order type from URL
+  // NOTE: With HashRouter, query params appear after the # (e.g., /#/preview/id?checkout_success=true)
+  // so we must parse from hash, not window.location.search
   const checkoutSuccessRef = useRef(false);
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
+    const hashParts = window.location.hash.split('?');
+    const hashQuery = hashParts.length > 1 ? hashParts[1] : '';
+    const urlParams = new URLSearchParams(hashQuery);
     if (urlParams.get('checkout_success') === 'true' || urlParams.get('payment_success') === 'true') {
       checkoutSuccessRef.current = true;
 
