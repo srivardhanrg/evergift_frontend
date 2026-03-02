@@ -106,11 +106,49 @@ export function useGenerationPolling(
             if (activePollingRef.current) return;
 
             const verifyAndPoll = async () => {
+                // CRITICAL: Resolve order_type from DB first — this is the page-refresh path
+                // where there's no URL param or localStorage to rely on.
+                let isPhysicalRefresh = false;
+                try {
+                    const fullStatus = await getFullStatus(previewId);
+                    if (!isMountedRef.current || activePollingRef.current) return;
+                    isPhysicalRefresh = fullStatus.order_type === 'physical';
+                    if (fullStatus.order_type) {
+                        setOrderType(fullStatus.order_type as 'digital' | 'physical');
+                    }
+                } catch (e) {
+                    // If getFullStatus fails, continue with isPhysicalRefresh = false
+                    console.warn('[verifyAndPoll] Could not resolve order_type from DB, defaulting to digital');
+                }
+
                 try {
                     const previewData = await api.getPreview(previewId);
                     if (!isMountedRef.current || activePollingRef.current) return;
 
-                    if (previewData.generation_phase === 'complete') {
+                    const phase = previewData.generation_phase;
+
+                    // --- Physical order phases ---
+                    if (isPhysicalRefresh) {
+                        if (phase === 'print_submitted') {
+                            // Already submitted — show done state, no polling needed
+                            console.log('📦 Refreshed on physical order — print already submitted');
+                            setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
+                            setGenerationPhase('print_submitted');
+                            return;
+                        }
+                        if (['preparing_print', 'submitting_print', 'pages_complete', 'generating_full'].includes(phase)) {
+                            console.log('📦 Refreshed during physical order — resuming physical polling at phase:', phase);
+                            setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
+                            setShowUnlocking(true);
+                            setUnlockPhase(phase === 'generating_full' ? 'generating' : 'preparing_print');
+                            setUnlockProgress(phase === 'generating_full' ? 50 : 70);
+                            pollGenerationComplete(previewId, true);
+                            return;
+                        }
+                    }
+
+                    // --- Digital order phases ---
+                    if (phase === 'complete') {
                         // Already done — verify PDF then set ready (no full overlay)
                         console.log('📖 Generation already complete — verifying PDF');
                         setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
@@ -122,7 +160,7 @@ export function useGenerationPolling(
                         return;
                     }
 
-                    if (previewData.generation_phase === 'pages_complete') {
+                    if (phase === 'pages_complete') {
                         // Pages done, PDF still pending — show overlay and poll for PDF
                         console.log('📖 Pages complete — polling for PDF');
                         setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
@@ -134,7 +172,7 @@ export function useGenerationPolling(
                         return;
                     }
 
-                    if (previewData.generation_phase === 'pdf_failed') {
+                    if (phase === 'pdf_failed') {
                         // PDF creation failed — no overlay, show retry state
                         console.log('📖 PDF failed — showing retry option');
                         setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
@@ -147,20 +185,21 @@ export function useGenerationPolling(
                     setShowUnlocking(true);
                     setUnlockPhase('generating');
                     setUnlockProgress(50);
-                    pollGenerationComplete(previewId);
+                    pollGenerationComplete(previewId, isPhysicalRefresh);
                 } catch (e) {
                     // If check fails, show overlay as fallback
                     if (!activePollingRef.current) {
                         setShowUnlocking(true);
                         setUnlockPhase('generating');
                         setUnlockProgress(50);
-                        pollGenerationComplete(previewId);
+                        pollGenerationComplete(previewId, isPhysicalRefresh);
                     }
                 }
             };
             verifyAndPoll();
         }
     }, [initialPhaseState.loadedDuringGeneration, previewId]);
+
 
     // Detect checkout success from URL
     // NOTE: With HashRouter, query params appear after the # (e.g., /#/preview/id?checkout_success=true)

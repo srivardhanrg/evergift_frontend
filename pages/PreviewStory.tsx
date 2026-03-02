@@ -98,9 +98,7 @@ const PreviewStory: React.FC = () => {
     }
   }, [generation.printOrderStatus]);
 
-  // Track if we came from checkout success and detect order type from URL
-  // NOTE: With HashRouter, query params appear after the # (e.g., /#/preview/id?checkout_success=true)
-  // so we must parse from hash, not window.location.search
+  // Track if we came from checkout success
   const checkoutSuccessRef = useRef(false);
   useEffect(() => {
     const hashParts = window.location.hash.split('?');
@@ -108,11 +106,7 @@ const PreviewStory: React.FC = () => {
     const urlParams = new URLSearchParams(hashQuery);
     if (urlParams.get('checkout_success') === 'true' || urlParams.get('payment_success') === 'true') {
       checkoutSuccessRef.current = true;
-
-      // Detect order type from URL param (set by buyPhysicalBook redirect)
-      if (urlParams.get('order_type') === 'physical') {
-        setLocalOrderType('physical');
-      }
+      // NOTE: order_type is resolved from DB by useGenerationPolling, not from URL
     }
   }, []);
 
@@ -408,10 +402,10 @@ const PreviewStory: React.FC = () => {
                         {orderType === 'physical' && generation.unlockPhase === 'preparing_print'
                           ? 'Preparing your book for print...'
                           : orderType === 'physical' && generation.unlockPhase === 'submitting_print'
-                          ? 'Submitting to print facility...'
-                          : preview.generationPhase === 'complete'
-                          ? 'Preparing your download...'
-                          : 'Creating your book...'}
+                            ? 'Submitting to print facility...'
+                            : preview.generationPhase === 'complete'
+                              ? 'Preparing your download...'
+                              : 'Creating your book...'}
                       </span>
                     </div>
                   )
@@ -518,24 +512,38 @@ const PreviewStory: React.FC = () => {
                     </div>
                   ) : (
                     <div className="flex gap-2 w-full sm:w-auto">
-                      <button
-                        onClick={pdf.handleDownloadClick}
-                        disabled={pdf.isGeneratingPDF || !generation.isPdfReady}
-                        className={`flex-1 sm:flex-initial text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center space-x-2 ${!generation.isPdfReady
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-xl hover:-translate-y-0.5'
-                          }`}
-                      >
-                        {pdf.isGeneratingPDF || !generation.isPdfReady ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <Download className="w-5 h-5" />
-                        )}
-                        <span>{!generation.isPdfReady ? 'Preparing Your Book...' : 'Download Your Book'}</span>
-                      </button>
+                      {/* Download button — only for digital orders */}
+                      {orderType !== 'physical' && (
+                        <button
+                          onClick={pdf.handleDownloadClick}
+                          disabled={pdf.isGeneratingPDF || !generation.isPdfReady}
+                          className={`flex-1 sm:flex-initial text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center space-x-2 ${!generation.isPdfReady
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-xl hover:-translate-y-0.5'
+                            }`}
+                        >
+                          {pdf.isGeneratingPDF || !generation.isPdfReady ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          ) : (
+                            <Download className="w-5 h-5" />
+                          )}
+                          <span>{!generation.isPdfReady ? 'Preparing Your Book...' : 'Download Your Book'}</span>
+                        </button>
+                      )}
 
-                      {/* Track Order button — only for physical orders after PDF is ready */}
-                      {orderType === 'physical' && generation.isPdfReady && (
+                      {/* Track Order button — for physical orders: show when print submitted or print order exists */}
+                      {orderType === 'physical' && (
+                        <Link
+                          to="/my-creations?tab=ordered"
+                          className="flex-1 sm:flex-initial bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2"
+                        >
+                          <Package className="w-5 h-5" />
+                          <span>Track Order</span>
+                        </Link>
+                      )}
+
+                      {/* Track Order button (secondary) — for digital orders that also have physical */}
+                      {orderType !== 'physical' && (generation.unlockPhase === 'print_submitted' || printOrder) && (
                         <Link
                           to="/my-creations?tab=ordered"
                           className="flex-shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2"

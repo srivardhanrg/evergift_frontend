@@ -106,14 +106,19 @@ export function usePreviewLoader(previewId: string | undefined): UsePreviewLoade
                     setGenerationPhase(phase);
 
                     // Detect what state the page loaded in, so the parent can trigger overlays/polling
-                    const inProgressPhases: GenerationPhase[] = ['generating_full', 'pages_complete', 'generating_pdf', 'pdf_failed'];
+                    // Physical phases included so page refresh during physical flow correctly restarts polling
+                    const inProgressPhases: GenerationPhase[] = [
+                        'generating_full', 'pages_complete', 'generating_pdf', 'pdf_failed',
+                        'preparing_print', 'submitting_print',  // physical order in-flight phases
+                    ];
                     if (inProgressPhases.includes(phase) && previewData.status === 'purchased') {
-                        console.log('🔄 Page loaded during generation - auto-starting overlay');
+                        console.log('🔄 Page loaded during generation/print - auto-starting overlay');
                         setInitialPhaseState({ loadedDuringGeneration: true, loadedComplete: false });
                     }
 
-                    if (phase === 'complete' && previewData.status === 'purchased') {
-                        console.log('📖 Page loaded with complete preview - PDF already ready');
+                    // Both digital (complete) and physical (print_submitted) are "done" states
+                    if ((phase === 'complete' || phase === 'print_submitted') && previewData.status === 'purchased') {
+                        console.log('📖 Page loaded with complete/submitted order');
                         setInitialPhaseState({ loadedDuringGeneration: false, loadedComplete: true });
                     }
 
