@@ -165,26 +165,53 @@ export function useGenerationPolling(
     // Detect checkout success from URL
     // NOTE: With HashRouter, query params appear after the # (e.g., /#/preview/id?checkout_success=true)
     // so we must parse from hash, not window.location.search
+    //
+    // IMPORTANT: order_type is ALWAYS resolved from the DB (orders table), never from URL params.
+    // The Shopify webhook writes order_type BEFORE the user is redirected, so the DB is always
+    // correct even when Shopify drops the return_to URL and its query params are lost.
     useEffect(() => {
         const hashParts = window.location.hash.split('?');
         const hashQuery = hashParts.length > 1 ? hashParts[1] : '';
         const urlParams = new URLSearchParams(hashQuery);
         const isCheckoutSuccess = urlParams.get('checkout_success') === 'true';
-        const urlOrderType = urlParams.get('order_type') as 'digital' | 'physical' | null;
+        // URL order_type is intentionally ignored — DB is the source of truth.
+        // Keeping this read only for logging/debugging purposes.
+        const urlOrderTypeDebug = urlParams.get('order_type');
+        console.log('[Polling] checkout_success detected. URL order_type (debug only):', urlOrderTypeDebug);
 
         if (isCheckoutSuccess && previewId) {
             clearPendingCheckout();
             setCheckoutSuccess(true);
-            if (urlOrderType) {
-                setOrderType(urlOrderType);
-            }
+
             // Clean URL by removing query params from hash
             const cleanHash = hashParts[0];
             window.history.replaceState({}, '', window.location.pathname + cleanHash);
-            // Mark polling active BEFORE clearing URL so verifyAndPoll effect
-            // (which fires after usePreviewLoader API call completes) skips itself
+
+            // Mark polling active so verifyAndPoll effect (page-load path) skips itself
             activePollingRef.current = true;
-            startPaymentPolling(previewId, urlOrderType || undefined);
+
+            // Eagerly fetch order_type from DB.
+            // Edge case: if webhook hasn't fired yet, order_type may be null —
+            // in that case startPaymentPolling(undefined) and let the payment loop
+            // re-resolve order_type once payment is confirmed (webhook guaranteed by then).
+            getFullStatus(previewId)
+                .then(status => {
+                    if (!isMountedRef.current) return;
+                    const dbOrderType = (status.order_type as 'digital' | 'physical') || undefined;
+                    if (dbOrderType) {
+                        console.log('[Polling] order_type from DB (eager):', dbOrderType);
+                        setOrderType(dbOrderType);
+                    } else {
+                        console.warn('[Polling] DB order_type null (webhook in flight?) — will resolve after payment confirmation');
+                    }
+                    startPaymentPolling(previewId, dbOrderType);
+                })
+                .catch(() => {
+                    if (!isMountedRef.current) return;
+                    console.warn('[Polling] getFullStatus failed on eager fetch — starting polling without order_type, will resolve at payment confirmation');
+                    // Start polling without order_type; the payment-confirmed step will fetch it
+                    startPaymentPolling(previewId, undefined);
+                });
         }
     }, [previewId]);
 
@@ -418,16 +445,29 @@ export function useGenerationPolling(
                 setOrderType(passedOrderType);
             }
 
-            // FAST PATH: Check if everything is already complete before showing overlay.
-            // Even if complete, we still go through pollPdfReady to confirm PDF is on R2
-            // and to show the "Preparing PDF → Complete" overlay transition.
+            // FAST PATH: Use getFullStatus — single call returning order_type + is_complete + print_order.
+            // This resolves order_type from DB in case the eager fetch in the effect failed or
+            // returned null (webhook was still in flight). By now the webhook should be done.
             try {
-                const quickCheck = await api.getPreview(id);
+                const fastStatus = await getFullStatus(id);
                 if (!isMountedRef.current) return;
 
-                // For digital: check if complete
-                if (!isPhysical && quickCheck.generation_phase === 'complete' && quickCheck.status === 'purchased') {
-                    console.log('⚡ Already complete — verifying PDF on R2');
+                // Resolve order_type: DB is authoritative. If still null, fall back to passed param.
+                const fastIsPhysical =
+                    fastStatus.order_type === 'physical' ? true
+                        : fastStatus.order_type === 'digital' ? false
+                            : isPhysical; // last resort: use what was passed
+
+                // Sync orderType state if DB gave us new info
+                if (fastStatus.order_type && fastStatus.order_type !== (fastIsPhysical ? 'physical' : 'digital')) {
+                    setOrderType(fastStatus.order_type as 'digital' | 'physical');
+                } else if (fastStatus.order_type) {
+                    setOrderType(fastStatus.order_type as 'digital' | 'physical');
+                }
+
+                // For digital orders: already complete
+                if (!fastIsPhysical && fastStatus.is_complete) {
+                    console.log('⚡ Digital order already complete — verifying PDF on R2');
                     setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
                     setGenerationPhase('complete');
                     setCheckoutSuccess(false);
@@ -439,25 +479,36 @@ export function useGenerationPolling(
                     return;
                 }
 
-                // For physical: check if print is already submitted
-                if (isPhysical && quickCheck.generation_phase === 'print_submitted') {
+                // For physical orders: already submitted to Lulu
+                if (fastIsPhysical && fastStatus.generation_phase === 'print_submitted') {
                     console.log('⚡ Physical order already submitted to Lulu');
                     setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
                     setCheckoutSuccess(false);
                     setShowUnlocking(true);
                     setUnlockPhase('print_submitted');
                     setUnlockProgress(100);
+                    if (fastStatus.print_order) setPrintOrderStatus(fastStatus.print_order);
                     setTimeout(() => {
-                        if (isMountedRef.current) {
-                            setShowUnlocking(false);
-                        }
+                        if (isMountedRef.current) setShowUnlocking(false);
                     }, 3000);
                     activePollingRef.current = false;
                     return;
                 }
+
+                // For physical orders: mid-flight phases (pages generating, preparing_print, etc.)
+                // Update isPhysical for the polling loop below
+                if (fastIsPhysical !== isPhysical) {
+                    // Reassign via closure capture — the loop below uses `isPhysical`
+                    // We can't re-assign a const, so we update via a local flag
+                    (poll as any).__resolvedIsPhysical = fastIsPhysical;
+                }
             } catch (e) {
-                // If quick check fails, continue with normal polling
+                // Fast-path failed — continue with normal polling, order_type stays as passed
+                console.warn('[Polling] fast-path getFullStatus failed, continuing with polling:', e);
             }
+
+            // Use resolved order type from fast-path if available
+            const resolvedIsPhysical: boolean = (poll as any).__resolvedIsPhysical ?? isPhysical;
 
             // NOT complete yet — show overlay and start the full polling pipeline
             setPollingPayment(true);
@@ -500,13 +551,29 @@ export function useGenerationPolling(
                         setPollingPayment(false);
                         setCheckoutSuccess(false);
 
+                        // CRITICAL: At this moment, payment is confirmed which means the Shopify
+                        // webhook HAS fired and written order_type to the DB.
+                        // Re-fetch order_type from DB to get the guaranteed correct value.
+                        // This resolves any case where: (1) eager fetch got null, (2) URL had no param.
+                        let confirmedIsPhysical = resolvedIsPhysical;
+                        try {
+                            const confirmedStatus = await getFullStatus(id);
+                            if (confirmedStatus.order_type) {
+                                confirmedIsPhysical = confirmedStatus.order_type === 'physical';
+                                setOrderType(confirmedStatus.order_type as 'digital' | 'physical');
+                                console.log('[Polling] order_type confirmed from DB at payment:', confirmedStatus.order_type);
+                            }
+                        } catch (e) {
+                            console.warn('[Polling] Could not confirm order_type from DB at payment — using previously resolved value:', confirmedIsPhysical ? 'physical' : 'digital');
+                        }
+
                         // Route through pollGenerationComplete which handles both
                         // digital (generating_full → complete → PDF) and
                         // physical (generating_full → preparing_print → print_submitted)
                         setUnlockPhase('generating');
                         setUnlockProgress(30);
 
-                        await pollGenerationComplete(id, isPhysical);
+                        await pollGenerationComplete(id, confirmedIsPhysical);
                         activePollingRef.current = false;
                         return;
                     }
