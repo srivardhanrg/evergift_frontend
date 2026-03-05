@@ -11,7 +11,11 @@ import {
   Star,
   CheckCircle,
   Users,
-  BookOpen
+  BookOpen,
+  Package,
+  Truck,
+  Download,
+  Printer
 } from 'lucide-react';
 
 const About: React.FC = () => {
@@ -247,6 +251,131 @@ const About: React.FC = () => {
               <h3 className="text-xl font-heading text-gray-900 mb-2">Get Your Book</h3>
               <p className="text-gray-600 text-sm">Get your storybook as a digital PDF instantly — or order a beautiful printed book delivered to your door!</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Shipping & Delivery Timeline */}
+      <section className="py-24 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full text-xs font-semibold text-primary mb-4">
+              <Truck className="w-3 h-3" />
+              DELIVERY INFO
+            </div>
+            <h2 className="text-4xl font-heading text-gray-900 mb-4">Shipping & Delivery</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Whether you choose digital or printed, we make sure your magical storybook reaches you as quickly as possible.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Digital Delivery */}
+            <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+              <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mb-6">
+                <Download className="w-7 h-7 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-heading text-gray-900 mb-2">Digital PDF</h3>
+              <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
+                <Clock className="w-3.5 h-3.5" />
+                Instant Download
+              </div>
+              <ul className="space-y-3 text-gray-600 text-sm">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                  Ready within 2-3 minutes after payment
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                  Download link sent to your email
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                  Unlimited re-downloads for 30 days
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                  Print at home or any print shop
+                </li>
+              </ul>
+            </div>
+
+            {/* Printed Book Delivery */}
+            <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+              <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center mb-6">
+                <Package className="w-7 h-7 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-heading text-gray-900 mb-2">Printed Book</h3>
+              <div className="inline-flex items-center gap-2 bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
+                <Truck className="w-3.5 h-3.5" />
+                Ships Worldwide
+              </div>
+              <ul className="space-y-3 text-gray-600 text-sm">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5 shrink-0" />
+                  <span><strong>Printing:</strong> 3-5 business days</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5 shrink-0" />
+                  <span><strong>Shipping to India:</strong> 5-10 business days</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5 shrink-0" />
+                  <span><strong>International:</strong> 10-20 business days</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5 shrink-0" />
+                  Tracking number provided once shipped
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Timeline Visual */}
+          <div className="mt-12 bg-white rounded-3xl p-8 shadow-sm border border-gray-100 max-w-3xl mx-auto">
+            <h4 className="text-lg font-heading text-gray-900 mb-6 text-center">Printed Book Journey</h4>
+            <div className="flex items-center justify-between relative">
+              {/* Progress line */}
+              <div className="absolute top-5 left-0 right-0 h-1 bg-gray-100 -z-10" />
+              <div className="absolute top-5 left-0 w-3/4 h-1 bg-gradient-to-r from-primary to-purple-500 -z-10" />
+
+              {/* Steps */}
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white mb-2">
+                  <CheckCircle className="w-5 h-5" />
+                </div>
+                <span className="text-xs text-gray-600 font-medium">Order Placed</span>
+                <span className="text-xs text-gray-400">Day 0</span>
+              </div>
+
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white mb-2">
+                  <Printer className="w-5 h-5" />
+                </div>
+                <span className="text-xs text-gray-600 font-medium">Printing</span>
+                <span className="text-xs text-gray-400">Days 1-5</span>
+              </div>
+
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white mb-2">
+                  <Truck className="w-5 h-5" />
+                </div>
+                <span className="text-xs text-gray-600 font-medium">Shipped</span>
+                <span className="text-xs text-gray-400">Day 5-6</span>
+              </div>
+
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-400 mb-2">
+                  <Package className="w-5 h-5" />
+                </div>
+                <span className="text-xs text-gray-600 font-medium">Delivered</span>
+                <span className="text-xs text-gray-400">Days 10-15</span>
+              </div>
+            </div>
+
+            <p className="text-center text-xs text-gray-400 mt-6">
+              * Delivery times are estimates and may vary by location. Track your order in "My Creations" → "Ordered" tab.
+            </p>
           </div>
         </div>
       </section>

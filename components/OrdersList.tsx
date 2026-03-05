@@ -147,6 +147,16 @@ interface OrderCardProps {
     order: OrderWithPrintStatus;
 }
 
+// Progress config for physical orders
+const PROGRESS_CONFIG: Record<string, { percent: number; step: string; message: string }> = {
+    pending: { percent: 20, step: '1/4', message: 'Order received, preparing files' },
+    submitted: { percent: 35, step: '2/4', message: 'Sent to print facility' },
+    accepted: { percent: 50, step: '2/4', message: 'Print facility accepted order' },
+    in_production: { percent: 70, step: '3/4', message: 'Your book is being printed' },
+    shipped: { percent: 90, step: '4/4', message: 'On the way to you!' },
+    delivered: { percent: 100, step: '4/4', message: 'Delivered!' },
+};
+
 const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
     const hasPhysicalOrder = order.printOrder !== null;
     const printStatus = order.printOrder?.lulu_status;
@@ -156,6 +166,9 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
     const isDelivered = printStatus === 'delivered';
     const isInProduction = printStatus === 'in_production';
     const isFailed = printStatus === 'failed' || printStatus === 'rejected' || printStatus === 'cancelled';
+
+    // Get progress info for physical orders
+    const progressInfo = printStatus ? PROGRESS_CONFIG[printStatus] : null;
 
     const getStatusBadge = () => {
         if (!hasPhysicalOrder) {
@@ -288,6 +301,25 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
                                 </a>
                             )}
                         </div>
+
+                        {/* Progress Bar for physical orders (not shipped/delivered/failed) */}
+                        {hasPhysicalOrder && progressInfo && !isShipped && !isDelivered && !isFailed && (
+                            <div className="mt-4 pt-3 border-t border-gray-100">
+                                <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                                    <span className="font-medium">{progressInfo.message}</span>
+                                    <span>Step {progressInfo.step}</span>
+                                </div>
+                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-primary to-purple-500 rounded-full transition-all duration-500"
+                                        style={{ width: `${progressInfo.percent}%` }}
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-400 mt-2">
+                                    Printing typically takes 3-5 business days
+                                </p>
+                            </div>
+                        )}
 
                         {/* Tracking Details for shipped orders */}
                         {isShipped && order.printOrder && (

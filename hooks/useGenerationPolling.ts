@@ -24,6 +24,7 @@ const mapGenerationPhaseToUnlockPhase = (phase: string): UnlockPhase => {
         case 'submitting_print':
             return 'submitting_print';
         case 'print_submitted':
+        case 'print_failed':  // Print failed but PDF is ready
             return 'print_submitted';
         default:
             return 'generating';
@@ -134,6 +135,14 @@ export function useGenerationPolling(
                             console.log('📦 Refreshed on physical order — print already submitted');
                             setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
                             setGenerationPhase('print_submitted');
+                            return;
+                        }
+                        if (phase === 'print_failed') {
+                            // Print failed but PDF is ready — show done state, no overlay
+                            console.log('📦 Refreshed on physical order — print failed but PDF ready');
+                            setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
+                            setGenerationPhase('print_failed');
+                            setIsPdfReady(true); // PDF is ready even if print failed
                             return;
                         }
                         if (['preparing_print', 'submitting_print', 'pages_complete', 'generating_full'].includes(phase)) {

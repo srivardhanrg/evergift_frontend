@@ -116,8 +116,9 @@ export function usePreviewLoader(previewId: string | undefined): UsePreviewLoade
                         setInitialPhaseState({ loadedDuringGeneration: true, loadedComplete: false });
                     }
 
-                    // Both digital (complete) and physical (print_submitted) are "done" states
-                    if ((phase === 'complete' || phase === 'print_submitted') && previewData.status === 'purchased') {
+                    // Both digital (complete) and physical (print_submitted/print_failed) are "done" states
+                    // print_failed means PDF is ready but Lulu submission failed - user can still see all pages
+                    if ((phase === 'complete' || phase === 'print_submitted' || phase === 'print_failed') && previewData.status === 'purchased') {
                         console.log('📖 Page loaded with complete/submitted order');
                         setInitialPhaseState({ loadedDuringGeneration: false, loadedComplete: true });
                     }
