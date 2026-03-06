@@ -27,18 +27,24 @@ interface AuthModalProps {
 
 /**
  * Get Shopify login URL with return path
+ * Note: Shopify may strip the hash from return_url, so we also save to localStorage as primary mechanism
  */
 export const getShopifyLoginUrl = (returnPath?: string): string => {
-    const currentPath = returnPath || window.location.pathname + window.location.search;
-    return `/account/login?return_url=${encodeURIComponent(currentPath)}`;
+    const fullPath = returnPath || getFullCurrentPath();
+    // Save to localStorage as primary redirect mechanism (Shopify may strip hash from URL)
+    saveLoginRedirect(fullPath);
+    return `/account/login?return_url=${encodeURIComponent(fullPath)}`;
 };
 
 /**
  * Get Shopify signup URL with return path
+ * Note: Shopify may strip the hash from return_url, so we also save to localStorage as primary mechanism
  */
 export const getShopifySignupUrl = (returnPath?: string): string => {
-    const currentPath = returnPath || window.location.pathname + window.location.search;
-    return `/account/register?return_url=${encodeURIComponent(currentPath)}`;
+    const fullPath = returnPath || getFullCurrentPath();
+    // Save to localStorage as primary redirect mechanism (Shopify may strip hash from URL)
+    saveLoginRedirect(fullPath);
+    return `/account/register?return_url=${encodeURIComponent(fullPath)}`;
 };
 
 /**
@@ -79,9 +85,8 @@ export const markSavePromptShown = (): void => {
     }
 };
 
-// Import getOrCreateSessionId from client.ts to avoid duplication
-// The function is used internally in the modal's guest continue handler
-import { getOrCreateSessionId } from '../src/api/client';
+// Import utilities from client.ts
+import { getOrCreateSessionId, getFullCurrentPath, saveLoginRedirect } from '../src/api/client';
 
 // Context-specific content configurations
 const contextContent: Record<AuthModalContext, {

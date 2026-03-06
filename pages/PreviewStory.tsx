@@ -566,7 +566,6 @@ const PreviewStory: React.FC = () => {
           onClose={payment.handleAuthModalClose}
           onGuestContinue={payment.handleGuestContinue}
           context={payment.pendingAction === 'download' ? 'download' : 'default'}
-          returnPath={window.location.pathname}
         />
 
         {/* Auth Modal (physical — login required, no guest option) */}
@@ -578,7 +577,6 @@ const PreviewStory: React.FC = () => {
           context="default"
           title="📦 Sign In to Order Physical Book"
           subtitle="You'll need an account to track your order and receive shipping updates."
-          returnPath={window.location.pathname}
         />
 
         {/* Order Confirmation Modal - shown after successful checkout */}

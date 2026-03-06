@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LayoutDashboard, Star, User as UserIcon, Menu, X, LogOut, ChevronDown } from 'lucide-react';
-import { isShopifyCustomerLoggedIn, getShopifyCustomerContext } from '../src/api/client';
+import { isShopifyCustomerLoggedIn, getShopifyCustomerContext, getFullCurrentPath, saveLoginRedirect } from '../src/api/client';
 
 // Hardcoded shop domain as ultimate fallback
 const SHOP_DOMAIN = 'storygift-2061.myshopify.com';
@@ -13,9 +13,12 @@ const getShopDomain = (): string => {
   return contextDomain || SHOP_DOMAIN;
 };
 
-// Get Shopify login URL - redirects to Shopify's customer account login
+// Get Shopify login URL - redirects to Shopify's customer account login with return URL
 const getShopifyLoginUrl = (): string => {
-  return `https://${getShopDomain()}/account/login`;
+  const fullPath = getFullCurrentPath();
+  // Save to localStorage as primary redirect mechanism (Shopify may strip hash from URL)
+  saveLoginRedirect(fullPath);
+  return `/account/login?return_url=${encodeURIComponent(fullPath)}`;
 };
 
 // Get Shopify logout URL

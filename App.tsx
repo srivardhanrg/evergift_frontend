@@ -12,7 +12,7 @@ import About from './pages/About';
 import MyCreations from './pages/MyCreations';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
-import { api, isShopifyCustomerLoggedIn, getPendingCheckout, clearPendingCheckout } from './src/api/client';
+import { api, isShopifyCustomerLoggedIn, getPendingCheckout, clearPendingCheckout, getLoginRedirect, clearLoginRedirect } from './src/api/client';
 import { initAnalytics, trackPageView, identifyUser } from './src/services/analytics';
 
 /**
@@ -86,6 +86,43 @@ const PendingCheckoutHandler: React.FC = () => {
   return null;
 };
 
+/**
+ * Component to handle post-login redirect
+ * If user just logged in and we have a saved redirect destination, navigate there
+ * Uses timestamp to prevent stale redirects (only redirects if saved within last 10 minutes)
+ */
+const PostLoginRedirectHandler: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Only run if user is logged in
+    if (!isShopifyCustomerLoggedIn()) return;
+
+    // Check for saved redirect destination (with timestamp validation)
+    const savedRedirect = getLoginRedirect();
+    if (!savedRedirect) return;
+
+    // Clear it immediately to prevent redirect loops
+    clearLoginRedirect();
+
+    // Extract the hash route from the saved path
+    // Example: /apps/zelavo#/preview/123 -> /preview/123
+    const hashMatch = savedRedirect.match(/#(.+)/);
+    if (hashMatch) {
+      const hashRoute = hashMatch[1];
+      // Only redirect if we're not already on that route
+      const currentRoute = location.pathname + location.search;
+      if (currentRoute !== hashRoute && !currentRoute.startsWith(hashRoute.split('?')[0])) {
+        console.log('[PostLoginRedirect] Redirecting to saved destination:', hashRoute);
+        navigate(hashRoute, { replace: true });
+      }
+    }
+  }, [navigate, location]);
+
+  return null;
+};
+
 const App: React.FC = () => {
   // Initialize analytics on app load
   useEffect(() => {
@@ -124,6 +161,8 @@ const App: React.FC = () => {
         <AnalyticsTracker />
         {/* Handle pending checkout redirect (when Shopify ignores return_to) */}
         <PendingCheckoutHandler />
+        {/* Handle post-login redirect to original page */}
+        <PostLoginRedirectHandler />
         <ErrorBoundary>
           <div className="flex flex-col min-h-screen">
             <Navbar />

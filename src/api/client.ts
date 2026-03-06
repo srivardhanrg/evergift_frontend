@@ -136,6 +136,77 @@ export const isShopifyCustomerLoggedIn = (): boolean => {
 };
 
 // ==================
+// Login Redirect Utilities
+// ==================
+
+const LOGIN_REDIRECT_KEY = 'magictales_login_redirect';
+const REDIRECT_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+
+interface LoginRedirectData {
+    path: string;
+    savedAt: number;
+}
+
+/**
+ * Get the full current path including hash (for HashRouter apps)
+ * Since the app uses HashRouter, routes are in the URL hash (e.g., #/preview/123)
+ * Note: Shopify may strip the hash from return_url, so localStorage is the primary mechanism
+ */
+export const getFullCurrentPath = (): string => {
+    const pathname = window.location.pathname;
+    const hash = window.location.hash;
+    const search = window.location.search;
+    // Combine: pathname + search + hash
+    // e.g., /apps/zelavo?param=1#/create
+    return pathname + search + hash;
+};
+
+/**
+ * Save the intended destination before redirecting to login
+ * Uses timestamp to prevent stale redirects
+ */
+export const saveLoginRedirect = (path?: string): void => {
+    if (typeof localStorage === 'undefined') return;
+    const redirectData: LoginRedirectData = {
+        path: path || getFullCurrentPath(),
+        savedAt: Date.now()
+    };
+    localStorage.setItem(LOGIN_REDIRECT_KEY, JSON.stringify(redirectData));
+};
+
+/**
+ * Get the saved redirect path (if any and not expired)
+ * Returns null if expired (older than 10 minutes) or not found
+ */
+export const getLoginRedirect = (): string | null => {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(LOGIN_REDIRECT_KEY);
+    if (!raw) return null;
+
+    try {
+        const { path, savedAt } = JSON.parse(raw) as LoginRedirectData;
+        // Only use if saved within the expiry window
+        if (Date.now() - savedAt > REDIRECT_EXPIRY_MS) {
+            clearLoginRedirect();
+            return null;
+        }
+        return path;
+    } catch {
+        // Invalid JSON, clear it
+        clearLoginRedirect();
+        return null;
+    }
+};
+
+/**
+ * Clear the saved redirect path
+ */
+export const clearLoginRedirect = (): void => {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.removeItem(LOGIN_REDIRECT_KEY);
+};
+
+// ==================
 // Helper Functions
 // ==================
 

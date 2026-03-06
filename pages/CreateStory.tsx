@@ -609,7 +609,6 @@ const CreateStory: React.FC = () => {
             ? "Sign in or create an account to continue making magical stories. Your existing previews are saved!"
             : "Your magical creations will be saved to your account for 7 days"
           }
-          returnPath={window.location.pathname}
           showGuestWarning={!guestLimitReached}
           hideGuestOption={guestLimitReached}
         />

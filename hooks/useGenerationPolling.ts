@@ -82,6 +82,55 @@ export function useGenerationPolling(
     // Prevents verifyAndPoll from starting when startPaymentPolling is already active
     const activePollingRef = useRef(false);
 
+    // ==========================================================================
+    // CRITICAL HELPER: Fetch full preview data and rebuild book with all pages
+    // This ensures pages 6-10 are always loaded after payment, not just metadata.
+    // All code paths that complete payment MUST call this instead of just updating paymentStatus.
+    // ==========================================================================
+    const fetchAndRebuildBook = async (id: string): Promise<any> => {
+        console.log('📚 Fetching full preview data to rebuild book with all pages...');
+        const previewData = await api.getPreview(id);
+
+        if (!isMountedRef.current) return previewData;
+
+        const coverUrl = previewData.cover_url ||
+            previewData.preview_pages.find((p: any) => p.page_number === 0 || p.is_cover)?.image_url;
+        const storyTitle = previewData.story_title || `${previewData.child_name}'s Adventure`;
+        const storyPages = previewData.preview_pages.filter(
+            (p: any) => p.page_number > 0 && !p.is_cover
+        );
+
+        const rebuiltBook: Storybook = {
+            id: previewData.preview_id,
+            userId: 'current-user',
+            childName: previewData.child_name,
+            childAge: 5,
+            childGender: 'Adventurer',
+            theme: previewData.theme as unknown as any,
+            coverUrl: coverUrl || '',
+            storyTitle: storyTitle,
+            pages: storyPages.map((p: any) => ({
+                pageNumber: p.page_number,
+                text: p.story_text,
+                imagePrompt: 'Generated story',
+                imageUrl: p.image_url
+            })),
+            paymentStatus: 'paid',
+            createdAt: new Date().toISOString()
+        };
+
+        setBook(rebuiltBook);
+        setLockedPages([]);
+        console.log(`📚 Book rebuilt with ${storyPages.length} pages (expected: 10)`);
+
+        // Warn if pages are incomplete - helps catch issues in testing
+        if (storyPages.length < 10) {
+            console.warn(`⚠️ Book has only ${storyPages.length} pages - expected 10. Backend may still be generating.`);
+        }
+
+        return previewData;
+    };
+
     // Cleanup on unmount
     useEffect(() => {
         isMountedRef.current = true;
@@ -129,28 +178,42 @@ export function useGenerationPolling(
                     const phase = previewData.generation_phase;
 
                     // --- Physical order phases ---
+                    // CRITICAL: All physical order completion states must rebuild book with all pages
+                    // using fetchAndRebuildBook, not just update paymentStatus
                     if (isPhysicalRefresh) {
                         if (phase === 'print_submitted') {
-                            // Already submitted — show done state, no polling needed
+                            // Already submitted — rebuild book with all pages, no polling needed
                             console.log('📦 Refreshed on physical order — print already submitted');
-                            setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
+                            await fetchAndRebuildBook(previewId);
                             setGenerationPhase('print_submitted');
                             return;
                         }
                         if (phase === 'print_failed') {
-                            // Print failed but PDF is ready — show done state, no overlay
+                            // Print failed but PDF is ready — rebuild book with all pages, no overlay
                             console.log('📦 Refreshed on physical order — print failed but PDF ready');
-                            setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
+                            await fetchAndRebuildBook(previewId);
                             setGenerationPhase('print_failed');
                             setIsPdfReady(true); // PDF is ready even if print failed
                             return;
                         }
-                        if (['preparing_print', 'submitting_print', 'pages_complete', 'generating_full'].includes(phase)) {
-                            console.log('📦 Refreshed during physical order — resuming physical polling at phase:', phase);
+                        if (['preparing_print', 'submitting_print', 'pages_complete'].includes(phase)) {
+                            // Pages are ready — rebuild book with all pages then continue polling
+                            console.log('📦 Refreshed during physical order — rebuilding book and resuming polling at phase:', phase);
+                            await fetchAndRebuildBook(previewId);
+                            setShowUnlocking(true);
+                            setUnlockPhase('preparing_print');
+                            setUnlockProgress(70);
+                            pollGenerationComplete(previewId, true);
+                            return;
+                        }
+                        if (phase === 'generating_full') {
+                            // Still generating pages — just update payment status and poll
+                            // (pages not ready yet, fetchAndRebuildBook would return incomplete data)
+                            console.log('📦 Refreshed during physical order generation — resuming polling');
                             setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
                             setShowUnlocking(true);
-                            setUnlockPhase(phase === 'generating_full' ? 'generating' : 'preparing_print');
-                            setUnlockProgress(phase === 'generating_full' ? 50 : 70);
+                            setUnlockPhase('generating');
+                            setUnlockProgress(50);
                             pollGenerationComplete(previewId, true);
                             return;
                         }
@@ -160,7 +223,29 @@ export function useGenerationPolling(
                     if (phase === 'complete') {
                         // Already done — verify PDF then set ready (no full overlay)
                         console.log('📖 Generation already complete — verifying PDF');
-                        setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
+                        const coverUrl = previewData.cover_url ||
+                            previewData.preview_pages.find((p: any) => p.page_number === 0 || p.is_cover)?.image_url;
+                        const storyTitle = previewData.story_title || `${previewData.child_name}'s Adventure`;
+                        const storyPages = previewData.preview_pages.filter((p: any) => p.page_number > 0 && !p.is_cover);
+                        setBook({
+                            id: previewData.preview_id,
+                            userId: 'current-user',
+                            childName: previewData.child_name,
+                            childAge: 5,
+                            childGender: 'Adventurer',
+                            theme: previewData.theme as unknown as any,
+                            coverUrl: coverUrl || '',
+                            storyTitle: storyTitle,
+                            pages: storyPages.map((p: any) => ({
+                                pageNumber: p.page_number,
+                                text: p.story_text,
+                                imagePrompt: 'Generated story',
+                                imageUrl: p.image_url
+                            })),
+                            paymentStatus: 'paid',
+                            createdAt: new Date().toISOString()
+                        });
+                        setLockedPages([]);
                         setGenerationPhase('complete');
                         setShowUnlocking(true);
                         setUnlockPhase('preparing_pdf');
@@ -170,9 +255,31 @@ export function useGenerationPolling(
                     }
 
                     if (phase === 'pages_complete') {
-                        // Pages done, PDF still pending — show overlay and poll for PDF
-                        console.log('📖 Pages complete — polling for PDF');
-                        setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
+                        // Pages done, PDF still pending — update book with all 10 pages then poll PDF
+                        console.log('📖 Pages complete — updating book with all pages and polling for PDF');
+                        const coverUrl = previewData.cover_url ||
+                            previewData.preview_pages.find((p: any) => p.page_number === 0 || p.is_cover)?.image_url;
+                        const storyTitle = previewData.story_title || `${previewData.child_name}'s Adventure`;
+                        const storyPages = previewData.preview_pages.filter((p: any) => p.page_number > 0 && !p.is_cover);
+                        setBook({
+                            id: previewData.preview_id,
+                            userId: 'current-user',
+                            childName: previewData.child_name,
+                            childAge: 5,
+                            childGender: 'Adventurer',
+                            theme: previewData.theme as unknown as any,
+                            coverUrl: coverUrl || '',
+                            storyTitle: storyTitle,
+                            pages: storyPages.map((p: any) => ({
+                                pageNumber: p.page_number,
+                                text: p.story_text,
+                                imagePrompt: 'Generated story',
+                                imageUrl: p.image_url
+                            })),
+                            paymentStatus: 'paid',
+                            createdAt: new Date().toISOString()
+                        });
+                        setLockedPages([]);
                         setGenerationPhase('pages_complete');
                         setShowUnlocking(true);
                         setUnlockPhase('preparing_pdf');
@@ -182,9 +289,9 @@ export function useGenerationPolling(
                     }
 
                     if (phase === 'pdf_failed') {
-                        // PDF creation failed — no overlay, show retry state
-                        console.log('📖 PDF failed — showing retry option');
-                        setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
+                        // PDF creation failed — rebuild book with all pages, show retry state
+                        console.log('📖 PDF failed — rebuilding book and showing retry option');
+                        await fetchAndRebuildBook(previewId);
                         setGenerationPhase('pdf_failed');
                         setPdfPreparationTimeout(true);
                         return;
@@ -354,6 +461,11 @@ export function useGenerationPolling(
                     console.log('✅ Physical order submitted to Lulu!');
                     setUnlockProgress(100);
                     setUnlockPhase('print_submitted');
+                    setGenerationPhase('print_submitted');
+
+                    // Safety: Ensure book has all pages (should already be set, but verify)
+                    // This handles edge cases where state might be stale
+                    await fetchAndRebuildBook(id);
 
                     // Show success for a moment then hide overlay
                     setTimeout(() => {
@@ -365,6 +477,12 @@ export function useGenerationPolling(
                     return;
                 } else if (phase === 'print_failed') {
                     console.log('⚠️ Print submission failed');
+                    setGenerationPhase('print_failed');
+
+                    // Safety: Ensure book has all pages
+                    await fetchAndRebuildBook(id);
+                    setIsPdfReady(true); // PDF is ready even if print failed
+
                     setShowUnlocking(false);
                     showToast('Print order failed. Your PDF is ready for download. We\'ll retry printing automatically.', 'error', 8000);
                     return;
@@ -445,10 +563,41 @@ export function useGenerationPolling(
                     return;
                 }
 
-                // For physical orders: pages_complete or preparing_print means transition to physical polling
+                // For physical orders: pages_complete or preparing_print means transition to physical polling.
+                // IMPORTANT: update the book with ALL 10 pages NOW so the user sees them immediately
+                // without needing to refresh — setBook is only called here, not in pollPhysicalOrderComplete.
                 const physicalPhases = ['pages_complete', 'preparing_print', 'submitting_print', 'print_submitted'];
                 if (isPhysical && physicalPhases.includes(previewData.generation_phase)) {
-                    console.log('📦 Transitioning to physical order polling...');
+                    console.log('📦 Pages complete for physical order — updating book with all pages before print polling...');
+
+                    // Rebuild book with all 10 pages now that they are ready
+                    const coverUrl = previewData.cover_url ||
+                        previewData.preview_pages.find((p: any) => p.page_number === 0 || p.is_cover)?.image_url;
+                    const storyTitle = previewData.story_title || `${previewData.child_name}'s Adventure`;
+                    const storyPages = previewData.preview_pages.filter(
+                        (p: any) => p.page_number > 0 && !p.is_cover
+                    );
+                    setBook({
+                        id: previewData.preview_id,
+                        userId: 'current-user',
+                        childName: previewData.child_name,
+                        childAge: 5,
+                        childGender: 'Adventurer',
+                        theme: previewData.theme as unknown as any,
+                        coverUrl: coverUrl || '',
+                        storyTitle: storyTitle,
+                        pages: storyPages.map((p: any) => ({
+                            pageNumber: p.page_number,
+                            text: p.story_text,
+                            imagePrompt: 'Generated story',
+                            imageUrl: p.image_url
+                        })),
+                        paymentStatus: 'paid',
+                        createdAt: new Date().toISOString()
+                    });
+                    setLockedPages([]);
+
+                    console.log(`📦 Book updated with ${storyPages.length} pages — transitioning to physical print polling`);
                     setUnlockPhase('preparing_print');
                     setUnlockProgress(70);
                     await pollPhysicalOrderComplete(id);
@@ -456,8 +605,39 @@ export function useGenerationPolling(
                 }
 
                 // Pages are all generated but PDF creation is pending or failed (digital only)
+                // CRITICAL: Must update book with all 10 pages here, not just at 'complete'
                 if (previewData.generation_phase === 'pages_complete' && !isPhysical) {
-                    console.log('✅ All pages generated! Now waiting for PDF...');
+                    console.log('✅ All pages generated! Updating book with all pages before PDF polling...');
+
+                    // Rebuild book with all 10 pages now that they are ready
+                    const coverUrl = previewData.cover_url ||
+                        previewData.preview_pages.find((p: any) => p.page_number === 0 || p.is_cover)?.image_url;
+                    const storyTitle = previewData.story_title || `${previewData.child_name}'s Adventure`;
+                    const storyPages = previewData.preview_pages.filter(
+                        (p: any) => p.page_number > 0 && !p.is_cover
+                    );
+
+                    setBook({
+                        id: previewData.preview_id,
+                        userId: 'current-user',
+                        childName: previewData.child_name,
+                        childAge: 5,
+                        childGender: 'Adventurer',
+                        theme: previewData.theme as unknown as any,
+                        coverUrl: coverUrl || '',
+                        storyTitle: storyTitle,
+                        pages: storyPages.map((p: any) => ({
+                            pageNumber: p.page_number,
+                            text: p.story_text,
+                            imagePrompt: 'Generated story',
+                            imageUrl: p.image_url
+                        })),
+                        paymentStatus: 'paid',
+                        createdAt: new Date().toISOString()
+                    });
+                    setLockedPages([]);
+
+                    console.log(`📖 Book updated with ${storyPages.length} pages — now polling for PDF`);
                     setGenerationPhase('pages_complete');
                     setUnlockPhase('preparing_pdf');
                     setUnlockProgress(85);
@@ -466,7 +646,9 @@ export function useGenerationPolling(
                 }
 
                 if (previewData.generation_phase === 'pdf_failed') {
-                    console.log('⚠️ PDF creation failed — showing retry option');
+                    console.log('⚠️ PDF creation failed — rebuilding book with all pages and showing retry option');
+                    // CRITICAL: Must rebuild book so pages 6-10 are visible even though PDF failed
+                    await fetchAndRebuildBook(id);
                     setGenerationPhase('pdf_failed');
                     setShowUnlocking(false);
                     setPdfPreparationTimeout(true);
@@ -514,9 +696,10 @@ export function useGenerationPolling(
                 }
 
                 // For digital orders: already complete
+                // CRITICAL: Must fetch full preview data including pages 6-10
                 if (!fastIsPhysical && fastStatus.is_complete) {
-                    console.log('⚡ Digital order already complete — verifying PDF on R2');
-                    setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
+                    console.log('⚡ Digital order already complete — fetching all pages and verifying PDF');
+                    await fetchAndRebuildBook(id);
                     setGenerationPhase('complete');
                     setCheckoutSuccess(false);
                     setShowUnlocking(true);
@@ -528,9 +711,10 @@ export function useGenerationPolling(
                 }
 
                 // For physical orders: already submitted to Lulu
+                // CRITICAL: Must fetch full preview data including pages 6-10
                 if (fastIsPhysical && fastStatus.generation_phase === 'print_submitted') {
-                    console.log('⚡ Physical order already submitted to Lulu');
-                    setBook(prev => prev ? { ...prev, paymentStatus: 'paid' } : prev);
+                    console.log('⚡ Physical order already submitted to Lulu — fetching all pages');
+                    await fetchAndRebuildBook(id);
                     setCheckoutSuccess(false);
                     setShowUnlocking(true);
                     setUnlockPhase('print_submitted');
@@ -539,6 +723,19 @@ export function useGenerationPolling(
                     setTimeout(() => {
                         if (isMountedRef.current) setShowUnlocking(false);
                     }, 3000);
+                    activePollingRef.current = false;
+                    return;
+                }
+
+                // For physical orders: print_failed - PDF is ready but Lulu failed
+                // CRITICAL: Must fetch full preview data including pages 6-10
+                if (fastIsPhysical && fastStatus.generation_phase === 'print_failed') {
+                    console.log('⚡ Physical order print failed — fetching all pages (PDF still available)');
+                    await fetchAndRebuildBook(id);
+                    setCheckoutSuccess(false);
+                    setGenerationPhase('print_failed');
+                    setIsPdfReady(true);
+                    if (fastStatus.print_order) setPrintOrderStatus(fastStatus.print_order);
                     activePollingRef.current = false;
                     return;
                 }
@@ -613,6 +810,16 @@ export function useGenerationPolling(
                             }
                         } catch (e) {
                             console.warn('[Polling] Could not confirm order_type from DB at payment — using previously resolved value:', confirmedIsPhysical ? 'physical' : 'digital');
+                        }
+
+                        // SAFETY: Immediately rebuild book with whatever pages exist now.
+                        // If backend already generated pages 6-10 while user was in Shopify checkout,
+                        // this fetches them so they appear as soon as the overlay dismisses.
+                        try {
+                            await fetchAndRebuildBook(id);
+                            console.log('📚 Book rebuilt after payment confirmation (safety fetch)');
+                        } catch (e) {
+                            console.warn('📚 Safety fetch after payment failed (pollGenerationComplete will retry):', e);
                         }
 
                         // Route through pollGenerationComplete which handles both
