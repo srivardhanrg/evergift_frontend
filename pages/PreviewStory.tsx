@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { STORYBOOK_PRICE, THEMES } from '../constants';
+import { THEMES } from '../constants';
 import {
   Sparkles,
   CheckCircle,
@@ -20,12 +20,8 @@ import OrderConfirmationModal from '../components/OrderConfirmationModal';
 import { LockedPagesSection } from '../components/LockedPageCard';
 import UnlockingOverlay from '../components/UnlockingOverlay';
 import PrintOrderStatusCard from '../components/PrintOrderStatusCard';
-import {
-  trackPreviewPageViewed,
-  trackLockedPageClicked,
-} from '../src/services/analytics';
-import { usePreviewLoader } from '../hooks/usePreviewLoader';
-import { useGenerationPolling } from '../hooks/useGenerationPolling';
+// Analytics tracking is now handled by usePreviewStateMachine internally
+import { usePreviewStateMachine } from '../hooks/usePreviewStateMachine';
 import { usePaymentFlow } from '../hooks/usePaymentFlow';
 import { usePdfDownload } from '../hooks/usePdfDownload';
 
@@ -44,29 +40,19 @@ const PreviewResponsiveStyles = () => (
 const PreviewStory: React.FC = () => {
   const { id } = useParams();
 
-  // --- Hook composition ---
-  const preview = usePreviewLoader(id);
+  // --- Single state machine for all preview lifecycle ---
+  // This replaces usePreviewLoader + useGenerationPolling with one unified hook
+  // that prevents race conditions by design
+  const machine = usePreviewStateMachine(id);
 
-  const generation = useGenerationPolling(
-    id,
-    preview.book,
-    preview.setBook,
-    preview.setLockedPages,
-    preview.setGenerationPhase,
-    preview.initialPhaseState,
-  );
-
-  // Auth modal trigger for download
-  const handleAuthRequiredForDownload = useCallback(() => {
-    // This is handled by the payment flow's auth modal
-    payment.handlePaymentClick(); // Will show auth modal with pendingAction='download'
-  }, []);
+  // Derive pollingPayment from machine state for UI compatibility
+  const pollingPayment = machine.machineState === 'confirming_payment';
 
   const pdf = usePdfDownload(
-    preview.book,
-    preview.integrityError,
-    preview.generationPhase,
-    generation.isPdfReady,
+    machine.book,
+    machine.integrityError,
+    machine.generationPhase,
+    machine.isPdfReady,
     () => {
       // When download needs auth, trigger payment flow's auth modal
       // The payment hook handles this via pendingAction
@@ -74,31 +60,24 @@ const PreviewStory: React.FC = () => {
   );
 
   const payment = usePaymentFlow(
-    preview.book,
-    preview.integrityError,
+    machine.book,
+    machine.integrityError,
     pdf.performDownload,
   );
 
   // --- Early returns for loading/error/expired states ---
 
-  // Print order tracking state (use polling hook's state for real-time updates)
+  // Print order tracking state (use state machine's printOrderStatus for real-time updates)
   const [printOrder, setPrintOrder] = useState<PrintOrderStatus | null>(null);
 
   // Order confirmation modal state
   const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
-  // Use polling hook's orderType if available, fallback to local state
+  // Use state machine's orderType if available, fallback to local state
   const [localOrderType, setLocalOrderType] = useState<'digital' | 'physical'>('digital');
-  const orderType = generation.orderType || localOrderType;
+  const orderType = machine.orderType || localOrderType;
   const hasShownConfirmationRef = useRef(false);
 
-  // Sync print order status from polling hook (real-time during generation)
-  useEffect(() => {
-    if (generation.printOrderStatus) {
-      setPrintOrder(generation.printOrderStatus as PrintOrderStatus);
-    }
-  }, [generation.printOrderStatus]);
-
-  // Track if we came from checkout success
+  // Track if we came from checkout success (for order confirmation modal only)
   const checkoutSuccessRef = useRef(false);
   useEffect(() => {
     const hashParts = window.location.hash.split('?');
@@ -106,13 +85,20 @@ const PreviewStory: React.FC = () => {
     const urlParams = new URLSearchParams(hashQuery);
     if (urlParams.get('checkout_success') === 'true' || urlParams.get('payment_success') === 'true') {
       checkoutSuccessRef.current = true;
-      // NOTE: order_type is resolved from DB by useGenerationPolling, not from URL
     }
   }, []);
 
+  // Sync print order status from state machine (real-time during generation)
   useEffect(() => {
-    if (preview.book && preview.book.paymentStatus === 'paid') {
-      getPrintOrderByPreview(preview.book.id).then((order) => {
+    if (machine.printOrderStatus) {
+      setPrintOrder(machine.printOrderStatus as PrintOrderStatus);
+    }
+  }, [machine.printOrderStatus]);
+
+  // Fetch print order on initial load if already paid
+  useEffect(() => {
+    if (machine.book && machine.book.paymentStatus === 'paid') {
+      getPrintOrderByPreview(machine.book.id).then((order) => {
         setPrintOrder(order);
         // If there's a print order, this was a physical order
         if (order) {
@@ -120,20 +106,20 @@ const PreviewStory: React.FC = () => {
         }
       });
     }
-  }, [preview.book?.id, preview.book?.paymentStatus]);
+  }, [machine.book?.id, machine.book?.paymentStatus]);
 
   // Show confirmation modal after unlock overlay completes (only on checkout success)
   // For digital: when PDF is ready
-  // For physical: when print is submitted (unlockPhase === 'print_submitted')
+  // For physical: when print is submitted (overlayPhase === 'print_submitted')
   useEffect(() => {
-    const isPhysicalComplete = orderType === 'physical' && generation.unlockPhase === 'print_submitted';
-    const isDigitalComplete = orderType !== 'physical' && generation.isPdfReady;
+    const isPhysicalComplete = orderType === 'physical' && machine.overlayPhase === 'print_submitted';
+    const isDigitalComplete = orderType !== 'physical' && machine.isPdfReady;
 
     if (
       checkoutSuccessRef.current &&
-      !generation.showUnlocking &&
+      !machine.showOverlay &&
       (isDigitalComplete || isPhysicalComplete) &&
-      preview.book?.paymentStatus === 'paid' &&
+      machine.book?.paymentStatus === 'paid' &&
       !hasShownConfirmationRef.current
     ) {
       // Small delay to ensure smooth transition from overlay
@@ -143,14 +129,14 @@ const PreviewStory: React.FC = () => {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [generation.showUnlocking, generation.isPdfReady, generation.unlockPhase, preview.book?.paymentStatus, orderType]);
+  }, [machine.showOverlay, machine.isPdfReady, machine.overlayPhase, machine.book?.paymentStatus, orderType]);
 
   // Physical book state and handler
   const [isPhysicalLoading, setIsPhysicalLoading] = useState(false);
   const [showPhysicalAuthModal, setShowPhysicalAuthModal] = useState(false);
 
   const handlePhysicalBookClick = async () => {
-    if (!preview.book) return;
+    if (!machine.book) return;
 
     // Physical orders REQUIRE login — user needs an account to track
     // shipping updates and access order history
@@ -161,7 +147,7 @@ const PreviewStory: React.FC = () => {
 
     setIsPhysicalLoading(true);
     try {
-      await buyPhysicalBook(preview.book.id);
+      await buyPhysicalBook(machine.book.id);
     } catch (error) {
       console.error('[Physical Book] Failed:', error);
       alert('Could not add physical book to cart. Please try again.');
@@ -170,7 +156,7 @@ const PreviewStory: React.FC = () => {
     }
   };
 
-  if (preview.loading) return (
+  if (machine.loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
         <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
@@ -179,7 +165,7 @@ const PreviewStory: React.FC = () => {
     </div>
   );
 
-  if (preview.isExpired) {
+  if (machine.isExpired) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-lg text-center border border-amber-100">
@@ -203,7 +189,7 @@ const PreviewStory: React.FC = () => {
     );
   }
 
-  if (!preview.book || preview.integrityError) {
+  if (!machine.book || machine.integrityError) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-lg text-center border border-red-50">
@@ -227,7 +213,7 @@ const PreviewStory: React.FC = () => {
     );
   }
 
-  const book = preview.book;
+  const book = machine.book;
   const themeData = THEMES.find(t => t.id === book.theme);
 
   return (
@@ -236,9 +222,9 @@ const PreviewStory: React.FC = () => {
       {/* Unlocking Overlay - shown after payment */}
       <UnlockingOverlay
         childName={book.childName}
-        isVisible={generation.showUnlocking}
-        progress={generation.unlockProgress}
-        phase={generation.unlockPhase}
+        isVisible={machine.showOverlay}
+        progress={machine.overlayProgress}
+        phase={machine.overlayPhase}
       />
 
       <div className="min-h-screen bg-gray-50 pb-28">
@@ -272,7 +258,7 @@ const PreviewStory: React.FC = () => {
               </h1>
               <p className="text-gray-500">
                 {/* Page count includes cover */}
-                {book.coverUrl ? (book.pages.length + 1) : book.pages.length} magical pages • {themeData?.icon || '📚'} {themeData?.title || book.theme.replace('storygift_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                {book.pages.length} magical pages • {themeData?.icon || '📚'} {themeData?.title || book.theme.replace('storygift_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
               </p>
             </div>
           </div>
@@ -337,7 +323,7 @@ const PreviewStory: React.FC = () => {
           ))}
 
           {/* End of story indicator (only show if complete) */}
-          {preview.generationPhase === 'complete' && (
+          {machine.generationPhase === 'complete' && (
             <div className="text-center py-8">
               <div className="text-4xl mb-4">✨</div>
               <p className="text-gray-400 font-heading text-xl">The End</p>
@@ -353,13 +339,16 @@ const PreviewStory: React.FC = () => {
           )}
 
           {/* LOCKED PAGES SECTION - Show when in preview phase */}
-          {preview.generationPhase === 'preview' && preview.lockedPages.length > 0 && book.paymentStatus === 'pending' && (
+          {machine.generationPhase === 'preview' && machine.lockedPages.length > 0 && book.paymentStatus === 'pending' && (
             <LockedPagesSection
-              lockedPages={preview.lockedPages}
+              lockedPages={machine.lockedPages}
               childName={book.childName}
               onUnlock={payment.handlePaymentClick}
+              onPhysical={handlePhysicalBookClick}
               price={`${SHOPIFY_CONFIG.CURRENCY_SYMBOL}${SHOPIFY_CONFIG.PRODUCT_PRICE}`}
+              physicalPrice={`${SHOPIFY_CONFIG.CURRENCY_SYMBOL}${SHOPIFY_CONFIG.PHYSICAL_PRICE || '29'}`}
               isLoading={payment.isPaymentLoading}
+              isPhysicalLoading={isPhysicalLoading}
             />
           )}
 
@@ -371,7 +360,7 @@ const PreviewStory: React.FC = () => {
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] z-50">
           <div className="max-w-3xl mx-auto px-4 py-4">
             {/* Pending payment: message above buttons */}
-            {!generation.pollingPayment && book.paymentStatus === 'pending' && (
+            {!pollingPayment && book.paymentStatus === 'pending' && (
               <p className="text-gray-600 font-medium text-center mb-3">
                 Love this story? Keep it forever.
               </p>
@@ -379,15 +368,15 @@ const PreviewStory: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               {/* Left - Message (non-pending states only) */}
               <div className="text-center sm:text-left">
-                {generation.pollingPayment ? (
+                {pollingPayment ? (
                   <div className="flex items-center space-x-2 text-purple-600">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span className="font-bold">Confirming payment...</span>
                   </div>
                 ) : book.paymentStatus === 'pending' ? (
                   null
-                ) : !generation.isPdfReady && generation.unlockPhase !== 'print_submitted' ? (
-                  generation.pdfPreparationTimeout ? (
+                ) : !machine.isPdfReady && machine.overlayPhase !== 'print_submitted' ? (
+                  machine.pdfPreparationTimeout ? (
                     <div className="flex flex-col items-center sm:items-start space-y-1">
                       <div className="flex items-center space-x-2 text-amber-600">
                         <AlertTriangle className="w-5 h-5" />
@@ -399,11 +388,11 @@ const PreviewStory: React.FC = () => {
                     <div className="flex items-center space-x-2 text-purple-600">
                       <Loader2 className="w-5 h-5 animate-spin" />
                       <span className="font-bold">
-                        {orderType === 'physical' && generation.unlockPhase === 'preparing_print'
+                        {orderType === 'physical' && machine.overlayPhase === 'preparing_print'
                           ? 'Preparing your book for print...'
-                          : orderType === 'physical' && generation.unlockPhase === 'submitting_print'
+                          : orderType === 'physical' && machine.overlayPhase === 'submitting_print'
                             ? 'Submitting to print facility...'
-                            : preview.generationPhase === 'complete'
+                            : machine.generationPhase === 'complete'
                               ? 'Preparing your download...'
                               : 'Creating your book...'}
                       </span>
@@ -429,7 +418,7 @@ const PreviewStory: React.FC = () => {
 
               {/* Right - Action Buttons */}
               <div className="flex items-center space-x-3 w-full sm:w-auto">
-                {generation.pollingPayment ? (
+                {pollingPayment ? (
                   /* Polling state - waiting for payment confirmation */
                   <button
                     disabled
@@ -488,7 +477,7 @@ const PreviewStory: React.FC = () => {
                   </div>
                 ) : (
                   /* Paid - Download Button or Retry Button */
-                  generation.pdfPreparationTimeout ? (
+                  machine.pdfPreparationTimeout ? (
                     <div className="flex-1 sm:flex-initial flex flex-col sm:flex-row gap-2">
                       <button
                         onClick={() => pdf.handleRegeneratePdf()}
@@ -503,7 +492,7 @@ const PreviewStory: React.FC = () => {
                         <span className="text-sm">{pdf.isGeneratingPDF ? 'Regenerating...' : 'Retry PDF'}</span>
                       </button>
                       <button
-                        onClick={() => generation.handleRetryPdfCheck(book.id)}
+                        onClick={() => machine.retryPdfCheck()}
                         className="bg-gray-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2"
                       >
                         <Loader2 className="w-5 h-5" />
@@ -516,18 +505,18 @@ const PreviewStory: React.FC = () => {
                       {orderType !== 'physical' && (
                         <button
                           onClick={pdf.handleDownloadClick}
-                          disabled={pdf.isGeneratingPDF || !generation.isPdfReady}
-                          className={`flex-1 sm:flex-initial text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center space-x-2 ${!generation.isPdfReady
+                          disabled={pdf.isGeneratingPDF || !machine.isPdfReady}
+                          className={`flex-1 sm:flex-initial text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center space-x-2 ${!machine.isPdfReady
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-xl hover:-translate-y-0.5'
                             }`}
                         >
-                          {pdf.isGeneratingPDF || !generation.isPdfReady ? (
+                          {pdf.isGeneratingPDF || !machine.isPdfReady ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
                           ) : (
                             <Download className="w-5 h-5" />
                           )}
-                          <span>{!generation.isPdfReady ? 'Preparing Your Book...' : 'Download Your Book'}</span>
+                          <span>{!machine.isPdfReady ? 'Preparing Your Book...' : 'Download Your Book'}</span>
                         </button>
                       )}
 
@@ -543,7 +532,7 @@ const PreviewStory: React.FC = () => {
                       )}
 
                       {/* Track Order button (secondary) — for digital orders that also have physical */}
-                      {orderType !== 'physical' && (generation.unlockPhase === 'print_submitted' || printOrder) && (
+                      {orderType !== 'physical' && (machine.overlayPhase === 'print_submitted' || printOrder) && (
                         <Link
                           to="/my-creations?tab=ordered"
                           className="flex-shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2"

@@ -8,7 +8,7 @@ import {
     trackPdfDownloadFailed,
     trackFunnelStep,
 } from '../src/services/analytics';
-import type { GenerationPhase } from './usePreviewLoader';
+import type { GenerationPhase } from './usePreviewStateMachine';
 import { showToast } from '../src/components/Toast';
 
 interface UsePdfDownloadReturn {
