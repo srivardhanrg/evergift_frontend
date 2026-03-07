@@ -646,9 +646,7 @@ export function useGenerationPolling(
                 }
 
                 if (previewData.generation_phase === 'pdf_failed') {
-                    console.log('⚠️ PDF creation failed — rebuilding book with all pages and showing retry option');
-                    // CRITICAL: Must rebuild book so pages 6-10 are visible even though PDF failed
-                    await fetchAndRebuildBook(id);
+                    console.log('⚠️ PDF creation failed — showing retry option');
                     setGenerationPhase('pdf_failed');
                     setShowUnlocking(false);
                     setPdfPreparationTimeout(true);
@@ -810,16 +808,6 @@ export function useGenerationPolling(
                             }
                         } catch (e) {
                             console.warn('[Polling] Could not confirm order_type from DB at payment — using previously resolved value:', confirmedIsPhysical ? 'physical' : 'digital');
-                        }
-
-                        // SAFETY: Immediately rebuild book with whatever pages exist now.
-                        // If backend already generated pages 6-10 while user was in Shopify checkout,
-                        // this fetches them so they appear as soon as the overlay dismisses.
-                        try {
-                            await fetchAndRebuildBook(id);
-                            console.log('📚 Book rebuilt after payment confirmation (safety fetch)');
-                        } catch (e) {
-                            console.warn('📚 Safety fetch after payment failed (pollGenerationComplete will retry):', e);
                         }
 
                         // Route through pollGenerationComplete which handles both
