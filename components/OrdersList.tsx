@@ -5,7 +5,7 @@
  * Used in the "Ordered" tab of MyCreations page.
  *
  * Shows:
- * - Physical book orders with shipping status and tracking
+ * - Physical book orders with full status tracking (stepper, timeline, tracking)
  * - Digital purchases with download links
  */
 
@@ -21,6 +21,9 @@ import {
     BookOpen,
     AlertCircle,
     Loader2,
+    Printer,
+    Home,
+    MapPin,
 } from 'lucide-react';
 import { getPrintOrderByPreview } from '../src/api/client';
 import type { CreationItem, PrintOrderStatus } from '../src/api/client';
@@ -147,28 +150,98 @@ interface OrderCardProps {
     order: OrderWithPrintStatus;
 }
 
-// Progress config for physical orders
-const PROGRESS_CONFIG: Record<string, { percent: number; step: string; message: string }> = {
-    pending: { percent: 20, step: '1/4', message: 'Order received, preparing files' },
-    submitted: { percent: 35, step: '2/4', message: 'Sent to print facility' },
-    accepted: { percent: 50, step: '2/4', message: 'Print facility accepted order' },
-    in_production: { percent: 70, step: '3/4', message: 'Your book is being printed' },
-    shipped: { percent: 90, step: '4/4', message: 'On the way to you!' },
-    delivered: { percent: 100, step: '4/4', message: 'Delivered!' },
+// ============================================================
+// STATUS CONFIG — Per-status headline + sub-message
+// ============================================================
+const STATUS_MESSAGES: Record<string, { headline: string; subMessage: string }> = {
+    pending: {
+        headline: '🎉 Order confirmed! Your book is in the print queue.',
+        subMessage: 'Printing typically begins within 1 hour',
+    },
+    submitted: {
+        headline: '🎉 Order confirmed! Your book has been sent to print.',
+        subMessage: 'Printing typically begins within a few hours',
+    },
+    accepted: {
+        headline: '✅ Your book is accepted and ready for printing.',
+        subMessage: "You'll be notified once printing starts",
+    },
+    in_production: {
+        headline: '🖨️ Your book is being printed right now!',
+        subMessage: 'This typically takes 2–3 business days',
+    },
+    shipped: {
+        headline: '🚀 Your book is on its way!',
+        subMessage: 'Check tracking below for the latest updates',
+    },
+    delivered: {
+        headline: '🎁 Delivered!',
+        subMessage: 'Thank you for choosing MagicTales ❤️',
+    },
+    failed: {
+        headline: '⚠️ We hit a snag with your print order.',
+        subMessage: "Our team is looking into it and will contact you shortly",
+    },
+    cancelled: {
+        headline: 'Your order has been cancelled.',
+        subMessage: 'Please contact support if you have questions',
+    },
+    rejected: {
+        headline: '⚠️ There was an issue with your print order.',
+        subMessage: "Our team is looking into it and will contact you shortly",
+    },
 };
+
+// ============================================================
+// STEPPER CONFIG — 4 logical steps shown to user
+// ============================================================
+const STEPPER_STEPS = [
+    { label: 'Order Placed', icon: Package },
+    { label: 'Printing', icon: Printer },
+    { label: 'Shipped', icon: Truck },
+    { label: 'Delivered', icon: Home },
+];
+
+/** Returns which step index (0-based) is currently active/complete */
+const getActiveStep = (status: string): number => {
+    if (status === 'delivered') return 3;
+    if (status === 'shipped') return 2;
+    if (status === 'in_production') return 1;
+    // pending, submitted, accepted = step 0 done, step 1 next
+    return 0;
+};
+
+/** Error statuses — hide stepper, show alert instead */
+const ERROR_STATUSES = ['failed', 'cancelled', 'rejected'];
 
 const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
     const hasPhysicalOrder = order.printOrder !== null;
-    const printStatus = order.printOrder?.lulu_status;
+    const printStatus = order.printOrder?.lulu_status || 'pending';
 
     // Determine order type and status
     const isShipped = printStatus === 'shipped';
     const isDelivered = printStatus === 'delivered';
     const isInProduction = printStatus === 'in_production';
-    const isFailed = printStatus === 'failed' || printStatus === 'rejected' || printStatus === 'cancelled';
+    const isFailed = ERROR_STATUSES.includes(printStatus);
+    const isPreShip = ['pending', 'submitted', 'accepted', 'in_production'].includes(printStatus);
 
-    // Get progress info for physical orders
-    const progressInfo = printStatus ? PROGRESS_CONFIG[printStatus] : null;
+    // Get status messages and stepper info
+    const messages = STATUS_MESSAGES[printStatus] || STATUS_MESSAGES.submitted;
+    const activeStep = getActiveStep(printStatus);
+
+    // Format date helper
+    const formatDate = (dateStr: string | null | undefined): string => {
+        if (!dateStr) return '';
+        try {
+            return new Date(dateStr).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+            });
+        } catch {
+            return dateStr;
+        }
+    };
 
     const getStatusBadge = () => {
         if (!hasPhysicalOrder) {
@@ -236,6 +309,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+            {/* Card Header - Book Info */}
             <div className="p-4 sm:p-5">
                 <div className="flex gap-4">
                     {/* Book Cover Thumbnail */}
@@ -258,7 +332,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
 
                     {/* Order Details */}
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-start justify-between gap-2 mb-1">
                             <Link
                                 to={`/preview/${order.preview_id}`}
                                 className="font-heading text-lg text-gray-900 hover:text-primary transition-colors truncate"
@@ -268,12 +342,13 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
                             {getStatusBadge()}
                         </div>
 
+                        {/* Book spec for physical orders */}
+                        {hasPhysicalOrder && (
+                            <p className="text-xs text-gray-400 mb-2">8.5 × 8.5" Premium Glossy · 10 pages</p>
+                        )}
+
                         <p className="text-sm text-gray-500 mb-3">
-                            Ordered {new Date(order.created_at).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                            })}
+                            Ordered {formatDate(order.created_at)}
                         </p>
 
                         {/* Action Buttons */}
@@ -288,12 +363,12 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
                             </Link>
 
                             {/* Track button for shipped physical orders */}
-                            {isShipped && order.printOrder?.tracking_number && (
+                            {(isShipped || isDelivered) && order.printOrder?.tracking_url && (
                                 <a
                                     href={getTrackingUrl() || '#'}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-semibold hover:bg-emerald-600 transition-colors"
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600 transition-colors"
                                 >
                                     <Truck className="w-4 h-4" />
                                     Track Package
@@ -301,68 +376,186 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
                                 </a>
                             )}
                         </div>
-
-                        {/* Progress Bar for physical orders (not shipped/delivered/failed) */}
-                        {hasPhysicalOrder && progressInfo && !isShipped && !isDelivered && !isFailed && (
-                            <div className="mt-4 pt-3 border-t border-gray-100">
-                                <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-                                    <span className="font-medium">{progressInfo.message}</span>
-                                    <span>Step {progressInfo.step}</span>
-                                </div>
-                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-primary to-purple-500 rounded-full transition-all duration-500"
-                                        style={{ width: `${progressInfo.percent}%` }}
-                                    />
-                                </div>
-                                <p className="text-xs text-gray-400 mt-2">
-                                    Printing typically takes 3-5 business days
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Tracking Details for shipped orders */}
-                        {isShipped && order.printOrder && (
-                            <div className="mt-3 pt-3 border-t border-gray-100">
-                                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
-                                    {order.printOrder.carrier && (
-                                        <span className="text-gray-600">
-                                            <span className="text-gray-400">Carrier:</span> {order.printOrder.carrier}
-                                        </span>
-                                    )}
-                                    {order.printOrder.tracking_number && (
-                                        <span className="text-gray-600">
-                                            <span className="text-gray-400">Tracking:</span> {order.printOrder.tracking_number}
-                                        </span>
-                                    )}
-                                    {order.printOrder.estimated_delivery && (
-                                        <span className="text-gray-600">
-                                            <span className="text-gray-400">Est. delivery:</span>{' '}
-                                            {new Date(order.printOrder.estimated_delivery).toLocaleDateString('en-US', {
-                                                month: 'short',
-                                                day: 'numeric',
-                                            })}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Error message for failed orders */}
-                        {isFailed && (
-                            <div className="mt-3 p-3 bg-red-50 rounded-lg">
-                                <p className="text-sm text-red-700">
-                                    There was an issue with your print order. Please contact{' '}
-                                    <a href="mailto:support@storygift.in" className="underline font-medium">
-                                        support@storygift.in
-                                    </a>{' '}
-                                    for assistance.
-                                </p>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
+
+            {/* Physical Order Details Section */}
+            {hasPhysicalOrder && (
+                <div className="border-t border-gray-100 px-4 sm:px-5 py-4 bg-gradient-to-b from-gray-50/50 to-white">
+                    {/* Error state */}
+                    {isFailed ? (
+                        <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex gap-3">
+                            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-semibold text-red-700 text-sm">{messages.headline}</p>
+                                <p className="text-xs text-red-600 mt-1">{messages.subMessage}</p>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    Email us at <span className="font-medium">support@storygift.in</span>
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Status message */}
+                            <div className="mb-4">
+                                <p className="font-semibold text-gray-800 text-sm leading-snug">
+                                    {isDelivered
+                                        ? `🎁 Delivered! We hope ${order.child_name} loves every page.`
+                                        : messages.headline}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">{messages.subMessage}</p>
+                            </div>
+
+                            {/* 4-Step Visual Stepper */}
+                            <div className="mb-4">
+                                <div className="flex items-start justify-between relative">
+                                    {/* Connecting line behind steps */}
+                                    <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 z-0" />
+                                    <div
+                                        className="absolute top-4 left-0 h-0.5 bg-purple-500 z-0 transition-all duration-700"
+                                        style={{ width: `${(activeStep / 3) * 100}%` }}
+                                    />
+
+                                    {STEPPER_STEPS.map((step, i) => {
+                                        const Icon = step.icon;
+                                        const isDone = i < activeStep;
+                                        const isActive = i === activeStep;
+                                        const isPending = i > activeStep;
+
+                                        return (
+                                            <div key={i} className="flex flex-col items-center relative z-10" style={{ width: '25%' }}>
+                                                {/* Step circle */}
+                                                <div className={`
+                                                    w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300
+                                                    ${isDone ? 'bg-purple-500 border-purple-500' : ''}
+                                                    ${isActive && printStatus === 'in_production'
+                                                        ? 'bg-purple-500 border-purple-500 animate-pulse'
+                                                        : isActive
+                                                            ? 'bg-purple-500 border-purple-500'
+                                                            : ''}
+                                                    ${isPending ? 'bg-white border-gray-200' : ''}
+                                                `}>
+                                                    {isDone ? (
+                                                        <CheckCircle className="w-4 h-4 text-white" />
+                                                    ) : (
+                                                        <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-300'}`} />
+                                                    )}
+                                                </div>
+
+                                                {/* Step label */}
+                                                <span className={`
+                                                    text-xs mt-2 text-center leading-tight font-medium
+                                                    ${isDone || isActive ? 'text-purple-700' : 'text-gray-400'}
+                                                `}>
+                                                    {step.label}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Tracking CTA for shipped/delivered */}
+                            {(isShipped || isDelivered) && (
+                                <div className="space-y-3 mb-4">
+                                    {order.printOrder?.tracking_url ? (
+                                        <a
+                                            href={order.printOrder.tracking_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center justify-center gap-2 w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-sm hover:shadow-md"
+                                        >
+                                            <Truck className="w-4 h-4" />
+                                            <span>Track Your Package</span>
+                                            <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                                        </a>
+                                    ) : (
+                                        <div className="flex items-center justify-center gap-2 w-full bg-gray-100 text-gray-400 font-medium py-3 px-4 rounded-xl text-sm">
+                                            <Clock className="w-4 h-4" />
+                                            <span>Tracking info coming soon</span>
+                                        </div>
+                                    )}
+
+                                    {/* Tracking number + carrier */}
+                                    {order.printOrder?.tracking_number && (
+                                        <div className="bg-gray-50 rounded-lg px-4 py-3 flex flex-col gap-1">
+                                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                <MapPin className="w-3.5 h-3.5" />
+                                                <span>Tracking Number:
+                                                    <span className="font-mono font-semibold text-gray-700 ml-1">
+                                                        {order.printOrder.tracking_number}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            {order.printOrder.carrier && (
+                                                <p className="text-xs text-gray-500 pl-5">
+                                                    Carrier: <span className="font-medium text-gray-700">{order.printOrder.carrier}</span>
+                                                </p>
+                                            )}
+                                            {order.printOrder.shipped_at && (
+                                                <p className="text-xs text-gray-500 pl-5">
+                                                    Shipped on <span className="font-medium text-gray-700">{formatDate(order.printOrder.shipped_at)}</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* "Email coming" message — pre-ship */}
+                            {isPreShip && !isInProduction && (
+                                <div className="flex gap-2.5 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-4">
+                                    <Truck className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                                    <p className="text-xs text-blue-700 leading-relaxed">
+                                        We'll email you a tracking link the moment your book ships.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Timeline / Delivery info */}
+                            {isDelivered && order.printOrder?.delivered_at ? (
+                                <div className="flex items-center gap-2 text-sm text-green-700 font-medium">
+                                    <CheckCircle className="w-4 h-4" />
+                                    <span>Delivered on {formatDate(order.printOrder.delivered_at)}</span>
+                                </div>
+                            ) : isShipped && order.printOrder?.estimated_delivery ? (
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <Clock className="w-4 h-4 text-gray-400" />
+                                    <span>Estimated delivery: <span className="font-semibold text-gray-800">{formatDate(order.printOrder.estimated_delivery)}</span></span>
+                                </div>
+                            ) : isPreShip ? (
+                                <div className="bg-gray-50 rounded-xl px-4 py-3 space-y-1.5">
+                                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">📅 Typical Timeline</p>
+                                    <div className="space-y-1 text-xs text-gray-500">
+                                        <div className="flex justify-between">
+                                            <span>Printing</span>
+                                            <span className="font-medium text-gray-700">2–3 business days</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Packing & dispatch</span>
+                                            <span className="font-medium text-gray-700">1 business day</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Delivery after shipping</span>
+                                            <span className="font-medium text-gray-700">5–7 business days</span>
+                                        </div>
+                                        <div className="border-t border-gray-200 pt-1.5 flex justify-between font-semibold text-gray-700">
+                                            <span>Total</span>
+                                            <span>~10–12 days from order</span>
+                                        </div>
+                                    </div>
+                                    {order.printOrder?.created_at && (
+                                        <p className="text-xs text-gray-400 pt-1">
+                                            Order placed: {formatDate(order.printOrder.created_at)}
+                                        </p>
+                                    )}
+                                </div>
+                            ) : null}
+                        </>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

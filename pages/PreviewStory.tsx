@@ -19,7 +19,7 @@ import AuthModal from '../components/AuthModal';
 import OrderConfirmationModal from '../components/OrderConfirmationModal';
 import { LockedPagesSection } from '../components/LockedPageCard';
 import UnlockingOverlay from '../components/UnlockingOverlay';
-import PrintOrderStatusCard from '../components/PrintOrderStatusCard';
+// PrintOrderStatusCard moved to MyCreations "Ordered" tab
 // Analytics tracking is now handled by usePreviewStateMachine internally
 import { usePreviewStateMachine } from '../hooks/usePreviewStateMachine';
 import { usePaymentFlow } from '../hooks/usePaymentFlow';
@@ -328,14 +328,6 @@ const PreviewStory: React.FC = () => {
               <div className="text-4xl mb-4">✨</div>
               <p className="text-gray-400 font-heading text-xl">The End</p>
             </div>
-          )}
-
-          {/* Print Order Tracking Card - uses new component */}
-          {printOrder && printOrder.lulu_status && (
-            <PrintOrderStatusCard
-              printOrder={printOrder}
-              childName={book.childName}
-            />
           )}
 
           {/* LOCKED PAGES SECTION - Show when in preview phase */}
