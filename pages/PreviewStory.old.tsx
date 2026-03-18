@@ -13,12 +13,11 @@ import {
 } from 'lucide-react';
 import { SHOPIFY_CONFIG, buyPhysicalBook, getPrintOrderByPreview, isShopifyCustomerLoggedIn } from '../src/api/client';
 import type { PrintOrderStatus } from '../src/api/client';
-import CoverPageCard from '../components/CoverPageCard';
-import OptimizedImage from '../components/OptimizedImage';
+import { BookViewer } from '../components/BookViewer';
 import AuthModal from '../components/AuthModal';
 import OrderConfirmationModal from '../components/OrderConfirmationModal';
-import { LockedPagesSection } from '../components/LockedPageCard';
 import UnlockingOverlay from '../components/UnlockingOverlay';
+import '../styles/bookViewer.css';
 // PrintOrderStatusCard moved to MyCreations "Ordered" tab
 // Analytics tracking is now handled by usePreviewStateMachine internally
 import { usePreviewStateMachine } from '../hooks/usePreviewStateMachine';
@@ -265,87 +264,22 @@ const PreviewStory: React.FC = () => {
         </div>
 
 
-        {/* Vertical Page Cards Feed - Larger size for impactful preview */}
-        <div className="w-full max-w-md mx-auto px-3 sm:px-4 space-y-5">
-          {/* Cover Page - displayed first with title/starring overlays */}
-          {book.coverUrl && (
-            <CoverPageCard
-              imageUrl={book.coverUrl}
-              storyTitle={book.storyTitle || `${book.childName}'s Adventure`}
-              childName={book.childName}
-              isPaid={book.paymentStatus === 'paid'}
-            />
-          )}
-
-          {/* Story Pages */}
-          {book.pages.map((page, index) => (
-            <div
-              key={page.pageNumber}
-              className="relative"
-            >
-              {/* Watermark overlay for unpaid */}
-              {book.paymentStatus === 'pending' && (
-                <div className="absolute inset-0 z-10 pointer-events-none">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-4xl font-black text-gray-200 opacity-30 rotate-[-15deg] select-none">
-                      PREVIEW
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Page Card - 80% image, 20% text */}
-              <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                {/* Image Section - wider ratio for 80% of card */}
-                <div className="relative">
-                  <OptimizedImage
-                    src={page.imageUrl}
-                    alt={`Page ${page.pageNumber} illustration`}
-                    aspectRatio="5/4"
-                  />
-                  {/* Page number badge */}
-                  <div className="absolute top-3 left-3 bg-black/60 text-white text-xs font-bold px-2.5 py-1 rounded-full z-10">
-                    {page.pageNumber}
-                  </div>
-                </div>
-
-                {/* Text Section - Fixed height, 2 lines max with truncation */}
-                <div className="px-4 py-3 bg-gradient-to-b from-white to-gray-50/50 border-t border-gray-100">
-                  <p className="text-sm leading-relaxed text-gray-700 text-center line-clamp-2">
-                    {page.text}
-                  </p>
-                  {page.text && page.text.length > 120 && (
-                    <p className="text-xs text-gray-400 text-center mt-1 italic">...full story in your book</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {/* End of story indicator (only show if complete) */}
-          {machine.generationPhase === 'complete' && (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-4">✨</div>
-              <p className="text-gray-400 font-heading text-xl">The End</p>
-            </div>
-          )}
-
-          {/* LOCKED PAGES SECTION - Show when in preview phase */}
-          {machine.generationPhase === 'preview' && machine.lockedPages.length > 0 && book.paymentStatus === 'pending' && (
-            <LockedPagesSection
-              lockedPages={machine.lockedPages}
-              childName={book.childName}
-              onUnlock={payment.handlePaymentClick}
-              onPhysical={handlePhysicalBookClick}
-              price={`${SHOPIFY_CONFIG.CURRENCY_SYMBOL}${SHOPIFY_CONFIG.PRODUCT_PRICE}`}
-              physicalPrice={`${SHOPIFY_CONFIG.CURRENCY_SYMBOL}${SHOPIFY_CONFIG.PHYSICAL_PRICE || '29'}`}
-              isLoading={payment.isPaymentLoading}
-              isPhysicalLoading={isPhysicalLoading}
-            />
-          )}
-
-          {/* Generating remaining pages - now uses UnlockingOverlay instead */}
-          {/* Old inline message removed - UnlockingOverlay provides the UI */}
+        {/* Book Viewer - 24-page flip experience */}
+        <div className="w-full mx-auto">
+          <BookViewer
+            previewId={book.id}
+            childName={book.childName}
+            theme={book.theme}
+            coverUrl={book.coverUrl || ''}
+            generatedPages={book.pages.map(p => ({
+              pageNumber: p.pageNumber,
+              imageUrl: p.imageUrl || '',
+            }))}
+            isPaid={book.paymentStatus === 'paid'}
+            onPageChange={(page) => {
+              console.log(`Viewing page ${page + 1}`);
+            }}
+          />
         </div>
 
         {/* Sticky Action Bar */}

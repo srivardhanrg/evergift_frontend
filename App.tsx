@@ -1,14 +1,16 @@
 import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import AnnouncementBar from './components/AnnouncementBar';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './src/components/Toast';
 import Home from './pages/Home';
 import CreateStory from './pages/CreateStory';
-import PreviewStory from './pages/PreviewStory';
+import PreviewStoryV2 from './pages/PreviewStoryV2';
 import GenerationFeed from './pages/GenerationFeed';
 import About from './pages/About';
+import ContactUs from './pages/ContactUs';
 import MyCreations from './pages/MyCreations';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
@@ -123,6 +125,12 @@ const PostLoginRedirectHandler: React.FC = () => {
   return null;
 };
 
+const AnnouncementBarWrapper: React.FC = () => {
+  const { pathname } = useLocation();
+  if (pathname !== '/') return null;
+  return <AnnouncementBar />;
+};
+
 const App: React.FC = () => {
   // Initialize analytics on app load
   useEffect(() => {
@@ -165,12 +173,14 @@ const App: React.FC = () => {
         <PostLoginRedirectHandler />
         <ErrorBoundary>
           <div className="flex flex-col min-h-screen">
+            <AnnouncementBarWrapper />
             <Navbar />
             <main className="flex-grow">
               <ErrorBoundary>
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<ContactUs />} />
                   {/* Auth route - always redirect to home (Shopify handles auth) */}
                   <Route path="/auth" element={<Navigate to="/" replace />} />
                   {/* My Creations */}
@@ -179,7 +189,7 @@ const App: React.FC = () => {
                   <Route path="/dashboard" element={<Navigate to="/my-creations" replace />} />
                   <Route path="/create" element={<CreateStory />} />
                   <Route path="/generating/:jobId" element={<GenerationFeed />} />
-                  <Route path="/preview/:id" element={<PreviewStory />} />
+                  <Route path="/preview/:id" element={<PreviewStoryV2 />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/terms-of-service" element={<TermsOfService />} />
                   <Route path="*" element={<Navigate to="/" />} />
