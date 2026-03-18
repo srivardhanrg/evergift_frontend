@@ -189,7 +189,7 @@ function mapToUnlockPhase(phase: GenerationPhase): UnlockPhase {
 }
 
 /**
- * Build Storybook object from API preview data
+ * Build Storybook object from API preview data (V2 format with book_structure)
  */
 function buildBookFromPreviewData(previewData: any, paymentStatus: 'pending' | 'paid' = 'paid'): Storybook {
     const coverUrl = previewData.cover_url ||
@@ -216,7 +216,14 @@ function buildBookFromPreviewData(previewData: any, paymentStatus: 'pending' | '
             imageUrl: p.image_url
         })),
         paymentStatus,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+
+        // V2 26-page book structure fields
+        bookStructure: previewData.book_structure,
+        fillerPagesProcessed: previewData.filler_pages_processed,
+        storyTexts: previewData.story_texts,
+        generationPhase: previewData.generation_phase,
+        currentGeneratingPage: previewData.current_generating_page
     };
 }
 
@@ -366,7 +373,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
     const pollGeneration = useCallback(async (isPhysical: boolean): Promise<GenerationPhase | null> => {
         if (!previewId) return null;
 
-        const maxAttempts = 60; // 2 minutes
+        const maxAttempts = 120; // 4 minutes (5 pages @ ~30-40s each)
         console.log(`📖 [StateMachine] Starting generation polling (isPhysical: ${isPhysical})...`);
 
         for (let i = 0; i < maxAttempts; i++) {
@@ -376,7 +383,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
             }
 
             try {
-                const previewData = await api.getPreview(previewId);
+                const previewData = await api.getPreviewV2(previewId);
 
                 if (!isMountedRef.current || abortRef.current) return null;
 
@@ -449,7 +456,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
             setOverlayProgress(5 + (i * 1.7));
 
             try {
-                const previewData = await api.getPreview(previewId);
+                const previewData = await api.getPreviewV2(previewId);
 
                 if (!isMountedRef.current || abortRef.current) {
                     return { confirmed: false, isPhysical: false };
@@ -527,7 +534,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
         // Fetch initial preview data
         let previewData: any;
         try {
-            previewData = await api.getPreview(previewId);
+            previewData = await api.getPreviewV2(previewId);
 
             if (!isMountedRef.current || abortRef.current) return;
 
@@ -614,7 +621,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
 
                 if (fullStatus.is_complete && !isPhysical) {
                     console.log('⚡ [StateMachine] Fast path: Already complete');
-                    const freshData = await api.getPreview(previewId);
+                    const freshData = await api.getPreviewV2(previewId);
                     setBook(buildBookFromPreviewData(freshData, 'paid'));
                     setGenerationPhase('complete');
                     setIsPdfReady(true);
@@ -625,7 +632,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
 
                 if (fullStatus.generation_phase === 'print_submitted' && isPhysical) {
                     console.log('⚡ [StateMachine] Fast path: Physical order already submitted');
-                    const freshData = await api.getPreview(previewId);
+                    const freshData = await api.getPreviewV2(previewId);
                     setBook(buildBookFromPreviewData(freshData, 'paid'));
                     setGenerationPhase('print_submitted');
                     setShowOverlay(false);
@@ -685,7 +692,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
                 if (!isMountedRef.current || abortRef.current) return;
 
                 // Ensure we have final book state
-                const freshData = await api.getPreview(previewId);
+                const freshData = await api.getPreviewV2(previewId);
                 setBook(buildBookFromPreviewData(freshData, 'paid'));
 
                 if (printResult === 'submitted') {
@@ -723,7 +730,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
                 if (!isMountedRef.current || abortRef.current) return;
 
                 // Ensure we have final book state
-                const freshData = await api.getPreview(previewId);
+                const freshData = await api.getPreviewV2(previewId);
                 setBook(buildBookFromPreviewData(freshData, 'paid'));
 
                 if (pdfReady) {
@@ -773,7 +780,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
 
             // If pages are already complete, update book first
             if (phase !== 'generating_full') {
-                const freshData = await api.getPreview(previewId);
+                const freshData = await api.getPreviewV2(previewId);
                 setBook(buildBookFromPreviewData(freshData, 'paid'));
             }
 
@@ -785,7 +792,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
 
                 if (!isMountedRef.current || abortRef.current) return;
 
-                const freshData = await api.getPreview(previewId);
+                const freshData = await api.getPreviewV2(previewId);
                 setBook(buildBookFromPreviewData(freshData, 'paid'));
 
                 if (printResult === 'submitted') {
@@ -807,7 +814,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
 
                 if (!isMountedRef.current || abortRef.current) return;
 
-                const freshData = await api.getPreview(previewId);
+                const freshData = await api.getPreviewV2(previewId);
                 setBook(buildBookFromPreviewData(freshData, 'paid'));
 
                 if (pdfReady) {
@@ -836,7 +843,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
 
                     if (!isMountedRef.current || abortRef.current) return;
 
-                    const freshData = await api.getPreview(previewId);
+                    const freshData = await api.getPreviewV2(previewId);
                     setBook(buildBookFromPreviewData(freshData, 'paid'));
 
                     setShowOverlay(false);
@@ -853,7 +860,7 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
 
                     if (!isMountedRef.current || abortRef.current) return;
 
-                    const freshData = await api.getPreview(previewId);
+                    const freshData = await api.getPreviewV2(previewId);
                     setBook(buildBookFromPreviewData(freshData, 'paid'));
 
                     if (pdfReady) {

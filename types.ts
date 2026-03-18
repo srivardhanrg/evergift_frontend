@@ -49,10 +49,17 @@ export interface Storybook {
   theme: ThemeType;
   coverUrl?: string; // Cover page image URL
   storyTitle?: string; // Story title for cover display
-  pages: StoryPage[];
+  pages: StoryPage[]; // Legacy V1 pages
   paymentStatus: 'pending' | 'paid';
   createdAt: string;
   pdfUrl?: string; // PDF-only mode: URL to the stored PDF
+
+  // V2 26-page book structure fields
+  bookStructure?: Record<string, any>; // Raw book_structure from backend
+  fillerPagesProcessed?: Record<string, any>; // Processed filler pages
+  storyTexts?: Record<string, string>; // Story texts for text overlay pages
+  generationPhase?: string; // Current generation phase
+  currentGeneratingPage?: number | null; // Page being generated (for incremental updates)
 }
 
 export interface User {
