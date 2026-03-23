@@ -17,6 +17,7 @@ import BookViewerV2 from '../components/BookViewer/BookViewerV2';
 import AuthModal from '../components/AuthModal';
 import OrderConfirmationModal from '../components/OrderConfirmationModal';
 import UnlockingOverlay from '../components/UnlockingOverlay';
+import CoverSelectionModal from '../components/CoverSelectionModal';
 import { usePreviewStateMachine } from '../hooks/usePreviewStateMachine';
 import { usePaymentFlow } from '../hooks/usePaymentFlow';
 import { usePdfDownload } from '../hooks/usePdfDownload';
@@ -122,6 +123,7 @@ const PreviewStoryV2: React.FC = () => {
   // Physical book state and handler
   const [isPhysicalLoading, setIsPhysicalLoading] = useState(false);
   const [showPhysicalAuthModal, setShowPhysicalAuthModal] = useState(false);
+  const [showCoverModal, setShowCoverModal] = useState(false);
 
   const handlePhysicalBookClick = async () => {
     if (!machine.book) return;
@@ -131,13 +133,21 @@ const PreviewStoryV2: React.FC = () => {
       return;
     }
 
+    // Open the cover selection modal
+    setShowCoverModal(true);
+  };
+
+  const handleCoverSelection = async (coverType: 'softcover' | 'hardcover') => {
+    if (!machine.book) return;
+
     setIsPhysicalLoading(true);
+    setShowCoverModal(false);
+
     try {
-      await buyPhysicalBook(machine.book.id);
+      await buyPhysicalBook(machine.book.id, coverType);
     } catch (error) {
       console.error('[Physical Book] Failed:', error);
       alert('Could not add physical book to cart. Please try again.');
-    } finally {
       setIsPhysicalLoading(false);
     }
   };
@@ -231,8 +241,8 @@ const PreviewStoryV2: React.FC = () => {
       />
 
       <div className="min-h-screen bg-gray-50 pb-28">
-        {/* Hero Header */}
-        <div className="bg-white border-b border-gray-100 py-8 px-4 mb-8">
+        {/* Hero Header - Reduced Spacing */}
+        <div className="bg-white border-b border-gray-100 py-4 px-4 mb-4">
           <div className="max-w-7xl mx-auto relative">
 
             {/* Desktop Back Button - Absolute Top Left */}
@@ -244,7 +254,7 @@ const PreviewStoryV2: React.FC = () => {
             </div>
 
             {/* Mobile Back Button - Stacked */}
-            <div id="sg-mobile-back" className="mb-6 flex justify-start">
+            <div id="sg-mobile-back" className="mb-3 flex justify-start">
               <Link to="/" className="inline-flex items-center text-gray-500 hover:text-primary transition-colors">
                 <ArrowLeft className="w-4 h-4 mr-1.5" />
                 <span className="font-medium text-sm">Create Another Story</span>
@@ -252,16 +262,12 @@ const PreviewStoryV2: React.FC = () => {
             </div>
 
             <div className="max-w-3xl mx-auto text-center">
-              <div className="flex items-center justify-center space-x-2 text-primary mb-2">
-                <Sparkles className="w-5 h-5 fill-current" />
-                <span className="text-xs font-black uppercase tracking-widest">Your Story is Ready</span>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-heading text-slate-900 mb-2">
+              <h1 className="text-2xl md:text-3xl font-heading text-slate-900 mb-1">
                 {book.childName}'s <span className="text-primary">{themeData?.title || book.theme.replace('storygift_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span> Adventure
               </h1>
-              <p className="text-gray-500">
-                {/* V2: 26 magical pages */}
-                {bookStructure.totalPages} magical pages • {themeData?.icon || '📚'} {themeData?.title || book.theme.replace('storygift_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              <p className="text-gray-500 text-sm">
+                {/* V2: 24 magical pages (excluding front/back covers) */}
+                24 magical pages • {themeData?.icon || '📚'} {themeData?.title || book.theme.replace('storygift_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
               </p>
             </div>
           </div>
@@ -284,13 +290,13 @@ const PreviewStoryV2: React.FC = () => {
           />
         </div>
 
-        {/* Sticky Action Bar */}
+        {/* Sticky Action Bar - Reduced Padding */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] z-50">
-          <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="max-w-3xl mx-auto px-4 py-3">
             {/* Pending payment: message above buttons */}
             {!pollingPayment && book.paymentStatus === 'pending' && (
-              <p className="text-gray-600 font-medium text-center mb-3">
-                Love this story? Keep it forever.
+              <p className="text-gray-700 font-semibold text-center mb-3 text-base">
+                Purchase to unlock full storybook
               </p>
             )}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -493,6 +499,14 @@ const PreviewStoryV2: React.FC = () => {
           context="default"
           title="📦 Sign In to Order Physical Book"
           subtitle="You'll need an account to track your order and receive shipping updates."
+        />
+
+        {/* Cover Selection Modal */}
+        <CoverSelectionModal
+          isOpen={showCoverModal}
+          onClose={() => setShowCoverModal(false)}
+          onSelectCover={handleCoverSelection}
+          previewId={machine.book?.id || ''}
         />
 
         {/* Order Confirmation Modal */}

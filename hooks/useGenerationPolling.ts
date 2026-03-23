@@ -81,6 +81,8 @@ export function useGenerationPolling(
     const pollingAbortRef = useRef(false);
     // Prevents verifyAndPoll from starting when startPaymentPolling is already active
     const activePollingRef = useRef(false);
+    // Fallback interval ref — safety net when primary polling chain exits
+    const fallbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // ==========================================================================
     // CRITICAL HELPER: Fetch full preview data and rebuild book with all pages
@@ -131,6 +133,37 @@ export function useGenerationPolling(
         return previewData;
     };
 
+    // Helper: rebuild book state from any preview API response
+    // Used by incremental updates AND completion handlers to avoid code duplication
+    const rebuildBookFromPreviewData = (previewData: any) => {
+        const coverUrl = previewData.cover_url ||
+            previewData.preview_pages.find((p: any) => p.page_number === 0 || p.is_cover)?.image_url;
+        const storyTitle = previewData.story_title || `${previewData.child_name}'s Adventure`;
+        const storyPages = previewData.preview_pages.filter(
+            (p: any) => p.page_number > 0 && !p.is_cover
+        );
+        if (storyPages.length === 0) return; // Nothing to update
+        setBook({
+            id: previewData.preview_id,
+            userId: 'current-user',
+            childName: previewData.child_name,
+            childAge: 5,
+            childGender: 'Adventurer',
+            theme: previewData.theme as unknown as any,
+            coverUrl: coverUrl || '',
+            storyTitle: storyTitle,
+            pages: storyPages.map((p: any) => ({
+                pageNumber: p.page_number,
+                text: p.story_text,
+                imagePrompt: 'Generated story',
+                imageUrl: p.image_url
+            })),
+            paymentStatus: 'paid',
+            createdAt: new Date().toISOString()
+        });
+        setLockedPages([]);
+    };
+
     // Cleanup on unmount
     useEffect(() => {
         isMountedRef.current = true;
@@ -138,8 +171,22 @@ export function useGenerationPolling(
         return () => {
             isMountedRef.current = false;
             pollingAbortRef.current = true;
+            // Clear fallback interval on unmount
+            if (fallbackIntervalRef.current) {
+                clearInterval(fallbackIntervalRef.current);
+                fallbackIntervalRef.current = null;
+            }
         };
     }, []);
+
+    // Clear fallback interval once PDF is ready (success — no longer needed)
+    useEffect(() => {
+        if (isPdfReady && fallbackIntervalRef.current) {
+            console.log('✅ [Fallback] PDF ready — clearing fallback interval');
+            clearInterval(fallbackIntervalRef.current);
+            fallbackIntervalRef.current = null;
+        }
+    }, [isPdfReady]);
 
     // If page loaded with generation already complete, mark PDF as ready
     useEffect(() => {
@@ -520,6 +567,11 @@ export function useGenerationPolling(
                 setUnlockProgress(30 + (i * 0.9));
                 setGenerationPhase(previewData.generation_phase || 'generating_full');
 
+                // INCREMENTAL PAGE UPDATE: Update book with whatever pages exist NOW.
+                // Pages 6-10 appear one by one behind the overlay as they're generated.
+                // This ensures even if polling times out, visible pages are up-to-date.
+                rebuildBookFromPreviewData(previewData);
+
                 // For digital orders: complete means done
                 if (previewData.generation_phase === 'complete' && !isPhysical) {
                     console.log('✅ Generation complete! All 10 pages ready.');
@@ -658,10 +710,76 @@ export function useGenerationPolling(
             await new Promise(r => setTimeout(r, 2000));
         }
 
+        // Primary polling timed out — start fallback interval instead of giving up.
+        // This ensures the page NEVER gets permanently stuck.
         if (isMountedRef.current) {
             setShowUnlocking(false);
-            showToast('Your book is almost ready! We\'ll email you when it\'s complete.', 'success', 8000);
+            console.warn('⏰ [Fallback] Primary polling timed out — starting fallback interval');
+            startFallbackPolling(id, isPhysical);
         }
+    };
+
+    // --- Fallback polling: safety net when primary polling chain exits ---
+    // Runs every 5 seconds, checks backend state, updates pages + PDF.
+    // Self-clears on success or component unmount.
+    const startFallbackPolling = (id: string, isPhysical: boolean = false) => {
+        // Don't start if already running or PDF already ready
+        if (fallbackIntervalRef.current || isPdfReady) return;
+
+        console.log('🔄 [Fallback] Starting fallback polling interval (every 5s)');
+
+        fallbackIntervalRef.current = setInterval(async () => {
+            if (!isMountedRef.current) {
+                if (fallbackIntervalRef.current) {
+                    clearInterval(fallbackIntervalRef.current);
+                    fallbackIntervalRef.current = null;
+                }
+                return;
+            }
+
+            try {
+                console.log('🔄 [Fallback] Checking backend state...');
+                const previewData = await api.getPreview(id);
+                if (!isMountedRef.current) return;
+
+                // Always update pages incrementally
+                rebuildBookFromPreviewData(previewData);
+                setGenerationPhase(previewData.generation_phase || 'generating_full');
+
+                const phase = previewData.generation_phase;
+
+                // For digital: check if generation is complete and PDF is ready
+                if (!isPhysical && (phase === 'complete' || phase === 'pages_complete')) {
+                    console.log('✅ [Fallback] Generation complete — checking PDF...');
+                    setGenerationPhase('complete');
+
+                    // Check PDF readiness
+                    try {
+                        const downloadData = await api.getDownload(id);
+                        if (downloadData.status === 'ready' && downloadData.downloads?.pdf?.url) {
+                            console.log('✅ [Fallback] PDF ready!');
+                            setIsPdfReady(true);
+                            // Interval cleared by the isPdfReady effect above
+                        }
+                    } catch {
+                        // PDF not ready yet — keep polling
+                    }
+                }
+
+                // For physical: check if print is submitted
+                if (isPhysical && (phase === 'print_submitted' || phase === 'print_failed')) {
+                    console.log('✅ [Fallback] Physical order resolved:', phase);
+                    setGenerationPhase(phase as any);
+                    if (phase === 'print_failed') setIsPdfReady(true);
+                    if (fallbackIntervalRef.current) {
+                        clearInterval(fallbackIntervalRef.current);
+                        fallbackIntervalRef.current = null;
+                    }
+                }
+            } catch (e) {
+                console.warn('[Fallback] Poll error (will retry):', e);
+            }
+        }, 5000);
     };
 
     // --- Poll for payment confirmation ---

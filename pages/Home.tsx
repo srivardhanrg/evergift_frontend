@@ -57,14 +57,11 @@ const Home: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="text-center max-w-3xl mx-auto">
               <span className="inline-block bg-white/80 backdrop-blur-sm px-4 py-1.5 rounded-full text-xs font-black text-primary mb-4 uppercase tracking-[0.15em] shadow-sm border border-primary/10">
-                ✨ AI-Powered Storybooks
+                ✨ Loved by 1,000+ families worldwide
               </span>
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading text-gray-900 leading-tight mb-4">
-                Your Child as the <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-500">Hero</span>
+                Turn Your Child Into the Hero of <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-500">Their Own Storybook</span>
               </h1>
-              <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-                Choose an adventure below and watch AI create a personalized storybook with your child as the star.
-              </p>
             </div>
           </div>
 
@@ -83,9 +80,9 @@ const Home: React.FC = () => {
                 <p className="text-gray-600 text-sm mt-1">{THEMES.length} magical worlds await your hero</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1.5 text-primary font-semibold text-xs sm:text-sm bg-primary/5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-primary/10 whitespace-nowrap">
+                <span className="flex items-center gap-1.5 text-primary font-semibold text-sm sm:text-base bg-primary/5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-primary/10 whitespace-nowrap">
                   <Sparkles className="w-4 h-4" />
-                  {getFormattedPrice()} Complete Book
+                  From $19
                 </span>
               </div>
             </div>
@@ -124,6 +121,45 @@ const Home: React.FC = () => {
                 title="Privacy First"
                 description="Photos processed securely and never shared"
               />
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works */}
+        <section className="py-24">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-heading text-gray-900 mb-4">How It Works</h2>
+              <p className="text-gray-600">Creating magic takes just 3 simple steps</p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+                  <span className="text-2xl">📸</span>
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary text-white text-xs font-bold rounded-full flex items-center justify-center">1</div>
+                </div>
+                <h3 className="text-xl font-heading text-gray-900 mb-2">Upload a Photo</h3>
+                <p className="text-gray-600 text-sm">Just one clear photo of your child's face. We handle the rest.</p>
+              </div>
+
+              <div className="text-center">
+                <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+                  <span className="text-2xl">🎨</span>
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-secondary text-white text-xs font-bold rounded-full flex items-center justify-center">2</div>
+                </div>
+                <h3 className="text-xl font-heading text-gray-900 mb-2">Choose a Theme</h3>
+                <p className="text-gray-600 text-sm">Enchanted forests, magic castles, spy missions — pick your adventure!</p>
+              </div>
+
+              <div className="text-center">
+                <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+                  <span className="text-2xl">✨</span>
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary text-white text-xs font-bold rounded-full flex items-center justify-center">3</div>
+                </div>
+                <h3 className="text-xl font-heading text-gray-900 mb-2">Get Your Book</h3>
+                <p className="text-gray-600 text-sm">Get your storybook as a digital PDF instantly — or order a beautiful printed book delivered to your door!</p>
+              </div>
             </div>
           </div>
         </section>
@@ -249,8 +285,13 @@ const ThemeCard: React.FC<ThemeCardProps> = ({ theme, coverUrl, onSelect, index 
             className="w-full bg-gradient-to-r from-primary to-pink-400 text-white py-3 sm:py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-primary/25 transition-all active:scale-[0.98] min-h-[48px]"
           >
             <Sparkles className="w-4 h-4" />
-            Create Preview
+            Create Free Preview
           </button>
+
+          {/* Pricing micro text */}
+          <p className="text-xs text-gray-500 text-center mt-2">
+            ✨ Full storybook from $19
+          </p>
         </div>
       </div>
     </div>

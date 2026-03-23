@@ -139,11 +139,11 @@ export const THEME_PROMPT_VARIATIONS: Record<ThemeType, string[]> = {
     "{child_name} meets Zara the wise elephant and flies over the savanna",
     "{child_name} becomes the Safari Guardian and leads the Great Animal Parade"
   ],
-  // [ThemeType.DREAM_WEAVER]: [
-  //   "{child_name} meets Lumis the Dream Keeper and visits the Village of Dreams",
-  //   "{child_name} transforms into heroes: Chef, Doctor, Pilot, Builder, Firefighter",
-  //   "{child_name} discovers that every hero already lives inside them"
-  // ],
+  [ThemeType.DREAM_WEAVER]: [
+    "{child_name} meets Lumis the Dream Keeper and visits the Village of Dreams",
+    "{child_name} transforms into heroes: Chef, Doctor, Pilot, Builder, Firefighter",
+    "{child_name} discovers that every hero already lives inside them"
+  ],
   [ThemeType.SECRET_AGENT]: [
     "{child_name} receives a secret mission and trains at spy headquarters",
     "{child_name} goes undercover as a doctor, police officer, firefighter, and scientist",
@@ -152,5 +152,13 @@ export const THEME_PROMPT_VARIATIONS: Record<ThemeType, string[]> = {
 };
 
 export const STORYBOOK_PRICE = 599;
+
+// Physical book pricing (in cents)
+export const PHYSICAL_BOOK_SOFTCOVER_PRICE = 2900;  // $29 USD
+export const PHYSICAL_BOOK_HARDCOVER_PRICE = 3900;  // $39 USD
+
+// Shopify variant IDs for physical books
+export const SHOPIFY_SOFTCOVER_VARIANT_ID = "52264757199124";  // Softcover - $29
+export const SHOPIFY_HARDCOVER_VARIANT_ID = "52264757231892";  // Hardcover - $39
 
 export const STORYBOOK_STYLE_KEYWORDS = "Whimsical children's storybook illustration, digital art with soft watercolor textures, vibrant and playful colors, clean lines, professional character design, friendly atmosphere, magical lighting, high quality children's publishing style";

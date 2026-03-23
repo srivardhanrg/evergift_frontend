@@ -5,6 +5,9 @@ import { api, isShopifyCustomerLoggedIn } from '../src/api/client';
 import { JobStatus, PageData } from '../src/types/api.types';
 import BookPageCard from '../components/BookPageCard';
 import CoverPageCard from '../components/CoverPageCard';
+import BookViewerV2 from '../components/BookViewer/BookViewerV2';
+import type { BookStructureV2, BookStyle, GenerationPhase } from '../types/book.types';
+import { convertBackendBookStructureToV2 } from '../src/utils/bookStructureConverter';
 import AuthModal, { hasSavePromptBeenShown, markSavePromptShown } from '../components/AuthModal';
 // DISABLED: Email capture popup feature temporarily disabled
 // import EmailCapturePopup from '../components/EmailCapturePopup';
@@ -16,26 +19,27 @@ import {
     trackFunnelStep,
 } from '../src/services/analytics';
 
-// Preview generates first 5 pages (remaining 5 after payment)
-const TOTAL_PAGES = 5;
+// V2: Preview generates 6 AI pages (cover + 5 story pages) out of 26 total pages
+const TOTAL_AI_PAGES = 6;  // Cover(0) + Story pages at indices 4,6,8,10,12
+const TOTAL_PREVIEW_PAGES = 13;  // Pages 0-12 visible in preview
 
-// Fun whimsical messages that rotate during generation - like chatbots!
+// Fun whimsical messages that rotate during generation - delightful UX!
 const GENERATION_MESSAGES = [
-    "Sprinkling fairy dust on your story... ✨",
-    "Teaching the owl to deliver magical letters... 🦉",
-    "Polishing the dragon's sparkly scales... 🐉",
-    "Brewing a potion of adventure... 🧪",
-    "Asking the stars for story ideas... ⭐",
-    "Waking up the sleeping unicorns... 🦄",
-    "Painting rainbows in the sky... 🌈",
-    "Gathering courage from brave knights... ⚔️",
-    "Baking cookies for the story characters... 🍪",
-    "Training butterflies to carry dreams... 🦋",
-    "Consulting the wise wizard... 🧙‍♂️",
-    "Tuning the magical music box... 🎵",
-    "Stitching clouds into soft pillows... ☁️",
-    "Planting seeds of imagination... 🌱",
-    "Whispering secrets to fireflies... ✨",
+    "✨ Sprinkling pixie dust on every page...",
+    "🎨 Painting magical worlds just for you...",
+    "🌟 Your adventure is coming to life...",
+    "🪄 Weaving story magic, one page at a time...",
+    "🎭 Creating unforgettable memories...",
+    "🌈 Adding rainbows and wonder...",
+    "📖 Writing your name in the stars...",
+    "🦄 Summoning unicorns and dreams...",
+    "🎪 Setting the stage for adventure...",
+    "🌙 Moonlight magic in progress...",
+    "⭐ Each page more magical than the last...",
+    "🎨 Crafting your personalized masterpiece...",
+    "🌺 Growing a garden of imagination...",
+    "🎵 Composing a symphony of stories...",
+    "💫 Almost ready for your grand adventure...",
 ];
 
 // Messages for each specific page
@@ -97,6 +101,21 @@ const GenerationFeed: React.FC = () => {
     const [childName, setChildName] = useState<string>('');
     // const [currentPreviewId, setCurrentPreviewId] = useState<string | null>(null);
 
+    // V2: Book structure for BookViewerV2 (desktop)
+    const [bookStructure, setBookStructure] = useState<BookStructureV2 | null>(null);
+    const [theme, setTheme] = useState<string>('');
+    const [style, setStyle] = useState<BookStyle>('photorealistic');
+    const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+
+    // Detect desktop vs mobile
+    useEffect(() => {
+        const handleResize = () => {
+            setIsDesktop(window.innerWidth >= 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     // Ref for auto-scrolling to active card
     const activeCardRef = useRef<HTMLDivElement>(null);
     const isUserScrollingRef = useRef(false);
@@ -126,7 +145,7 @@ const GenerationFeed: React.FC = () => {
         };
     }, []);
 
-    // Rotate fun messages every 3 seconds
+    // Rotate fun messages every 7 seconds for better readability
     useEffect(() => {
         const interval = setInterval(() => {
             setMessageIndex(prev => {
@@ -134,7 +153,7 @@ const GenerationFeed: React.FC = () => {
                 setFunMessage(GENERATION_MESSAGES[next]);
                 return next;
             });
-        }, 3000);
+        }, 7000);
         return () => clearInterval(interval);
     }, []);
 
@@ -233,31 +252,87 @@ const GenerationFeed: React.FC = () => {
                     // setCurrentPreviewId(statusResponse.preview_id);
                 }
 
-                // Fetch preview data to get ACTUAL completed pages
+                // Fetch preview data to get ACTUAL completed pages (V2 API)
                 if (previewId && statusResponse.progress > 0) {
                     try {
-                        const previewData = await api.getPreview(previewId);
+                        const previewData = await api.getPreviewV2(previewId);
                         if (previewData) {
-                            // Capture child name for email popup
+                            // Capture child name, theme, and style
                             if (previewData.child_name) {
                                 setChildName(previewData.child_name);
                             }
-
-                            // Extract cover page (page 0) if available
-                            const coverPage = previewData.preview_pages?.find((p: any) => p.page_number === 0 || p.is_cover);
-                            if (coverPage && previewData.child_name) {
-                                setCoverData({
-                                    url: coverPage.image_url,
-                                    childName: previewData.child_name,
-                                    storyTitle: previewData.story_title || `${previewData.child_name}'s Adventure`
-                                });
+                            if (previewData.theme) {
+                                setTheme(previewData.theme);
+                            }
+                            if (previewData.style) {
+                                setStyle(previewData.style as BookStyle);
                             }
 
-                            // Filter out cover and set story pages (pages 1-5)
-                            const storyPages = previewData.preview_pages?.filter(
-                                (p: any) => p.page_number > 0 && !p.is_cover
-                            ) || [];
-                            setCompletedPages(storyPages);
+                            // V2: Convert backend snake_case response to frontend camelCase types
+                            // The backend returns snake_case fields (image_url, is_generating, etc.)
+                            // but BookViewerV2 expects camelCase (imageUrl, isGenerating, etc.)
+                            if (previewData.book_structure) {
+                                // Build a minimal book object for the converter
+                                // The converter expects a Storybook-like structure
+                                const bookDataForConverter = {
+                                    bookStructure: previewData.book_structure,
+                                    paymentStatus: 'pending' as const,
+                                    storyTexts: {} as Record<string, string>,
+                                    fillerPagesProcessed: {} as Record<string, boolean>,
+                                };
+
+                                const generationPhase: GenerationPhase =
+                                    (previewData.generation_phase as GenerationPhase) || 'preview';
+
+                                const convertedStructure = convertBackendBookStructureToV2(
+                                    bookDataForConverter,
+                                    generationPhase
+                                );
+
+                                // Set the properly converted structure for BookViewerV2
+                                setBookStructure(convertedStructure);
+
+                                // Extract pages from CONVERTED structure for mobile card feed
+                                // Now using camelCase properties (imageUrl, isGenerated, etc.)
+
+                                // Extract cover page (index 0) - using camelCase
+                                const coverPage = convertedStructure.pages.find(
+                                    p => p.index === 0 && p.imageUrl
+                                );
+                                if (coverPage && previewData.child_name) {
+                                    setCoverData({
+                                        url: coverPage.imageUrl!,
+                                        childName: previewData.child_name,
+                                        storyTitle: previewData.story_title || `${previewData.child_name}'s Adventure`
+                                    });
+                                }
+
+                                // Extract completed AI story pages (indices 4, 6, 8, 10, 12)
+                                // Using camelCase properties from converted structure
+                                const AI_STORY_PAGE_INDICES = [4, 6, 8, 10, 12];
+                                const completedAiPages = convertedStructure.pages.filter(p =>
+                                    AI_STORY_PAGE_INDICES.includes(p.index) &&
+                                    p.imageUrl &&
+                                    p.isGenerated
+                                );
+
+                                // Map to PageData format for the feed cards
+                                // Sort by index to ensure correct order
+                                const sortedPages = [...completedAiPages].sort((a, b) => a.index - b.index);
+                                const storyPages: PageData[] = sortedPages.map((p, i) => ({
+                                    page_number: i + 1,  // Display as 1, 2, 3, 4, 5
+                                    image_url: p.imageUrl || '',
+                                    story_text: p.storyText || '',
+                                    book_index: p.index  // Track actual book index for debugging
+                                }));
+
+                                setCompletedPages(storyPages);
+
+                                // Update progress from converted structure (camelCase)
+                                if (convertedStructure.generationProgress > 0) {
+                                    setProgress(convertedStructure.generationProgress);
+                                }
+                            }
                         }
                     } catch (previewErr) {
                         // Preview data might not be available yet, continue polling
@@ -271,12 +346,12 @@ const GenerationFeed: React.FC = () => {
                     const generationDuration = Date.now() - (window as any).__generationStartTime || 0;
                     trackPreviewGenerationCompleted(
                         generationDuration,
-                        completedPages.length || TOTAL_PAGES,
+                        completedPages.length || (TOTAL_AI_PAGES - 1),  // 5 story pages
                         'unknown' // Theme not available in job status
                     );
                     trackFunnelStep('preview_ready', {
                         preview_id: statusResponse.preview_id,
-                        pages_count: completedPages.length || TOTAL_PAGES,
+                        pages_count: completedPages.length || (TOTAL_AI_PAGES - 1),  // 5 story pages
                         duration_ms: generationDuration,
                     });
 
@@ -362,8 +437,8 @@ const GenerationFeed: React.FC = () => {
         setTodayCount(baseCount);
     }, []);
 
-    // Generate page array for rendering
-    const pages = Array.from({ length: TOTAL_PAGES }, (_, i) => i + 1);
+    // Generate page array for rendering (story pages 1-5)
+    const pages = Array.from({ length: 5 }, (_, i) => i + 1);  // V2: 5 story pages
 
     // Determine if cover is still generating
     const isCoverGenerating = !coverData && progress > 0 && progress < 15;
@@ -529,8 +604,51 @@ const GenerationFeed: React.FC = () => {
                 </div>
             </div>
 
-            {/* Page Feed */}
-            <div className="max-w-md mx-auto px-4 py-10 space-y-5">
+            {/* Desktop: BookViewerV2 with live generation */}
+            {isDesktop && bookStructure && childName && (
+                <div className="max-w-6xl mx-auto px-4 py-8">
+                    <div className="bg-white rounded-2xl shadow-lg p-6">
+                        <div className="mb-4 text-center">
+                            <p className="text-gray-600 text-sm">
+                                Watch as each page magically appears in your book! ✨
+                            </p>
+                        </div>
+                        <BookViewerV2
+                            bookStructure={bookStructure}
+                            childName={childName}
+                            theme={theme}
+                            style={style}
+                            isPurchased={false}
+                            onPurchaseClick={() => {
+                                // Show purchase modal or navigate to checkout
+                                console.log('Purchase clicked during generation');
+                            }}
+                        />
+                        {/* Show completion message below book on desktop */}
+                        {status === JobStatus.COMPLETED && (
+                            <div className="mt-8 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 rounded-3xl p-8 text-center text-white animate-in fade-in zoom-in duration-700 shadow-2xl">
+                                <div className="text-6xl mb-4 animate-bounce">🎉</div>
+                                <h2 className="text-3xl font-heading mb-2">Your Story is Ready!</h2>
+                                <p className="opacity-90 mb-1">All pages created successfully</p>
+                                <p className="opacity-70 text-sm mb-4">You can now purchase your complete storybook</p>
+                                <div className="flex justify-center gap-2 mt-4 mb-4">
+                                    {[...Array(5)].map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className="w-2 h-2 bg-white rounded-full animate-bounce"
+                                            style={{ animationDelay: `${i * 0.1}s` }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Mobile: Page Feed with cards */}
+            {!isDesktop && (
+                <div className="max-w-md mx-auto px-4 py-10 space-y-5">
                 {/* COVER - Always first */}
                 <div
                     ref={isCoverGenerating ? activeCardRef : null}
@@ -600,11 +718,18 @@ const GenerationFeed: React.FC = () => {
                             />
 
                             {/* Celebration when page completes */}
-                            {isCompleted && index === completedPages.length - 1 && completedPages.length < TOTAL_PAGES && (
-                                <div className="mt-3 text-center animate-bounce">
-                                    <span className="inline-block bg-green-100 text-green-600 px-4 py-1 rounded-full text-sm font-bold">
-                                        ✓ Page {pageNum} created!
-                                    </span>
+                            {isCompleted && index === completedPages.length - 1 && completedPages.length < 5 && (
+                                <div className="mt-3 text-center">
+                                    {/* Confetti particles */}
+                                    <div className="relative inline-block">
+                                        <span className="inline-block bg-green-100 text-green-600 px-4 py-1.5 rounded-full text-sm font-bold animate-bounce shadow-md">
+                                            ✓ Page {pageNum} created! ✨
+                                        </span>
+                                        {/* Sparkle particles */}
+                                        <div className="absolute -top-2 -left-2 w-3 h-3 bg-yellow-400 rounded-full animate-ping opacity-75" />
+                                        <div className="absolute -top-1 -right-3 w-2 h-2 bg-pink-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '0.2s' }} />
+                                        <div className="absolute -bottom-1 left-1/4 w-2 h-2 bg-purple-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '0.4s' }} />
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -613,10 +738,20 @@ const GenerationFeed: React.FC = () => {
 
                 {/* Completion Message */}
                 {status === JobStatus.COMPLETED && (
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl p-8 text-center text-white animate-in fade-in zoom-in duration-500">
-                        <div className="text-5xl mb-4">🎉</div>
-                        <h2 className="text-2xl font-heading mb-2">Your Story is Ready!</h2>
-                        <p className="opacity-90 mb-4">Redirecting to your magical creation...</p>
+                    <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 rounded-3xl p-8 text-center text-white animate-in fade-in zoom-in duration-700 shadow-2xl">
+                        <div className="text-6xl mb-4 animate-bounce">🎉</div>
+                        <h2 className="text-3xl font-heading mb-2">Your Story is Ready!</h2>
+                        <p className="opacity-90 mb-1">All {completedPages.length + 1} pages created</p>
+                        <p className="opacity-70 text-sm mb-4">Redirecting to your magical creation...</p>
+                        <div className="flex justify-center gap-2 mt-4 mb-4">
+                            {[...Array(5)].map((_, i) => (
+                                <div
+                                    key={i}
+                                    className="w-2 h-2 bg-white rounded-full animate-bounce"
+                                    style={{ animationDelay: `${i * 0.1}s` }}
+                                />
+                            ))}
+                        </div>
                         <button
                             onClick={() => navigate('/my-creations')}
                             className="mt-2 px-6 py-2 bg-white/20 hover:bg-white/30 rounded-full text-sm font-medium transition"
@@ -625,10 +760,14 @@ const GenerationFeed: React.FC = () => {
                         </button>
                     </div>
                 )}
-            </div>
 
-            {/* Bottom Spacer for last card visibility */}
-            <div className="h-20" />
+                {/* Bottom Spacer for last card visibility */}
+                <div className="h-20" />
+            </div>
+            )}
+
+            {/* Bottom Spacer for desktop */}
+            {isDesktop && <div className="h-20" />}
 
             {/* Auth Modal for Guest Save Prompt */}
             <AuthModal

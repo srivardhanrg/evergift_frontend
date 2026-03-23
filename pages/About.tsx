@@ -216,45 +216,6 @@ const About: React.FC = () => {
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="py-24">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-heading text-gray-900 mb-4">How It Works</h2>
-            <p className="text-gray-600">Creating magic takes just 3 simple steps</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
-                <span className="text-2xl">📸</span>
-                <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary text-white text-xs font-bold rounded-full flex items-center justify-center">1</div>
-              </div>
-              <h3 className="text-xl font-heading text-gray-900 mb-2">Upload a Photo</h3>
-              <p className="text-gray-600 text-sm">Just one clear photo of your child's face. We handle the rest.</p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
-                <span className="text-2xl">🎨</span>
-                <div className="absolute -top-1 -right-1 w-6 h-6 bg-secondary text-white text-xs font-bold rounded-full flex items-center justify-center">2</div>
-              </div>
-              <h3 className="text-xl font-heading text-gray-900 mb-2">Choose a Theme</h3>
-              <p className="text-gray-600 text-sm">Enchanted forests, magic castles, spy missions — pick your adventure!</p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
-                <span className="text-2xl">✨</span>
-                <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary text-white text-xs font-bold rounded-full flex items-center justify-center">3</div>
-              </div>
-              <h3 className="text-xl font-heading text-gray-900 mb-2">Get Your Book</h3>
-              <p className="text-gray-600 text-sm">Get your storybook as a digital PDF instantly — or order a beautiful printed book delivered to your door!</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Shipping & Delivery Timeline */}
       <section className="py-24 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-6xl mx-auto px-4">

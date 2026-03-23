@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Sparkles, Flame } from 'lucide-react';
+import { Lock, Sparkles, Flame, BookOpen, Package } from 'lucide-react';
 
 /**
  * Enhanced Locked Page Card with FOMO-inducing design
@@ -152,9 +152,12 @@ interface LockedPagesSectionProps {
         story_text: string;
     }>;
     childName: string;
-    onUnlock: () => void;
+    onUnlock: () => void;        // Digital PDF checkout
+    onPhysical?: () => void;    // Physical printed book checkout
     price?: string;
+    physicalPrice?: string;
     isLoading?: boolean;
+    isPhysicalLoading?: boolean;
     daysRemaining?: number;
 }
 
@@ -162,8 +165,11 @@ export const LockedPagesSection: React.FC<LockedPagesSectionProps> = ({
     lockedPages,
     childName,
     onUnlock,
+    onPhysical,
     price = "$19",
+    physicalPrice = "$29",
     isLoading = false,
+    isPhysicalLoading = false,
     daysRemaining = 7
 }) => {
 
@@ -215,35 +221,53 @@ export const LockedPagesSection: React.FC<LockedPagesSectionProps> = ({
                     </h3>
 
                     <p className="text-white/80 text-sm mb-6 max-w-sm mx-auto">
-                        Get all 10 pages — download digital PDF or order a printed book
+                        5 more magical pages await — choose how you want to keep them forever
                     </p>
 
-                    <button
-                        onClick={onUnlock}
-                        disabled={isLoading}
-                        className="bg-white text-purple-600 px-10 py-4 rounded-2xl font-bold text-xl hover:bg-gray-50 hover:scale-105 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3 mx-auto"
-                    >
-                        {isLoading ? (
-                            <>
-                                <div className="w-6 h-6 border-3 border-purple-600 border-t-transparent rounded-full animate-spin" />
-                                <span>Processing...</span>
-                            </>
-                        ) : (
-                            <>
-                                <Sparkles className="w-6 h-6" />
-                                <span>Unlock Now - {price}</span>
-                            </>
-                        )}
-                    </button>
+                    {/* Two purchase options side by side */}
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center items-stretch max-w-sm mx-auto">
 
-                    {/* Value-focused messaging instead of fake social proof */}
-                    <div className="flex items-center justify-center gap-4 mt-4 text-white/70 text-sm">
+                        {/* Digital PDF */}
+                        <button
+                            onClick={onUnlock}
+                            disabled={isLoading || isPhysicalLoading}
+                            className="flex-1 bg-white text-purple-600 px-6 py-4 rounded-2xl font-bold hover:bg-gray-50 hover:scale-105 transition-all shadow-xl disabled:opacity-50 flex flex-col items-center justify-center gap-1"
+                        >
+                            {isLoading ? (
+                                <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <BookOpen className="w-5 h-5 mb-1" />
+                            )}
+                            <span className="text-base">Digital PDF</span>
+                            <span className="text-purple-400 text-xs font-normal">Download instantly · {price}</span>
+                        </button>
+
+                        {/* Printed Book */}
+                        {onPhysical && (
+                            <button
+                                onClick={onPhysical}
+                                disabled={isLoading || isPhysicalLoading}
+                                className="flex-1 bg-amber-50 text-amber-700 border-2 border-amber-300 px-6 py-4 rounded-2xl font-bold hover:bg-amber-100 hover:scale-105 transition-all shadow-xl disabled:opacity-50 flex flex-col items-center justify-center gap-1"
+                            >
+                                {isPhysicalLoading ? (
+                                    <div className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <Package className="w-5 h-5 mb-1" />
+                                )}
+                                <span className="text-base">Printed Book</span>
+                                <span className="text-amber-500 text-xs font-normal">Ships to your door · {physicalPrice}</span>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Value messaging */}
+                    <div className="flex items-center justify-center gap-4 mt-5 text-white/70 text-xs">
                         <span className="flex items-center gap-1">
-                            <Sparkles className="w-4 h-4 text-yellow-300" />
+                            <Sparkles className="w-3 h-3 text-yellow-300" />
                             <span>Personalized for {childName}</span>
                         </span>
                         <span>•</span>
-                        <span>📄 PDF or 📦 Printed Book</span>
+                        <span>All 10 pages unlocked instantly</span>
                     </div>
                 </div>
             </div>

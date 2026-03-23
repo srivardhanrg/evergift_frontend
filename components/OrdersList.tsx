@@ -344,7 +344,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
 
                         {/* Book spec for physical orders */}
                         {hasPhysicalOrder && (
-                            <p className="text-xs text-gray-400 mb-2">8.5 × 8.5" Premium Glossy · 10 pages</p>
+                            <p className="text-xs text-gray-400 mb-2">8.5 × 8.5" Premium Glossy · 24 interior pages</p>
                         )}
 
                         <p className="text-sm text-gray-500 mb-3">

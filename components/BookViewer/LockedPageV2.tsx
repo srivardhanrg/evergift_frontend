@@ -15,6 +15,15 @@ import type { BookPageInfoV2, LockedPageProps } from '../../types/book.types';
  * - Unlock CTA button
  */
 
+/**
+ * Get display label for a page based on its index.
+ * Cover (index 0) shows "Cover", others show "Page {index}"
+ */
+function getPageLabel(index: number): string {
+  if (index === 0) return 'Cover';
+  return `Page ${index}`;
+}
+
 interface LockedPageV2Props extends LockedPageProps {
   childName?: string;
   compact?: boolean; // For mobile view
@@ -87,7 +96,7 @@ const LockedPageV2: React.FC<LockedPageV2Props> = ({
       <div className="absolute top-3 left-3 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1.5">
         <Lock className="w-3 h-3 text-white/80" />
         <span className="text-white/90 text-xs font-medium">
-          Page {page.index + 1}
+          {getPageLabel(page.index)}
         </span>
       </div>
 
@@ -109,26 +118,12 @@ const LockedPageV2: React.FC<LockedPageV2Props> = ({
           </div>
         </div>
 
-        {/* Teaser text */}
-        <div className="bg-black/40 backdrop-blur-sm rounded-xl px-4 py-3 max-w-xs text-center border border-white/10">
-          <p className="text-white/90 text-sm font-medium mb-2">{getTeaser()}</p>
-          <p className="text-yellow-300 text-xs flex items-center justify-center gap-1">
-            <Sparkles className="w-3 h-3" />
-            <span>Unlock to reveal</span>
-            <Sparkles className="w-3 h-3" />
+        {/* Simple unlock message */}
+        <div className="bg-black/40 backdrop-blur-sm rounded-xl px-6 py-4 max-w-xs text-center border border-white/10">
+          <p className="text-white text-base font-medium">
+            Purchase to unlock full storybook
           </p>
         </div>
-
-        {/* Unlock button (only on hover or mobile) */}
-        {(isHovering || compact) && onPurchaseClick && (
-          <button
-            onClick={onPurchaseClick}
-            className="mt-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
-          >
-            <Crown className="w-4 h-4" />
-            <span>Unlock All {totalLockedPages} Pages</span>
-          </button>
-        )}
       </div>
 
       {/* Badge for special pages */}

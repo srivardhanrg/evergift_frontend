@@ -127,7 +127,7 @@ const CreateStory: React.FC = () => {
       'Ocean Explorer': ApiTheme.STORYGIFT_OCEAN_EXPLORER,
       'Birthday Magic': ApiTheme.STORYGIFT_BIRTHDAY_MAGIC,
       'Safari Adventure': ApiTheme.STORYGIFT_SAFARI_ADVENTURE,
-      'Dream Weaver': ApiTheme.STORYGIFT_DREAM_WEAVER,
+      // 'Dream Weaver': ApiTheme.STORYGIFT_DREAM_WEAVER, // Theme removed
       'Secret Agent': ApiTheme.STORYGIFT_SECRET_AGENT,
     };
     return themeMap[frontendTheme] || ApiTheme.STORYGIFT_ENCHANTED_FOREST;

@@ -64,9 +64,9 @@ const Footer: React.FC = () => {
             <h4 className="font-heading text-lg text-gray-800 mb-6">Support</h4>
             <ul className="space-y-3">
               <li>
-                <a href="mailto:hello@storygift.com" className="text-gray-500 hover:text-primary transition font-medium flex items-center gap-2">
+                <Link to="/contact" className="text-gray-500 hover:text-primary transition font-medium flex items-center gap-2">
                   <Mail className="w-4 h-4" /> Contact Us
-                </a>
+                </Link>
               </li>
               <li className="pt-4">
                 <span className="text-xs text-gray-500 uppercase tracking-wider">Legal</span>

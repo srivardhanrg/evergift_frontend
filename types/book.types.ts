@@ -14,14 +14,20 @@
  */
 
 // Page types for the 26-page structure
+// These values are produced by bookStructureConverter.ts
 export type PageTypeV2 =
   | 'cover'       // Index 0: AI-generated cover with child's face
   | 'dedication'  // Index 1: Filler with personalized text overlay
-  | 'intro'       // Indices 2-3: Filler pages, no text
-  | 'generated'   // AI-generated story pages (indices 4,6,8,10,12,14,16,18,20,22)
-  | 'text'        // Text overlay pages (indices 5,7,9,11,13,15,17,19,21,23)
+  | 'intro_1'     // Index 2: Intro filler page 1 (no text)
+  | 'intro_2'     // Index 3: Intro filler page 2 (no text)
+  | 'ai_page'     // AI-generated story pages (indices 4,6,8,10,12,14,16,18,20,22)
+  | 'text_page'   // Text overlay pages (indices 5,7,9,11,13,15,17,19,21,23)
   | 'end_page'    // Index 24: End page filler
-  | 'back_cover'; // Index 25: Back cover filler
+  | 'back_cover'  // Index 25: Back cover filler
+  // Legacy compatibility aliases
+  | 'intro'       // Maps to intro_1 or intro_2
+  | 'generated'   // Maps to ai_page
+  | 'text';       // Maps to text_page
 
 // Legacy page type for backward compatibility
 export type PageType = 'cover' | 'generated' | 'constant' | 'back_cover';

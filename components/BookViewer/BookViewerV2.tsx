@@ -96,46 +96,7 @@ const BookViewerV2: React.FC<BookViewerV2Props> = ({
         />
       )}
 
-      {/* Generation progress indicator (shown during generation) */}
-      {generationPhase !== 'complete' && generationProgress > 0 && generationProgress < 100 && (
-        <div className="mt-6">
-          <div className="max-w-md mx-auto">
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Creating your storybook...</span>
-              <span>{generationProgress}%</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
-                style={{ width: `${generationProgress}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              {bookStructure.pagesGenerated} of {bookStructure.totalAiPages} pages generated
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Stats for debugging (only in development) */}
-      {import.meta.env.DEV && (
-        <div className="mt-4 p-4 bg-gray-100 rounded-lg text-xs text-gray-600 max-w-md mx-auto">
-          <h4 className="font-bold mb-2">Debug Info:</h4>
-          <ul className="space-y-1">
-            <li>Preview ID: {previewId}</li>
-            <li>Current Page: {currentPage}</li>
-            <li>Generation Phase: {generationPhase}</li>
-            <li>Is Purchased: {isPurchased ? 'Yes' : 'No'}</li>
-            <li>
-              Pages: {bookStructure.previewPageCount} preview /{' '}
-              {bookStructure.lockedPageCount} locked
-            </li>
-            <li>AI Pages: {bookStructure.pagesGenerated} / {bookStructure.totalAiPages}</li>
-            <li>Filler Ready: {bookStructure.fillerPagesReady ? 'Yes' : 'No'}</li>
-            <li>View: {isMobile ? 'Mobile Scroll' : 'Desktop Flipbook'}</li>
-          </ul>
-        </div>
-      )}
+      {/* Removed: Generation progress and debug info for cleaner UX */}
     </div>
   );
 };

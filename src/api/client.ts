@@ -364,6 +364,16 @@ export async function getPreview(previewId: string): Promise<PreviewResponse> {
 }
 
 /**
+ * Get preview data using V2 API with 26-page book structure
+ */
+export async function getPreviewV2(previewId: string): Promise<any> {
+    const response = await fetch(`${DIRECT_API_BASE}/preview/${previewId}/v2`, {
+        headers: buildHeaders(),
+    });
+    return handleResponse<any>(response);
+}
+
+/**
  * Get download links for a completed order
  */
 export async function getDownload(orderId: string): Promise<DownloadResponse> {
@@ -963,11 +973,34 @@ export function redirectToShopifyCheckout(previewId: string, testOrderId?: strin
 
 /**
  * Add the physical book to Shopify cart with order_type=physical
- * The backend webhook detects this variant and routes to Lulu instead of digital PDF
+ * The backend webhook detects the variant ID and determines cover type (softcover vs hardcover)
+ *
+ * @param previewId - The preview ID to link with the order
+ * @param coverType - "softcover" or "hardcover" (default: "hardcover")
  */
-export async function addPhysicalBookToCart(previewId: string): Promise<{ success: boolean; error?: string; testOrderId?: string }> {
-    if (SHOPIFY_CONFIG.PHYSICAL_VARIANT_ID === 0) {
-        console.error('[Shopify Cart] PHYSICAL_VARIANT_ID not configured in SHOPIFY_CONFIG!');
+export async function addPhysicalBookToCart(
+    previewId: string,
+    coverType: "softcover" | "hardcover" = "hardcover"
+): Promise<{ success: boolean; error?: string; testOrderId?: string }> {
+    // Import constants from constants.ts
+    const { SHOPIFY_SOFTCOVER_VARIANT_ID, SHOPIFY_HARDCOVER_VARIANT_ID } = await import('../../constants');
+
+    // Select variant ID based on cover type
+    const variantId = coverType === "softcover"
+        ? SHOPIFY_SOFTCOVER_VARIANT_ID
+        : SHOPIFY_HARDCOVER_VARIANT_ID;
+
+    // Validation: Check if variant IDs are configured
+    if (!variantId || variantId === "" || variantId === "0") {
+        console.error(`[Shopify Cart] ${coverType.toUpperCase()}_VARIANT_ID not configured!`);
+        return { success: false, error: `${coverType === "softcover" ? "Softcover" : "Hardcover"} book product not configured yet. Please contact support.` };
+    }
+
+    // Legacy fallback: Use old PHYSICAL_VARIANT_ID if new ones not set
+    const finalVariantId = variantId || SHOPIFY_CONFIG.PHYSICAL_VARIANT_ID;
+
+    if (!finalVariantId || finalVariantId === 0) {
+        console.error('[Shopify Cart] No physical book variant ID configured!');
         return { success: false, error: 'Physical book product not configured yet' };
     }
 
@@ -978,10 +1011,11 @@ export async function addPhysicalBookToCart(previewId: string): Promise<{ succes
                 headers: buildHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     preview_id: previewId,
-                    variant_id: String(SHOPIFY_CONFIG.PHYSICAL_VARIANT_ID),
+                    variant_id: String(finalVariantId),
+                    cover_type: coverType,
                 }),
             });
-            if (!response.ok) return { success: false, error: 'Failed to add physical book to cart' };
+            if (!response.ok) return { success: false, error: `Failed to add ${coverType} book to cart` };
             const data = await response.json();
             return { success: true, testOrderId: data.order_id };
         } catch {
@@ -999,18 +1033,18 @@ export async function addPhysicalBookToCart(previewId: string): Promise<{ succes
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 items: [{
-                    id: SHOPIFY_CONFIG.PHYSICAL_VARIANT_ID,
+                    id: Number(finalVariantId),
                     quantity: 1,
                     properties: {
                         '_preview_id': previewId,
                         '_order_type': 'physical',        // triggers Lulu in backend webhook
-                        'Child\'s Story': 'Personalised Printed Storybook',
+                        'Child\'s Story': `Personalised Printed Storybook (${coverType === "softcover" ? "Softcover" : "Hardcover"})`,
                     },
                 }],
             }),
         });
 
-        if (!response.ok) return { success: false, error: 'Failed to add physical book to cart' };
+        if (!response.ok) return { success: false, error: `Failed to add ${coverType} book to cart` };
         return { success: true };
     } catch {
         return { success: false, error: 'Network error' };
@@ -1019,16 +1053,22 @@ export async function addPhysicalBookToCart(previewId: string): Promise<{ succes
 
 /**
  * Buy Physical Book — add physical variant to cart and redirect to Shopify checkout
+ *
+ * @param previewId - The preview ID
+ * @param coverType - "softcover" or "hardcover" (default: "hardcover")
  */
-export async function buyPhysicalBook(previewId: string): Promise<void> {
-    const result = await addPhysicalBookToCart(previewId);
+export async function buyPhysicalBook(
+    previewId: string,
+    coverType: "softcover" | "hardcover" = "hardcover"
+): Promise<void> {
+    const result = await addPhysicalBookToCart(previewId, coverType);
     if (!result.success) {
-        throw new ApiError(result.error || 'Failed to add physical book to cart', 'CART_ERROR');
+        throw new ApiError(result.error || `Failed to add ${coverType} book to cart`, 'CART_ERROR');
     }
     // Redirect to checkout; return_to brings user back to preview page with checkout_success=true
     if (isShopifyTestMode() && result.testOrderId) {
         // Simulate payment (same as digital flow) so preview gets marked as purchased
-        console.log('[Shopify Test] Triggering test payment webhook for physical book...');
+        console.log(`[Shopify Test] Triggering test payment webhook for ${coverType} book...`);
         try {
             const webhookResponse = await fetch(`${API_BASE}/test/simulate-payment`, {
                 method: 'POST',
@@ -1036,14 +1076,15 @@ export async function buyPhysicalBook(previewId: string): Promise<void> {
                 body: JSON.stringify({
                     preview_id: previewId,
                     order_id: result.testOrderId,
+                    cover_type: coverType,
                 }),
             });
             if (webhookResponse.ok) {
                 const data = await webhookResponse.json();
-                console.log('[Shopify Test] Physical book payment simulation complete:', data);
+                console.log(`[Shopify Test] ${coverType} book payment simulation complete:`, data);
             }
         } catch (error) {
-            console.error('[Shopify Test] Physical book payment simulation failed:', error);
+            console.error(`[Shopify Test] ${coverType} book payment simulation failed:`, error);
         }
         // Redirect back to preview with checkout_success + order_type=physical
         window.location.href = `/preview/${previewId}?checkout_success=true&order_type=physical&order_id=${result.testOrderId}`;
@@ -1106,6 +1147,7 @@ export const api = {
     createPreview,
     getJobStatus,
     getPreview,
+    getPreviewV2,
     getDownload,
     retryJob,
     saveNotificationEmail,

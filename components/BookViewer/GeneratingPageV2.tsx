@@ -15,6 +15,15 @@ import type { GeneratingPageProps } from '../../types/book.types';
  * - Floating particle effects
  */
 
+/**
+ * Get display label for a page based on its index.
+ * Cover (index 0) shows "Cover", others show "Page {index}"
+ */
+function getPageLabel(index: number): string {
+  if (index === 0) return 'Cover';
+  return `Page ${index}`;
+}
+
 const GeneratingPageV2: React.FC<GeneratingPageProps> = ({
   page,
   progress,
@@ -90,7 +99,7 @@ const GeneratingPageV2: React.FC<GeneratingPageProps> = ({
       <div className="absolute top-3 left-3 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1.5">
         <Wand2 className="w-3 h-3 text-yellow-300 animate-pulse" />
         <span className="text-white/90 text-xs font-medium">
-          Page {page.index + 1}
+          {getPageLabel(page.index)}
         </span>
       </div>
 
@@ -135,6 +144,15 @@ const GeneratingPageV2: React.FC<GeneratingPageProps> = ({
           </p>
           <p className="text-white/70 text-sm">{stepDescription}</p>
         </div>
+
+        {/* Story snippet preview (if available) */}
+        {page.storyText && (
+          <div className="mt-4 max-w-xs mx-auto">
+            <p className="text-white/60 text-sm italic leading-relaxed animate-fade-in">
+              "{page.storyText.substring(0, 80)}..."
+            </p>
+          </div>
+        )}
 
         {/* Progress bar */}
         <div className="mt-6 w-48">

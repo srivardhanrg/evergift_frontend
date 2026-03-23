@@ -100,8 +100,10 @@ export interface PageData {
     page_number: number;
     image_url: string;
     story_text: string;
-    is_watermarked: boolean;
-    is_locked: boolean;
+    is_watermarked?: boolean;
+    is_locked?: boolean;
+    /** V2: Original book index (0-25) for debugging/tracking */
+    book_index?: number;
 }
 
 export interface PreviewResponse {

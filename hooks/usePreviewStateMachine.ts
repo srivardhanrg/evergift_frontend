@@ -558,13 +558,32 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
         const initialPaymentStatus = previewData.status === 'purchased' ? 'paid' : 'pending';
         const initialBook = buildBookFromPreviewData(previewData, initialPaymentStatus);
 
-        if (initialBook.pages.length === 0) {
-            console.error('[StateMachine] No pages in preview');
+        // V2 format uses book_structure.pages, legacy uses preview_pages
+        // Check both - pass if either has content OR if pages exist but are still generating
+        const hasLegacyPages = initialBook.pages.length > 0;
+        const hasV2Pages = initialBook.bookStructure?.pages?.length > 0;
+
+        // For V2, count pages with actual image URLs (not null)
+        const v2PagesWithImages = initialBook.bookStructure?.pages?.filter(
+            p => p.imageUrl !== null && p.imageUrl !== undefined && p.imageUrl !== ''
+        ).length || 0;
+
+        // During generation, book_structure exists but images may be null
+        // Only show error if we have NO structure AND NO legacy pages
+        if (!hasLegacyPages && !hasV2Pages) {
+            console.error('[StateMachine] No pages in preview (checked both legacy and V2 formats)');
             setIntegrityError(true);
             setMachineState('error');
             setLoading(false);
             return;
         }
+
+        // If we have V2 structure but no images yet, we're still generating - that's OK
+        console.log('[StateMachine] Pages found', {
+            legacyPages: initialBook.pages.length,
+            v2Pages: initialBook.bookStructure?.pages?.length || 0,
+            v2PagesWithImages: v2PagesWithImages
+        });
 
         setBook(initialBook);
         setGenerationPhase(previewData.generation_phase || 'preview');
@@ -907,7 +926,51 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
         }
 
         // -----------------------------------------------------------------
-        // ENTRY POINT 5: Preview Only (pre-payment)
+        // ENTRY POINT 5: Preview Generation In Progress (pre-payment)
+        // -----------------------------------------------------------------
+        if (!isPurchased && previewData.status === 'generating' && generation_phase === 'preview') {
+            console.log('🎯 [StateMachine] Entry: Preview still generating (polling for completion)');
+
+            setMachineState('preview_only');
+
+            // Poll for preview completion
+            const maxAttempts = 60; // 2 minutes (60 * 2 seconds)
+            for (let i = 0; i < maxAttempts; i++) {
+                if (!isMountedRef.current || abortRef.current) {
+                    console.log('🛑 [StateMachine] Preview generation polling aborted');
+                    return;
+                }
+
+                try {
+                    const currentPreview = await api.getPreviewV2(previewId);
+
+                    if (!isMountedRef.current || abortRef.current) return;
+
+                    // Update book with latest pages
+                    const updatedBook = buildBookFromPreviewData(currentPreview, 'pending');
+                    setBook(updatedBook);
+                    setGenerationPhase(currentPreview.generation_phase || 'preview');
+
+                    // Check if generation completed
+                    if (currentPreview.status === 'active' && currentPreview.generation_phase === 'preview') {
+                        console.log('✅ [StateMachine] Preview generation completed');
+                        return;
+                    }
+
+                    console.log(`⏳ [StateMachine] Preview generating (attempt ${i + 1}/${maxAttempts})`);
+                } catch (e) {
+                    console.error('[StateMachine] Preview generation polling error:', e);
+                }
+
+                await new Promise(r => setTimeout(r, 2000)); // Poll every 2 seconds
+            }
+
+            console.log('✅ [StateMachine] Preview generation polling complete (timeout or finished)');
+            return;
+        }
+
+        // -----------------------------------------------------------------
+        // ENTRY POINT 6: Preview Only (pre-payment, already complete)
         // -----------------------------------------------------------------
         console.log('🎯 [StateMachine] Entry: Preview only (pre-payment)');
         setMachineState('preview_only');
