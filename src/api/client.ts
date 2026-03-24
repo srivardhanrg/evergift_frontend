@@ -430,6 +430,7 @@ export interface CreationItem {
     cover_url: string | null;
     status: string;
     payment_status: 'paid' | 'unpaid';
+    order_type?: 'physical' | 'digital' | null;
     created_at: string;
     expires_at: string;
     days_remaining: number;
@@ -1038,6 +1039,7 @@ export async function addPhysicalBookToCart(
                     properties: {
                         '_preview_id': previewId,
                         '_order_type': 'physical',        // triggers Lulu in backend webhook
+                        '_cover_type': coverType,         // Softcover/Hardcover selection
                         'Child\'s Story': `Personalised Printed Storybook (${coverType === "softcover" ? "Softcover" : "Hardcover"})`,
                     },
                 }],

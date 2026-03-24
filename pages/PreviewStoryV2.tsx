@@ -455,13 +455,23 @@ const PreviewStoryV2: React.FC = () => {
 
                       {/* Track Order button — for physical orders */}
                       {orderType === 'physical' && (
-                        <Link
-                          to="/my-creations?tab=ordered"
-                          className="flex-1 sm:flex-initial bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2"
-                        >
-                          <Package className="w-5 h-5" />
-                          <span>Track Order</span>
-                        </Link>
+                        machine.overlayPhase === 'print_submitted' || printOrder ? (
+                          <Link
+                            to="/my-creations?tab=ordered"
+                            className="flex-1 sm:flex-initial bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2"
+                          >
+                            <Package className="w-5 h-5" />
+                            <span>Track Order</span>
+                          </Link>
+                        ) : (
+                          <button
+                            disabled
+                            className="flex-1 sm:flex-initial bg-gray-400 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center space-x-2 cursor-not-allowed"
+                          >
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>Preparing...</span>
+                          </button>
+                        )
                       )}
 
                       {/* Track Order button (secondary) — for digital orders that also have physical */}

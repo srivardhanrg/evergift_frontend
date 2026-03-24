@@ -53,14 +53,21 @@ const MobileScrollViewer: React.FC<MobileScrollViewerProps> = ({
   // Get pages to display
   // Show ALL preview pages during generation (they'll render appropriate states)
   // For locked pages, only show if purchased or if showing locked indicator
+  const firstPendingAiPage = bookStructure.pages.find(
+    p => (p.pageType === 'ai_page' || p.pageType === 'cover') && !p.isGenerated
+  );
+  const maxVisibleIndex = firstPendingAiPage ? firstPendingAiPage.index : 999;
+
   const visiblePages = bookStructure.pages.filter((page) => {
+    if (page.index > maxVisibleIndex) return false;
+
     // Always show preview pages (indices 0-12) - they're part of the free preview
     if (page.isPreview) return true;
     // For locked pages (indices 13-25):
     // - Show if purchased (user has access)
     // - Show if has imageUrl (already generated)
     // - Show to indicate locked state for purchase CTA
-    if (page.isLocked) return isPurchased || page.imageUrl || true;
+    if (page.isLocked) return isPurchased || page.imageUrl || page.index === 14;
     // Show any page with content
     if (page.imageUrl) return true;
     return true;

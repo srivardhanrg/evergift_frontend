@@ -215,7 +215,7 @@ const getActiveStep = (status: string): number => {
 const ERROR_STATUSES = ['failed', 'cancelled', 'rejected'];
 
 const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
-    const hasPhysicalOrder = order.printOrder !== null;
+    const hasPhysicalOrder = order.order_type === 'physical' || order.printOrder !== null;
     const printStatus = order.printOrder?.lulu_status || 'pending';
 
     // Determine order type and status
