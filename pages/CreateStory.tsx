@@ -150,15 +150,26 @@ const CreateStory: React.FC = () => {
     trackPhotoUploadStarted();
 
     try {
-      const uploadResponse = await api.uploadPhoto(photos[0]);
+      const uploadResponse = await api.uploadPhotos(photos);
       setProgress(15);
-      setLoadingMessage("Photo validated! Starting the magic...");
+
+      // Check if any photos were valid
+      if (!uploadResponse.has_valid_photos) {
+        throw new api.ApiError(uploadResponse.message, 'ALL_PHOTOS_INVALID');
+      }
+
+      setLoadingMessage("Photos validated! Starting the magic...");
 
       // Track successful upload and face detection
       const uploadDuration = Date.now() - uploadStartTime;
-      trackPhotoUploadCompleted(photos[0].size, uploadDuration);
+      const totalSize = photos.reduce((sum, photo) => sum + photo.size, 0);
+      trackPhotoUploadCompleted(totalSize, uploadDuration);
       trackFaceDetectionSuccess();
-      trackFunnelStep('photo_uploaded', { file_size: photos[0].size });
+      trackFunnelStep('photo_uploaded', {
+        file_count: photos.length,
+        valid_count: uploadResponse.valid_count,
+        total_size: totalSize
+      });
       trackFunnelStep('face_detected');
 
       // Track child details
@@ -176,7 +187,7 @@ const CreateStory: React.FC = () => {
       trackFunnelStep('generation_started', { theme_id: selectedThemeId, art_style: artStyle });
 
       const { job_id, preview_id } = await api.createPreview({
-        photo_url: uploadResponse.photo_url,
+        photo_urls: uploadResponse.valid_photo_urls,  // Use all valid photo URLs
         child_name: childDetails.name,
         child_age: childDetails.age,
         child_gender: mapGender(childDetails.gender),
@@ -365,54 +376,126 @@ const CreateStory: React.FC = () => {
                 {/* Photo Upload */}
                 <div className="mb-4">
                   <label className="block text-xs font-black text-gray-600 uppercase tracking-widest mb-2">
-                    Hero's Photo
+                    Hero's Photos (1-3 images)
                   </label>
 
                   <div className="flex items-start gap-4">
-                    {/* Photo Preview or Uploader */}
+                    {/* Photo Previews or Uploader */}
                     {photos.length > 0 ? (
-                      <div className="relative group flex-shrink-0">
-                        <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg ring-4 ring-primary/10">
-                          <img
-                            src={URL.createObjectURL(photos[0])}
-                            alt="Uploaded hero"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <button
-                          onClick={() => setPhotos([])}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-green-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow">
-                          ✓ Ready
-                        </div>
+                      <div className="flex gap-3 flex-wrap">
+                        {photos.map((photo, index) => (
+                          <div key={index} className="relative group flex-shrink-0">
+                            <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg ring-4 ring-primary/10">
+                              <img
+                                src={URL.createObjectURL(photo)}
+                                alt={`Uploaded hero ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <button
+                              onClick={() => setPhotos(photos.filter((_, i) => i !== index))}
+                              className="absolute -top-1 -right-1 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-green-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow">
+                              {index + 1}
+                            </div>
+                          </div>
+                        ))}
+                        {/* Add more photos button if less than 3 */}
+                        {photos.length < 3 && (
+                          <label className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:text-primary hover:border-primary/40 transition-colors cursor-pointer">
+                            <Upload className="w-5 h-5 mb-1" />
+                            <span className="text-[9px] font-bold uppercase">Add More</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              hidden
+                              aria-label="Add more photos"
+                              onChange={e => {
+                                const newFiles = Array.from(e.target.files || []);
+                                if (newFiles.length === 0) return;
+
+                                // Clear any previous error
+                                setUploadError(null);
+
+                                // Check if we'd exceed 3 files total
+                                if (photos.length + newFiles.length > 3) {
+                                  setUploadError({
+                                    title: 'Too many photos',
+                                    message: `You can only upload ${3 - photos.length} more photo${3 - photos.length > 1 ? 's' : ''}.`,
+                                    suggestion: 'Please select fewer photos.',
+                                    icon: 'photo'
+                                  });
+                                  e.target.value = ''; // Reset input
+                                  return;
+                                }
+
+                                // Validate file sizes
+                                const oversizedFiles = newFiles.filter(file => file.size > MAX_FILE_SIZE_BYTES);
+                                if (oversizedFiles.length > 0) {
+                                  setUploadError(getFriendlyError('FILE_TOO_LARGE'));
+                                  e.target.value = ''; // Reset input
+                                  return;
+                                }
+
+                                setPhotos([...photos, ...newFiles]);
+                                e.target.value = ''; // Reset input for next use
+                              }}
+                            />
+                          </label>
+                        )}
+                        {/* Clear all button if multiple photos */}
+                        {photos.length > 1 && (
+                          <button
+                            onClick={() => setPhotos([])}
+                            className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors"
+                          >
+                            <Trash2 className="w-5 h-5 mb-1" />
+                            <span className="text-[9px] font-bold uppercase">Clear All</span>
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <label className="w-20 h-20 rounded-full border-3 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all text-gray-400 hover:text-primary group flex-shrink-0">
                         <Upload className="w-5 h-5 mb-1" />
-                        <span className="text-[9px] font-bold uppercase">Add Photo</span>
+                        <span className="text-[9px] font-bold uppercase">Add Photos</span>
                         <input
                           type="file"
                           accept="image/*"
+                          multiple
                           hidden
-                          aria-label="Upload child's photo"
+                          aria-label="Upload child's photos (1-3 images)"
                           onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
+                            const files = Array.from(e.target.files || []);
+                            if (files.length === 0) return;
 
                             // Clear any previous error
                             setUploadError(null);
 
-                            // Validate file size (10MB max)
-                            if (file.size > MAX_FILE_SIZE_BYTES) {
+                            // Limit to 3 files
+                            if (files.length > 3) {
+                              setUploadError({
+                                title: 'Too many photos',
+                                message: 'Please select up to 3 photos for the best quality.',
+                                suggestion: 'Choose 1-3 clear photos of your child.',
+                                icon: 'photo'
+                              });
+                              e.target.value = ''; // Reset input
+                              return;
+                            }
+
+                            // Validate file sizes (10MB max each)
+                            const oversizedFiles = files.filter(file => file.size > MAX_FILE_SIZE_BYTES);
+                            if (oversizedFiles.length > 0) {
                               setUploadError(getFriendlyError('FILE_TOO_LARGE'));
                               e.target.value = ''; // Reset input
                               return;
                             }
 
-                            setPhotos([file]);
+                            setPhotos(files);
                           }}
                         />
                       </label>
