@@ -274,7 +274,7 @@ const PreviewStoryV2: React.FC = () => {
         </div>
 
         {/* Book Viewer V2 - 26-page experience */}
-        <div className="w-full mx-auto">
+        <div className="w-full max-w-[1200px] mx-auto px-4">
           <BookViewerV2
             previewId={book.id}
             childName={book.childName}

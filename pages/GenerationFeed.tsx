@@ -73,9 +73,55 @@ const PAGE_SPECIFIC_MESSAGES: Record<number, string[]> = {
 };
 
 /**
+ * RotatingGenerationMessage - Cycles through whimsical messages every 5 seconds
+ * Replaces static "Watch as each page magically appears..." text
+ */
+const RotatingGenerationMessage: React.FC<{ status: JobStatus }> = ({ status }) => {
+    const [messageIndex, setMessageIndex] = useState(0);
+    const [isVisible, setIsVisible] = useState(true);
+
+    useEffect(() => {
+        // Only rotate messages while generating
+        if (status !== JobStatus.PROCESSING && status !== JobStatus.QUEUED) {
+            return;
+        }
+
+        const interval = setInterval(() => {
+            // Fade out
+            setIsVisible(false);
+
+            // Wait for fade, then change message and fade in
+            setTimeout(() => {
+                setMessageIndex((prev) => (prev + 1) % GENERATION_MESSAGES.length);
+                setIsVisible(true);
+            }, 300); // 300ms fade duration
+        }, 5000); // Change every 5 seconds
+
+        return () => clearInterval(interval);
+    }, [status]);
+
+    // Don't show anything if generation is complete
+    if (status === JobStatus.COMPLETED) {
+        return null;
+    }
+
+    return (
+        <div className="mb-4 text-center">
+            <p
+                className={`text-gray-600 text-sm transition-opacity duration-300 ${
+                    isVisible ? 'opacity-100' : 'opacity-0'
+                }`}
+            >
+                {GENERATION_MESSAGES[messageIndex]}
+            </p>
+        </div>
+    );
+};
+
+/**
  * GenerationFeed - Live "stream" view of book generation.
  * Shows real-time progress as each page is created, with auto-scroll to active page.
- * 
+ *
  * ORDER: Cover (page 0) → Page 1 → Page 2 → Page 3 → Page 4 → Page 5
  */
 const GenerationFeed: React.FC = () => {
@@ -307,9 +353,9 @@ const GenerationFeed: React.FC = () => {
                                     });
                                 }
 
-                                // Extract completed AI story pages (indices 4, 6, 8, 10, 12)
-                                // Using camelCase properties from converted structure
-                                const AI_STORY_PAGE_INDICES = [4, 6, 8, 10, 12];
+                                // Extract completed AI story pages (indices 5, 7, 9, 11, 13)
+                                // NEW LAYOUT: Text on LEFT (4,6,8,10,12), AI on RIGHT (5,7,9,11,13)
+                                const AI_STORY_PAGE_INDICES = [5, 7, 9, 11, 13];
                                 const completedAiPages = convertedStructure.pages.filter(p =>
                                     AI_STORY_PAGE_INDICES.includes(p.index) &&
                                     p.imageUrl &&
@@ -608,11 +654,7 @@ const GenerationFeed: React.FC = () => {
             {isDesktop && bookStructure && childName && (
                 <div className="max-w-6xl mx-auto px-4 py-8">
                     <div className="bg-white rounded-2xl shadow-lg p-6">
-                        <div className="mb-4 text-center">
-                            <p className="text-gray-600 text-sm">
-                                Watch as each page magically appears in your book! ✨
-                            </p>
-                        </div>
+                        <RotatingGenerationMessage status={status} />
                         <BookViewerV2
                             bookStructure={bookStructure}
                             childName={childName}

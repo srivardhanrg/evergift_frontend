@@ -5,6 +5,9 @@ import type { BookPageInfoV2, BookStructureV2, BookStyle } from '../../types/boo
 import LockedPageV2 from './LockedPageV2';
 import GeneratingPageV2 from './GeneratingPageV2';
 
+// CRITICAL: Import react-pageflip CSS for proper positioning
+import 'page-flip/src/Style/stPageFlip.css';
+
 /**
  * DesktopFlipbookViewer - Realistic page-flip book viewer for desktop
  *
@@ -19,10 +22,19 @@ import GeneratingPageV2 from './GeneratingPageV2';
  */
 
 // Page component that react-pageflip requires (must use forwardRef)
+// CRITICAL: Must have explicit dimensions for react-pageflip to work correctly
 const Page = forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(
   ({ children, className = '' }, ref) => {
     return (
-      <div ref={ref} className={`page bg-white ${className}`}>
+      <div
+        ref={ref}
+        className={`page bg-white ${className}`}
+        style={{
+          width: '500px',
+          height: '500px',
+          overflow: 'hidden'
+        }}
+      >
         {children}
       </div>
     );
@@ -114,9 +126,33 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
     });
 
     // NEW ORDER: Pages are already in correct order from backend (Text on LEFT, AI on RIGHT)
-    // No swapping or blank page insertion needed!
+    // DESKTOP ONLY: Insert blank page after cover for proper book opening UX
     const visiblePages = React.useMemo(() => {
-      return filteredPages;
+      const pages = [...filteredPages];
+
+      // Find cover page (index 0)
+      const coverIndex = pages.findIndex(p => p.index === 0);
+
+      if (coverIndex >= 0) {
+        // Insert blank page object after cover (desktop view only)
+        const blankPage: BookPageInfoV2 = {
+          index: -1,  // Virtual page, negative index to avoid conflicts
+          page_type: 'blank' as any,
+          image_url: null,
+          story_text: null,
+          is_preview: true,
+          is_locked: false,
+          is_filler: false,
+          is_generating: false,
+          is_generated: true,
+          requires_text_overlay: false,
+          text_page_number: null
+        };
+
+        pages.splice(coverIndex + 1, 0, blankPage);
+      }
+
+      return pages;
     }, [filteredPages]);
 
     // Auto-flip to newly generated page
@@ -183,6 +219,11 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
 
     // Render a single page content based on page state
     const renderPageContent = (page: BookPageInfoV2) => {
+      // 0. Blank page (virtual page for book opening UX)
+      if (page.page_type === 'blank' || page.index === -1) {
+        return <div className="w-full h-full bg-white" />;
+      }
+
       // 1. Generating state - AI page currently being created
       if (page.isGenerating) {
         return (
@@ -209,12 +250,18 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
       // 3. Has image - render the actual page content
       if (page.imageUrl) {
         return (
-          <div className="relative w-full h-full">
+          <div className="relative w-full h-full overflow-hidden">
             <img
               src={page.imageUrl}
               alt={`Page ${page.index + 1}`}
               className="w-full h-full object-cover"
               loading="lazy"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block'
+              }}
             />
             {/* Watermark for unpaid previews */}
             {!isPurchased && page.isPreview && (
@@ -341,16 +388,66 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
       );
     }
 
+    // COVER GENERATION LOADING STATE - Show popup overlay while cover is being generated
+    // This prevents showing the blank book with "Waiting for magic..." text
+    if (isViewingCover && coverPage && (!coverPage.imageUrl || coverPage.isGenerating)) {
+      return (
+        <div className="relative flex flex-col items-center justify-center" style={{ minHeight: '600px' }}>
+          {/* Loading Popup Overlay */}
+          <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-md text-center animate-fade-in">
+            {/* Magical Loading Spinner */}
+            <div className="relative w-24 h-24 mx-auto mb-6">
+              {/* Outer spinning ring */}
+              <div className="absolute inset-0 border-4 border-purple-200 rounded-full animate-spin"
+                   style={{ borderTopColor: '#9333ea', animationDuration: '1.5s' }} />
+              {/* Inner pulsing glow */}
+              <div className="absolute inset-2 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full opacity-20 animate-pulse" />
+              {/* Center sparkle icon */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Sparkles className="w-10 h-10 text-purple-500 animate-pulse" />
+              </div>
+            </div>
+
+            {/* Loading Text */}
+            <h3 className="text-2xl font-heading font-bold text-gray-800 mb-3">
+              Creating Your Magical Cover ✨
+            </h3>
+            <p className="text-gray-600 mb-2">
+              We're painting a beautiful cover just for <span className="font-semibold text-purple-600">{childName}</span>
+            </p>
+            <p className="text-gray-500 text-sm">
+              This usually takes 10-15 seconds...
+            </p>
+
+            {/* Decorative dots */}
+            <div className="flex justify-center gap-2 mt-6">
+              {[...Array(3)].map((_, i) => (
+                <div
+                  key={i}
+                  className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-bounce"
+                  style={{ animationDelay: `${i * 0.2}s` }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="relative flex flex-col items-center">
         {/* Flipbook container */}
         <div
-          className={`relative shadow-2xl rounded-lg overflow-hidden transition-all duration-500 ${
+          className={`relative shadow-2xl rounded-lg overflow-visible transition-all duration-500 ${
             isViewingCover ? 'scale-105' : ''
           }`}
           style={{
             perspective: '1500px',
             transformStyle: 'preserve-3d',
+            minHeight: `${pageHeight}px`,
+            height: `${pageHeight}px`,
+            width: `${pageWidth * 2}px`, // Open book = 2 pages wide
+            maxWidth: '100%',
             // Center the cover page when viewing it
             ...(isViewingCover && {
               marginLeft: 'auto',
