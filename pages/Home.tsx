@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ThemeType, Theme } from '../types';
 import { THEMES } from '../constants';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, MessageCircle } from 'lucide-react';
 import OptimizedImage from '../components/OptimizedImage';
 import { getFormattedPrice } from '../src/api/client';
 import { trackThemeSelected, trackFunnelStep } from '../src/services/analytics';
@@ -174,6 +174,19 @@ const Home: React.FC = () => {
                 location="London, UK"
                 avatar="ES"
               />
+            </div>
+
+            {/* Feedback CTA */}
+            <div className="mt-10 bg-gradient-to-r from-primary/5 via-purple-50 to-primary/5 rounded-2xl p-6 text-center border border-primary/10">
+              <p className="text-gray-700 font-heading text-lg mb-2">Got a StoryGift book?</p>
+              <p className="text-gray-500 text-sm mb-4">We'd love to hear what your little one thought of their adventure!</p>
+              <Link
+                to="/feedback"
+                className="inline-flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-[0.98]"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Share Your Magic Review
+              </Link>
             </div>
 
             {/* Trust Badges */}
