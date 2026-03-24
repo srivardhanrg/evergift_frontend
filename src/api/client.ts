@@ -80,7 +80,10 @@ const getApiBase = (): string => {
     if (isShopifyTestMode()) {
         return '/proxy/api';
     }
-    return isShopifyEnvironment() ? '/apps/zelavo/api' : '/proxy/api';
+    if (isShopifyEnvironment()) return '/apps/zelavo/api';
+    // Use VITE_BACKEND_URL if set (Render deployment), otherwise local proxy
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    return backendUrl ? `${backendUrl}/api` : '/proxy/api';
 };
 
 /**
@@ -99,8 +102,9 @@ const getDirectApiBase = (): string => {
             return `${backendUrl}/api`;
         }
     }
-    // Fallback for local development
-    return '/proxy/api';
+    // Use VITE_BACKEND_URL if set (Render deployment), otherwise local proxy
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    return backendUrl ? `${backendUrl}/api` : '/proxy/api';
 };
 
 const API_BASE = getApiBase();
