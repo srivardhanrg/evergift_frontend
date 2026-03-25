@@ -80,7 +80,10 @@ const getApiBase = (): string => {
     if (isShopifyTestMode()) {
         return '/proxy/api';
     }
-    return isShopifyEnvironment() ? '/apps/zelavo/api' : '/proxy/api';
+    if (isShopifyEnvironment()) return '/apps/zelavo/api';
+    // Use VITE_BACKEND_URL if set (Render deployment), otherwise local proxy
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    return backendUrl ? `${backendUrl}/api` : '/proxy/api';
 };
 
 /**
@@ -99,8 +102,9 @@ const getDirectApiBase = (): string => {
             return `${backendUrl}/api`;
         }
     }
-    // Fallback for local development
-    return '/proxy/api';
+    // Use VITE_BACKEND_URL if set (Render deployment), otherwise local proxy
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    return backendUrl ? `${backendUrl}/api` : '/proxy/api';
 };
 
 const API_BASE = getApiBase();
@@ -310,21 +314,35 @@ async function handleResponse<T>(response: Response): Promise<T> {
 // ==================
 
 /**
- * Upload a child's photo for face validation.
+ * Upload child's photos for face validation (1-3 images).
  * Uses DIRECT_API_BASE because Shopify App Proxy doesn't support multipart/form-data.
  */
-export async function uploadPhoto(file: File): Promise<PhotoUploadResponse> {
+export async function uploadPhotos(files: File[]): Promise<PhotoUploadResponse> {
+    if (files.length === 0 || files.length > 3) {
+        throw new ApiError('Please upload 1-3 photos', 'INVALID_PHOTO_COUNT');
+    }
+
     const formData = new FormData();
-    formData.append('photo', file);
+    files.forEach(file => {
+        formData.append('photos', file);
+    });
 
     // Use direct backend URL for file uploads (bypasses Shopify App Proxy)
-    const response = await fetch(`${DIRECT_API_BASE}/upload-photo`, {
+    const response = await fetch(`${DIRECT_API_BASE}/upload-photos`, {
         method: 'POST',
         headers: buildHeaders(),
         body: formData,
     });
 
     return handleResponse<PhotoUploadResponse>(response);
+}
+
+/**
+ * Upload a single child's photo (backward compatibility).
+ * Wraps the new multi-photo upload for existing code.
+ */
+export async function uploadPhoto(file: File): Promise<PhotoUploadResponse> {
+    return uploadPhotos([file]);
 }
 
 /**
@@ -1146,6 +1164,7 @@ export async function buyNowWithShopify(previewId: string, theme?: string): Prom
 
 export const api = {
     uploadPhoto,
+    uploadPhotos,  // New multi-photo upload method
     createPreview,
     getJobStatus,
     getPreview,

@@ -56,7 +56,7 @@ export enum PreviewStatus {
 // ==================
 
 export interface PreviewCreateRequest {
-    photo_url: string;
+    photo_urls: string[];
     child_name: string;
     child_age: number;
     child_gender: 'male' | 'female';
@@ -70,11 +70,22 @@ export interface PreviewCreateRequest {
 // Response Types
 // ==================
 
-export interface PhotoUploadResponse {
+export interface PhotoData {
     photo_id: string;
     photo_url: string;
+    upload_order: number;
     face_valid: boolean;
     face_count: number;
+    quality_score: number;
+}
+
+export interface PhotoUploadResponse {
+    photos: PhotoData[];
+    valid_photo_urls: string[];
+    total_uploaded: number;
+    valid_count: number;
+    has_valid_photos: boolean;
+    message: string;
 }
 
 export interface JobStartResponse {
