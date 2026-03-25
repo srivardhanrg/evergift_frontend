@@ -1,0 +1,10 @@
+﻿6533e46 Merge remote-tracking branch 'origin/multi_face_change' into prod
+ff189e9 text overlay and cover book style
+d0179d3 feat: add feedback CTA banner on homepage
+468097b feat: add feedback page for QR code scanned reviews
+63c71c2 fix: allow magictales.onrender.com host in vite config
+d82e1b5 feat: use VITE_BACKEND_URL env var for Render deployment
+9468f11 feat: multi-face upload support on frontend
+4bdfbdf wflip view issue
+97e13fd 24 pages refactroing
+bec7720 fix: Migrate preview state machine from V1 to V2 API to resolve Magical Ripple error

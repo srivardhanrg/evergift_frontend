@@ -59,13 +59,18 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Support */}
+          {/* Support & Legal */}
           <div>
-            <h4 className="font-heading text-lg text-gray-800 mb-6">Support</h4>
+            <h4 className="font-heading text-lg text-gray-800 mb-6">Support & Legal</h4>
             <ul className="space-y-3">
               <li>
                 <Link to="/contact" className="text-gray-500 hover:text-primary transition font-medium flex items-center gap-2">
                   <Mail className="w-4 h-4" /> Contact Us
+                </Link>
+              </li>
+              <li>
+                <Link to="/faq" className="text-gray-500 hover:text-primary transition font-medium">
+                  FAQ
                 </Link>
               </li>
               <li className="pt-4">
@@ -86,9 +91,14 @@ const Footer: React.FC = () => {
       <div className="border-t border-gray-100 bg-gray-50/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-gray-500 text-sm">
-              © {currentYear} StoryGift. All rights reserved.
-            </p>
+            <div className="text-center md:text-left">
+              <p className="text-gray-500 text-sm">
+                © {currentYear} StoryGift. All rights reserved.
+              </p>
+              <p className="text-gray-400 text-xs mt-1">
+                Operated by Juvilabs Pvt Limited
+              </p>
+            </div>
             <div className="flex items-center gap-1 text-gray-500 text-sm">
               <span>Made with</span>
               <Heart className="w-4 h-4 text-primary fill-current mx-1" />

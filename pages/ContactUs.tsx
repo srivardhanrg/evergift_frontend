@@ -30,8 +30,13 @@ const ContactUs: React.FC = () => {
 
       {/* Contact Information */}
       <section className="py-16 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-8">
+        <div className="max-w-5xl mx-auto px-4">
+          <h2 className="text-3xl font-heading text-gray-900 mb-8 text-center">Contact Information</h2>
+          <p className="text-gray-600 text-center mb-12 max-w-2xl mx-auto">
+            Choose the most convenient way to reach us
+          </p>
+
+          <div className="grid md:grid-cols-3 gap-8">
             {/* Email Card */}
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-8 border border-purple-100 hover:shadow-lg transition-shadow">
               <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center mb-6">
@@ -40,12 +45,12 @@ const ContactUs: React.FC = () => {
               <h3 className="text-xl font-heading text-gray-900 mb-2">Email Us</h3>
               <a
                 href="mailto:hello@juvilabs.com"
-                className="text-2xl font-semibold text-primary hover:text-purple-600 transition-colors block mb-3"
+                className="text-lg font-semibold text-primary hover:text-purple-600 transition-colors block mb-3"
               >
                 hello@juvilabs.com
               </a>
               <p className="text-gray-600 text-sm">
-                For general inquiries, support, or custom requests
+                Response within 24 hours
               </p>
             </div>
 
@@ -57,13 +62,67 @@ const ContactUs: React.FC = () => {
               <h3 className="text-xl font-heading text-gray-900 mb-2">Call Us</h3>
               <a
                 href="tel:+17209738597"
-                className="text-2xl font-semibold text-secondary hover:text-blue-600 transition-colors block mb-3"
+                className="text-lg font-semibold text-secondary hover:text-blue-600 transition-colors block mb-3"
               >
                 +1 720 973-8597
               </a>
               <p className="text-gray-600 text-sm">
-                We're happy to answer your questions
+                Mon-Fri, 9:00 AM - 6:00 PM IST
               </p>
+            </div>
+
+            {/* Business Address Card */}
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-8 border border-green-100 hover:shadow-lg transition-shadow">
+              <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mb-6">
+                <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-heading text-gray-900 mb-2">Visit Us</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                <strong className="text-gray-900">[Business Address]</strong><br />
+                <span className="text-xs text-gray-500 italic">(Address to be added)</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Business Details Section */}
+      <section className="py-12 bg-gray-50">
+        <div className="max-w-3xl mx-auto px-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            <h3 className="text-2xl font-heading text-gray-900 mb-6 text-center">Business Information</h3>
+            <div className="grid md:grid-cols-2 gap-6 text-sm">
+              <div>
+                <p className="font-semibold text-gray-900 mb-1">Legal Entity</p>
+                <p className="text-gray-600">Juvilabs Pvt Limited</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 mb-1">Established</p>
+                <p className="text-gray-600">2026</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 mb-1">Primary Email</p>
+                <p className="text-gray-600">
+                  <a href="mailto:hello@juvilabs.com" className="text-primary hover:underline">
+                    hello@juvilabs.com
+                  </a>
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 mb-1">Phone</p>
+                <p className="text-gray-600">+1 720 973-8597</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 mb-1">Business Hours</p>
+                <p className="text-gray-600">Monday - Friday<br />9:00 AM - 6:00 PM IST</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 mb-1">Weekend Support</p>
+                <p className="text-gray-600">Email only</p>
+              </div>
             </div>
           </div>
         </div>

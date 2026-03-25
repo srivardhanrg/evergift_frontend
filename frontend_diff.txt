@@ -1,0 +1,363 @@
+﻿diff --git a/components/BookViewer/DesktopFlipbookViewer.tsx b/components/BookViewer/DesktopFlipbookViewer.tsx
+index 4ac7971..bd7531b 100644
+--- a/components/BookViewer/DesktopFlipbookViewer.tsx
++++ b/components/BookViewer/DesktopFlipbookViewer.tsx
+@@ -86,9 +86,6 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
+     ref
+   ) => {
+     const bookRef = useRef<any>(null);
+-    const [showCoverView, setShowCoverView] = React.useState(true);
+-    const hasOpenedBookRef = useRef(false);
+-    const prevPageRef = useRef(currentPage); // Track previous page for detecting navigation back to cover
+ 
+     // Expose methods to parent
+     useImperativeHandle(ref, () => ({
+@@ -112,14 +109,22 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
+     // Get pages to display - MUST be declared before useEffect that uses it
+     // Show ALL preview pages during generation (they'll render appropriate states)
+     // For locked pages, only show if purchased or if showing locked indicator
++    const firstPendingAiPage = bookStructure.pages.find(
++      p => (p.pageType === 'ai_page' || p.pageType === 'cover') && !p.isGenerated
++    );
++    const maxVisibleIndex = firstPendingAiPage ? firstPendingAiPage.index : 999;
++
+     const filteredPages = bookStructure.pages.filter((page) => {
++      // Only show pages sequentially up to the current active AI page
++      if (page.index > maxVisibleIndex) return false;
++
+       // Always show preview pages (indices 0-12) - they're part of the free preview
+       if (page.isPreview) return true;
+       // For locked pages (indices 13-25):
+       // - Show if purchased (user has access)
+       // - Show if has imageUrl (already generated)
+       // - Show to indicate locked state for purchase CTA
+-      if (page.isLocked) return isPurchased || page.imageUrl || true;
++      if (page.isLocked) return isPurchased || page.imageUrl || page.index === 14;
+       // Show any page with content
+       if (page.imageUrl) return true;
+       return true;
+@@ -202,12 +207,6 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
+     };
+ 
+     const goToNext = () => {
+-      // If in cover view, transition to flipbook
+-      if (showCoverView && isViewingCover) {
+-        handleOpenBook();
+-        return;
+-      }
+-
+       if (bookRef.current) {
+         bookRef.current.pageFlip().flipNext();
+       }
+@@ -226,6 +225,31 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
+ 
+       // 1. Generating state - AI page currently being created
+       if (page.isGenerating) {
++        if (page.index === 0) {
++          return (
++            <div className="w-full h-full bg-gradient-to-br from-purple-50 to-pink-50 flex flex-col items-center justify-center">
++              <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl p-8 max-w-md text-center animate-fade-in mx-4">
++                <div className="relative w-24 h-24 mx-auto mb-6">
++                  <div className="absolute inset-0 border-4 border-purple-200 rounded-full animate-spin"
++                       style={{ borderTopColor: '#9333ea', animationDuration: '1.5s' }} />
++                  <div className="absolute inset-2 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full opacity-20 animate-pulse" />
++                  <div className="absolute inset-0 flex items-center justify-center">
++                    <Sparkles className="w-10 h-10 text-purple-500 animate-pulse" />
++                  </div>
++                </div>
++                <h3 className="text-2xl font-heading font-bold text-gray-800 mb-3">
++                  Creating Your Magical Cover Γ£¿
++                </h3>
++                <p className="text-gray-600 mb-2">
++                  We're painting a beautiful cover just for <span className="font-semibold text-purple-600">{childName}</span>
++                </p>
++                <p className="text-gray-500 text-sm">
++                  This usually takes 10-15 seconds...
++                </p>
++              </div>
++            </div>
++          );
++        }
+         return (
+           <GeneratingPageV2
+             page={page}
+@@ -263,6 +287,25 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
+                 display: 'block'
+               }}
+             />
++            {/* If this is the cover, add the Open Book button */}
++            {page.index === 0 && (
++              <>
++                <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
++                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto z-50">
++                  <button
++                    onClick={(e) => {
++                      e.stopPropagation();
++                      if (bookRef.current) bookRef.current.pageFlip().flipNext();
++                    }}
++                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-full font-bold text-lg shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center gap-2"
++                  >
++                    <span>Open Book</span>
++                    <ChevronRight className="w-5 h-5" />
++                  </button>
++                </div>
++              </>
++            )}
++            
+             {/* Watermark for unpaid previews */}
+             {!isPurchased && page.isPreview && (
+               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+@@ -272,7 +315,7 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
+               </div>
+             )}
+             {/* Page number indicator */}
+-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full">
++            <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full">
+               {getPageLabel(page.index)}
+             </div>
+           </div>
+@@ -314,145 +357,21 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
+     const canGoNext = currentVisibleIndex < visiblePages.length - 1;
+ 
+     // Check if we're viewing the cover (page 0)
+-    const isViewingCover = currentPage === 0;
+-
+-    // Handle opening the book (transitioning from cover view to flipbook)
+-    const handleOpenBook = useCallback(() => {
+-      setShowCoverView(false);
+-      hasOpenedBookRef.current = true;
+-      // Auto-flip to next page after a short delay
+-      setTimeout(() => {
+-        if (bookRef.current) {
+-          bookRef.current.pageFlip().flipNext();
+-        }
+-      }, 300);
+-    }, []);
+-
+-    // Handle cover view state changes based on navigation
+-    useEffect(() => {
+-      // Case 1: User navigated AWAY from cover (opened the book)
+-      if (!isViewingCover && showCoverView) {
+-        setShowCoverView(false);
+-        hasOpenedBookRef.current = true;
+-      }
+-
+-      // Case 2: User navigated BACK to cover from another page (closing the book)
+-      // This happens when clicking "previous" from page 1
+-      if (isViewingCover && prevPageRef.current > 0 && hasOpenedBookRef.current) {
+-        // Reset to show full-screen cover view with closing animation
+-        setShowCoverView(true);
+-        hasOpenedBookRef.current = false;
+-      }
+-
+-      // Update previous page reference
+-      prevPageRef.current = currentPage;
+-    }, [isViewingCover, showCoverView, currentPage]);
+-
+-    // If showing cover view and on page 0, show full-screen cover with smooth animation
+-    const coverPage = visiblePages.find(p => p.index === 0);
+-    if (showCoverView && !hasOpenedBookRef.current && isViewingCover && coverPage && coverPage.imageUrl) {
+-      return (
+-        <div className="relative flex flex-col items-center">
+-          {/* Full-screen centered cover view with entrance animation */}
+-          <div className="relative shadow-2xl rounded-lg overflow-hidden hover:scale-105 transition-all duration-700 animate-book-close">
+-            <img
+-              src={coverPage.imageUrl}
+-              alt="Book Cover"
+-              className="w-full h-full object-cover"
+-              style={{ width: '500px', height: '500px' }}
+-            />
+-            {/* Watermark for unpaid previews */}
+-            {!isPurchased && (
+-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+-                <div className="text-white/15 text-6xl font-bold rotate-[-30deg] select-none tracking-wider">
+-                  PREVIEW
+-                </div>
+-              </div>
+-            )}
+-            {/* "Open Book" button overlay with fade-in animation */}
+-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 opacity-0 animate-fade-in-up">
+-              <button
+-                onClick={handleOpenBook}
+-                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-full font-bold text-lg shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center gap-2"
+-              >
+-                <span>Open Book</span>
+-                <ChevronRight className="w-5 h-5" />
+-              </button>
+-            </div>
+-            {/* Page label */}
+-            <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full">
+-              Cover
+-            </div>
+-          </div>
+-        </div>
+-      );
+-    }
+-
+-    // COVER GENERATION LOADING STATE - Show popup overlay while cover is being generated
+-    // This prevents showing the blank book with "Waiting for magic..." text
+-    if (isViewingCover && coverPage && (!coverPage.imageUrl || coverPage.isGenerating)) {
+-      return (
+-        <div className="relative flex flex-col items-center justify-center" style={{ minHeight: '600px' }}>
+-          {/* Loading Popup Overlay */}
+-          <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-md text-center animate-fade-in">
+-            {/* Magical Loading Spinner */}
+-            <div className="relative w-24 h-24 mx-auto mb-6">
+-              {/* Outer spinning ring */}
+-              <div className="absolute inset-0 border-4 border-purple-200 rounded-full animate-spin"
+-                   style={{ borderTopColor: '#9333ea', animationDuration: '1.5s' }} />
+-              {/* Inner pulsing glow */}
+-              <div className="absolute inset-2 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full opacity-20 animate-pulse" />
+-              {/* Center sparkle icon */}
+-              <div className="absolute inset-0 flex items-center justify-center">
+-                <Sparkles className="w-10 h-10 text-purple-500 animate-pulse" />
+-              </div>
+-            </div>
+-
+-            {/* Loading Text */}
+-            <h3 className="text-2xl font-heading font-bold text-gray-800 mb-3">
+-              Creating Your Magical Cover Γ£¿
+-            </h3>
+-            <p className="text-gray-600 mb-2">
+-              We're painting a beautiful cover just for <span className="font-semibold text-purple-600">{childName}</span>
+-            </p>
+-            <p className="text-gray-500 text-sm">
+-              This usually takes 10-15 seconds...
+-            </p>
+-
+-            {/* Decorative dots */}
+-            <div className="flex justify-center gap-2 mt-6">
+-              {[...Array(3)].map((_, i) => (
+-                <div
+-                  key={i}
+-                  className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-bounce"
+-                  style={{ animationDelay: `${i * 0.2}s` }}
+-                />
+-              ))}
+-            </div>
+-          </div>
+-        </div>
+-      );
+-    }
++    const isViewingCover = currentVisibleIndex === 0;
+ 
+     return (
+-      <div className="relative flex flex-col items-center">
++      <div className="relative flex flex-col items-center justify-center w-full overflow-hidden">
+         {/* Flipbook container */}
+         <div
+-          className={`relative shadow-2xl rounded-lg overflow-visible transition-all duration-500 ${
+-            isViewingCover ? 'scale-105' : ''
+-          }`}
++          className="relative shadow-2xl rounded-lg overflow-visible transition-transform duration-[600ms] ease-out"
+           style={{
++            transform: isViewingCover ? `translateX(-${pageWidth / 2}px)` : 'translateX(0)',
+             perspective: '1500px',
+             transformStyle: 'preserve-3d',
+             minHeight: `${pageHeight}px`,
+             height: `${pageHeight}px`,
+             width: `${pageWidth * 2}px`, // Open book = 2 pages wide
+             maxWidth: '100%',
+-            // Center the cover page when viewing it
+-            ...(isViewingCover && {
+-              marginLeft: 'auto',
+-              marginRight: 'auto',
+-            }),
+           }}
+         >
+           {/* Book shadow effect */}
+diff --git a/components/BookViewer/MobileScrollViewer.tsx b/components/BookViewer/MobileScrollViewer.tsx
+index eaab12c..a23cbf0 100644
+--- a/components/BookViewer/MobileScrollViewer.tsx
++++ b/components/BookViewer/MobileScrollViewer.tsx
+@@ -53,14 +53,21 @@ const MobileScrollViewer: React.FC<MobileScrollViewerProps> = ({
+   // Get pages to display
+   // Show ALL preview pages during generation (they'll render appropriate states)
+   // For locked pages, only show if purchased or if showing locked indicator
++  const firstPendingAiPage = bookStructure.pages.find(
++    p => (p.pageType === 'ai_page' || p.pageType === 'cover') && !p.isGenerated
++  );
++  const maxVisibleIndex = firstPendingAiPage ? firstPendingAiPage.index : 999;
++
+   const visiblePages = bookStructure.pages.filter((page) => {
++    if (page.index > maxVisibleIndex) return false;
++
+     // Always show preview pages (indices 0-12) - they're part of the free preview
+     if (page.isPreview) return true;
+     // For locked pages (indices 13-25):
+     // - Show if purchased (user has access)
+     // - Show if has imageUrl (already generated)
+     // - Show to indicate locked state for purchase CTA
+-    if (page.isLocked) return isPurchased || page.imageUrl || true;
++    if (page.isLocked) return isPurchased || page.imageUrl || page.index === 14;
+     // Show any page with content
+     if (page.imageUrl) return true;
+     return true;
+diff --git a/components/OrdersList.tsx b/components/OrdersList.tsx
+index 2671df0..3166dbd 100644
+--- a/components/OrdersList.tsx
++++ b/components/OrdersList.tsx
+@@ -215,7 +215,7 @@ const getActiveStep = (status: string): number => {
+ const ERROR_STATUSES = ['failed', 'cancelled', 'rejected'];
+ 
+ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
+-    const hasPhysicalOrder = order.printOrder !== null;
++    const hasPhysicalOrder = order.order_type === 'physical' || order.printOrder !== null;
+     const printStatus = order.printOrder?.lulu_status || 'pending';
+ 
+     // Determine order type and status
+diff --git a/pages/PreviewStoryV2.tsx b/pages/PreviewStoryV2.tsx
+index 1be91ff..021ef9a 100644
+--- a/pages/PreviewStoryV2.tsx
++++ b/pages/PreviewStoryV2.tsx
+@@ -455,13 +455,23 @@ const PreviewStoryV2: React.FC = () => {
+ 
+                       {/* Track Order button ΓÇö for physical orders */}
+                       {orderType === 'physical' && (
+-                        <Link
+-                          to="/my-creations?tab=ordered"
+-                          className="flex-1 sm:flex-initial bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2"
+-                        >
+-                          <Package className="w-5 h-5" />
+-                          <span>Track Order</span>
+-                        </Link>
++                        machine.overlayPhase === 'print_submitted' || printOrder ? (
++                          <Link
++                            to="/my-creations?tab=ordered"
++                            className="flex-1 sm:flex-initial bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2"
++                          >
++                            <Package className="w-5 h-5" />
++                            <span>Track Order</span>
++                          </Link>
++                        ) : (
++                          <button
++                            disabled
++                            className="flex-1 sm:flex-initial bg-gray-400 text-white px-4 sm:px-6 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center space-x-2 cursor-not-allowed"
++                          >
++                            <Loader2 className="w-5 h-5 animate-spin" />
++                            <span>Preparing...</span>
++                          </button>
++                        )
+                       )}
+ 
+                       {/* Track Order button (secondary) ΓÇö for digital orders that also have physical */}
+diff --git a/src/api/client.ts b/src/api/client.ts
+index 45544ee..e3b071e 100644
+--- a/src/api/client.ts
++++ b/src/api/client.ts
+@@ -430,6 +430,7 @@ export interface CreationItem {
+     cover_url: string | null;
+     status: string;
+     payment_status: 'paid' | 'unpaid';
++    order_type?: 'physical' | 'digital' | null;
+     created_at: string;
+     expires_at: string;
+     days_remaining: number;
+@@ -1038,6 +1039,7 @@ export async function addPhysicalBookToCart(
+                     properties: {
+                         '_preview_id': previewId,
+                         '_order_type': 'physical',        // triggers Lulu in backend webhook
++                        '_cover_type': coverType,         // Softcover/Hardcover selection
+                         'Child\'s Story': `Personalised Printed Storybook (${coverType === "softcover" ? "Softcover" : "Hardcover"})`,
+                     },
+                 }],

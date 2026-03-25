@@ -14,6 +14,7 @@ import ContactUs from './pages/ContactUs';
 import MyCreations from './pages/MyCreations';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import FAQ from './pages/FAQ';
 import { api, isShopifyCustomerLoggedIn, getPendingCheckout, clearPendingCheckout, getLoginRedirect, clearLoginRedirect } from './src/api/client';
 import { initAnalytics, trackPageView, identifyUser } from './src/services/analytics';
 
@@ -46,6 +47,8 @@ const AnalyticsTracker: React.FC = () => {
       '/my-creations': 'My Creations',
       '/privacy-policy': 'Privacy Policy',
       '/terms-of-service': 'Terms of Service',
+      '/faq': 'FAQ',
+      '/contact': 'Contact Us',
     };
 
     let pageName = pageNames[pathname] || pathname;
@@ -192,6 +195,7 @@ const App: React.FC = () => {
                   <Route path="/preview/:id" element={<PreviewStoryV2 />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/terms-of-service" element={<TermsOfService />} />
+                  <Route path="/faq" element={<FAQ />} />
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
               </ErrorBoundary>
