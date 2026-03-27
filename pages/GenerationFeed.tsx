@@ -2,11 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sparkles, Loader2, Clock, Flame, RefreshCw, PlusCircle } from 'lucide-react';
 import { api, isShopifyCustomerLoggedIn } from '../src/api/client';
-import { JobStatus, PageData } from '../src/types/api.types';
-import BookPageCard from '../components/BookPageCard';
-import CoverPageCard from '../components/CoverPageCard';
+import { JobStatus } from '../src/types/api.types';
 import BookViewerV2 from '../components/BookViewer/BookViewerV2';
-import type { BookStructureV2, BookStyle, GenerationPhase } from '../types/book.types';
+import type { BookStructureV2, GenerationPhase } from '../types/book.types';
 import { convertBackendBookStructureToV2 } from '../src/utils/bookStructureConverter';
 import AuthModal, { hasSavePromptBeenShown, markSavePromptShown } from '../components/AuthModal';
 // DISABLED: Email capture popup feature temporarily disabled
@@ -42,8 +40,6 @@ const GENERATION_MESSAGES = [
     "💫 Almost ready for your grand adventure...",
 ];
 
-// Messages for each specific page
-
 // DISABLED: Email capture popup feature temporarily disabled
 // ==================
 // Email Popup State Management (per preview)
@@ -62,15 +58,6 @@ const GENERATION_MESSAGES = [
 //     if (typeof localStorage === 'undefined' || !previewId) return;
 //     localStorage.setItem(`${EMAIL_POPUP_PREFIX}${previewId}`, state);
 // };
-
-const PAGE_SPECIFIC_MESSAGES: Record<number, string[]> = {
-    0: ["Designing your magical cover...", "Creating the perfect first impression...", "Making it special!"],
-    1: ["Opening the enchanted storybook...", "Your hero is waking up!", "Chapter 1 is brewing..."],
-    2: ["The adventure begins!", "Magic is in the air...", "Something wonderful is happening..."],
-    3: ["Plot twist incoming!", "New friends appearing...", "The story thickens..."],
-    4: ["Excitement building!", "Almost at the peak...", "Drama unfolds..."],
-    5: ["Creating a magical ending!", "Wrapping up the adventure...", "The grand finale!"],
-};
 
 /**
  * RotatingGenerationMessage - Cycles through whimsical messages every 5 seconds
@@ -131,8 +118,6 @@ const GenerationFeed: React.FC = () => {
     // State
     const [progress, setProgress] = useState(0);
     const [currentStep, setCurrentStep] = useState('Starting the magic...');
-    const [completedPages, setCompletedPages] = useState<PageData[]>([]);
-    const [coverData, setCoverData] = useState<{ url: string; childName: string; storyTitle: string } | null>(null);
     const [status, setStatus] = useState<JobStatus>(JobStatus.QUEUED);
     const [error, setError] = useState<{ title: string; message: string; suggestion?: string; icon: string } | null>(null);
     const [canRetry, setCanRetry] = useState(false);
@@ -147,10 +132,11 @@ const GenerationFeed: React.FC = () => {
     const [childName, setChildName] = useState<string>('');
     // const [currentPreviewId, setCurrentPreviewId] = useState<string | null>(null);
 
-    // V2: Book structure for BookViewerV2 (desktop)
+    // V2: Book structure for BookViewerV2 (unified mobile + desktop)
     const [bookStructure, setBookStructure] = useState<BookStructureV2 | null>(null);
     const [theme, setTheme] = useState<string>('');
-    const [style, setStyle] = useState<BookStyle>('photorealistic');
+    // V1: Style state removed - hardcoded to photorealistic
+    // const [style, setStyle] = useState<BookStyle>('photorealistic');
     const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
 
     // Detect desktop vs mobile
@@ -162,34 +148,9 @@ const GenerationFeed: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Ref for auto-scrolling to active card
-    const activeCardRef = useRef<HTMLDivElement>(null);
-    const isUserScrollingRef = useRef(false);
-    const lastScrollTimeRef = useRef(0);
-    const networkRetryCountRef = useRef(0); // Track network retries without causing re-renders
+    // Network retry tracking
+    const networkRetryCountRef = useRef(0);
     const MAX_NETWORK_RETRIES = 3;
-
-    // Track if user is manually scrolling (to avoid hijacking their scroll)
-    useEffect(() => {
-        let scrollTimeout: NodeJS.Timeout;
-
-        const handleScroll = () => {
-            isUserScrollingRef.current = true;
-            lastScrollTimeRef.current = Date.now();
-
-            // Reset user scrolling flag after 2 seconds of no scroll
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => {
-                isUserScrollingRef.current = false;
-            }, 2000);
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => {
-            window.removeEventListener('scroll', handleScroll);
-            clearTimeout(scrollTimeout);
-        };
-    }, []);
 
     // Rotate fun messages every 7 seconds for better readability
     useEffect(() => {
@@ -234,23 +195,7 @@ const GenerationFeed: React.FC = () => {
     //     }
     // }, [status, currentPreviewId, showEmailPopup]);
 
-    // Auto-scroll to the newly completed page - with delay and respecting user scroll
-    useEffect(() => {
-        // Skip if user is actively scrolling
-        if (isUserScrollingRef.current) return;
-
-        // Add delay before scrolling to let user see the completed page
-        const timer = setTimeout(() => {
-            if (activeCardRef.current && !isUserScrollingRef.current) {
-                activeCardRef.current.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
-            }
-        }, 800); // 800ms delay before auto-scroll
-
-        return () => clearTimeout(timer);
-    }, [completedPages.length, coverData]);
+    // Auto-scroll removed - BookViewerV2 handles page navigation internally
 
     // Store job ID for recovery if user navigates away
     useEffect(() => {
@@ -303,16 +248,17 @@ const GenerationFeed: React.FC = () => {
                     try {
                         const previewData = await api.getPreviewV2(previewId);
                         if (previewData) {
-                            // Capture child name, theme, and style
+                            // Capture child name and theme (V1: style removed)
                             if (previewData.child_name) {
                                 setChildName(previewData.child_name);
                             }
                             if (previewData.theme) {
                                 setTheme(previewData.theme);
                             }
-                            if (previewData.style) {
-                                setStyle(previewData.style as BookStyle);
-                            }
+                            // V1: Style capture removed - always photorealistic
+                            // if (previewData.style) {
+                            //     setStyle(previewData.style as BookStyle);
+                            // }
 
                             // V2: Convert backend snake_case response to frontend camelCase types
                             // The backend returns snake_case fields (image_url, is_generating, etc.)
@@ -338,42 +284,6 @@ const GenerationFeed: React.FC = () => {
                                 // Set the properly converted structure for BookViewerV2
                                 setBookStructure(convertedStructure);
 
-                                // Extract pages from CONVERTED structure for mobile card feed
-                                // Now using camelCase properties (imageUrl, isGenerated, etc.)
-
-                                // Extract cover page (index 0) - using camelCase
-                                const coverPage = convertedStructure.pages.find(
-                                    p => p.index === 0 && p.imageUrl
-                                );
-                                if (coverPage && previewData.child_name) {
-                                    setCoverData({
-                                        url: coverPage.imageUrl!,
-                                        childName: previewData.child_name,
-                                        storyTitle: previewData.story_title || `${previewData.child_name}'s Adventure`
-                                    });
-                                }
-
-                                // Extract completed AI story pages (indices 5, 7, 9, 11, 13)
-                                // NEW LAYOUT: Text on LEFT (4,6,8,10,12), AI on RIGHT (5,7,9,11,13)
-                                const AI_STORY_PAGE_INDICES = [5, 7, 9, 11, 13];
-                                const completedAiPages = convertedStructure.pages.filter(p =>
-                                    AI_STORY_PAGE_INDICES.includes(p.index) &&
-                                    p.imageUrl &&
-                                    p.isGenerated
-                                );
-
-                                // Map to PageData format for the feed cards
-                                // Sort by index to ensure correct order
-                                const sortedPages = [...completedAiPages].sort((a, b) => a.index - b.index);
-                                const storyPages: PageData[] = sortedPages.map((p, i) => ({
-                                    page_number: i + 1,  // Display as 1, 2, 3, 4, 5
-                                    image_url: p.imageUrl || '',
-                                    story_text: p.storyText || '',
-                                    book_index: p.index  // Track actual book index for debugging
-                                }));
-
-                                setCompletedPages(storyPages);
-
                                 // Update progress from converted structure (camelCase)
                                 if (convertedStructure.generationProgress > 0) {
                                     setProgress(convertedStructure.generationProgress);
@@ -390,14 +300,15 @@ const GenerationFeed: React.FC = () => {
                 if (statusResponse.status === JobStatus.COMPLETED && statusResponse.preview_id) {
                     // Track generation completed
                     const generationDuration = Date.now() - (window as any).__generationStartTime || 0;
+                    const totalAiPages = TOTAL_AI_PAGES - 1; // 5 story pages (excluding cover)
                     trackPreviewGenerationCompleted(
                         generationDuration,
-                        completedPages.length || (TOTAL_AI_PAGES - 1),  // 5 story pages
-                        'unknown' // Theme not available in job status
+                        totalAiPages,
+                        theme || 'unknown'
                     );
                     trackFunnelStep('preview_ready', {
                         preview_id: statusResponse.preview_id,
-                        pages_count: completedPages.length || (TOTAL_AI_PAGES - 1),  // 5 story pages
+                        pages_count: totalAiPages,
                         duration_ms: generationDuration,
                     });
 
@@ -421,10 +332,11 @@ const GenerationFeed: React.FC = () => {
                 // Handle failure
                 if (statusResponse.status === JobStatus.FAILED) {
                     // Track generation failed
+                    const completedPagesCount = bookStructure?.pages.filter(p => p.isGenerated).length || 0;
                     trackPreviewGenerationFailed(
                         'JOB_FAILED',
                         statusResponse.error || 'Unknown error',
-                        completedPages.length
+                        completedPagesCount
                     );
 
                     const friendlyError = getFriendlyError('JOB_FAILED', statusResponse.error);
@@ -482,13 +394,6 @@ const GenerationFeed: React.FC = () => {
         const baseCount = 15 + Math.floor(Math.random() * 35);
         setTodayCount(baseCount);
     }, []);
-
-    // Generate page array for rendering (story pages 1-5)
-    const pages = Array.from({ length: 5 }, (_, i) => i + 1);  // V2: 5 story pages
-
-    // Determine if cover is still generating
-    const isCoverGenerating = !coverData && progress > 0 && progress < 15;
-    const isCoverCompleted = !!coverData;
 
     // Retry handler
     const handleRetry = async () => {
@@ -656,11 +561,16 @@ const GenerationFeed: React.FC = () => {
                     <div className="bg-white rounded-2xl shadow-lg p-6">
                         <RotatingGenerationMessage status={status} />
                         <BookViewerV2
+                            previewId={bookStructure.previewId || ''}
                             bookStructure={bookStructure}
                             childName={childName}
                             theme={theme}
-                            style={style}
+                            style="photorealistic" // Hardcoded - no user selection
                             isPurchased={false}
+                            generationPhase={bookStructure.generationPhase}
+                            onPageChange={(pageIndex) => {
+                                console.log(`[Desktop Generation] Viewing page ${pageIndex + 1}`);
+                            }}
                             onPurchaseClick={() => {
                                 // Show purchase modal or navigate to checkout
                                 console.log('Purchase clicked during generation');
@@ -688,124 +598,48 @@ const GenerationFeed: React.FC = () => {
                 </div>
             )}
 
-            {/* Mobile: Page Feed with cards */}
-            {!isDesktop && (
-                <div className="max-w-md mx-auto px-4 py-10 space-y-5">
-                {/* COVER - Always first */}
-                <div
-                    ref={isCoverGenerating ? activeCardRef : null}
-                    className={`transition-all duration-500 ${isCoverCompleted ? 'animate-in fade-in slide-in-from-bottom-4' : ''}`}
-                >
-                    {isCoverCompleted && coverData ? (
-                        <>
-                            <CoverPageCard
-                                imageUrl={coverData.url}
-                                storyTitle={coverData.storyTitle}
-                                childName={coverData.childName}
-                                isPaid={false}
-                            />
-                            <div className="mt-3 text-center animate-bounce">
-                                <span className="inline-block bg-green-100 text-green-600 px-4 py-1 rounded-full text-sm font-bold">
-                                    ✓ Cover created!
-                                </span>
-                            </div>
-                        </>
-                    ) : (
-                        <BookPageCard
-                            pageNumber={0}
-                            state={isCoverGenerating ? 'generating' : 'pending'}
-                            generatingMessage={PAGE_SPECIFIC_MESSAGES[0][messageIndex % PAGE_SPECIFIC_MESSAGES[0].length]}
-                            isCover={true}
+            {/* Mobile: BookViewerV2 with horizontal swipe - Premium UX */}
+            {!isDesktop && bookStructure && childName && (
+                <div className="max-w-md mx-auto px-4 py-8">
+                    <div className="bg-white rounded-2xl shadow-lg p-4">
+                        <RotatingGenerationMessage status={status} />
+                        <BookViewerV2
+                            previewId={bookStructure.previewId || ''}
+                            bookStructure={bookStructure}
+                            childName={childName}
+                            theme={theme}
+                            style="photorealistic" // Hardcoded - no user selection
+                            isPurchased={false}
+                            generationPhase={bookStructure.generationPhase}
+                            onPageChange={(pageIndex) => {
+                                console.log(`[Mobile Generation] Viewing page ${pageIndex + 1}`);
+                            }}
+                            onPurchaseClick={() => {
+                                console.log('Purchase clicked during generation');
+                            }}
                         />
-                    )}
-                </div>
-
-                {/* STORY PAGES 1-5 */}
-                {pages.map((pageNum, index) => {
-                    // Determine state by checking if page exists in completedPages
-                    const completedPage = completedPages.find(p => p.page_number === pageNum);
-                    const isCompleted = !!completedPage;
-
-                    // The "generating" page is the next one after cover + all completed story pages
-                    // Cover must be complete first
-                    const coverDone = isCoverCompleted;
-                    const nextGeneratingIndex = completedPages.length;
-                    const isGenerating = coverDone && !isCompleted && index === nextGeneratingIndex;
-
-                    let state: 'completed' | 'generating' | 'pending';
-                    if (isCompleted) {
-                        state = 'completed';
-                    } else if (isGenerating) {
-                        state = 'generating';
-                    } else {
-                        state = 'pending';
-                    }
-
-                    // Get page-specific message for generating state
-                    const pageMessages = PAGE_SPECIFIC_MESSAGES[pageNum] || ["Creating magic..."];
-                    const pageMessage = pageMessages[messageIndex % pageMessages.length];
-
-                    return (
-                        <div
-                            key={pageNum}
-                            ref={isGenerating ? activeCardRef : null}
-                            className={`transition-all duration-500 ${isCompleted ? 'animate-in fade-in slide-in-from-bottom-4' : ''}`}
-                        >
-                            <BookPageCard
-                                pageNumber={pageNum}
-                                state={state}
-                                imageUrl={completedPage?.image_url}
-                                storyText={completedPage?.story_text}
-                                generatingMessage={isGenerating ? pageMessage : undefined}
-                            />
-
-                            {/* Celebration when page completes */}
-                            {isCompleted && index === completedPages.length - 1 && completedPages.length < 5 && (
-                                <div className="mt-3 text-center">
-                                    {/* Confetti particles */}
-                                    <div className="relative inline-block">
-                                        <span className="inline-block bg-green-100 text-green-600 px-4 py-1.5 rounded-full text-sm font-bold animate-bounce shadow-md">
-                                            ✓ Page {pageNum} created! ✨
-                                        </span>
-                                        {/* Sparkle particles */}
-                                        <div className="absolute -top-2 -left-2 w-3 h-3 bg-yellow-400 rounded-full animate-ping opacity-75" />
-                                        <div className="absolute -top-1 -right-3 w-2 h-2 bg-pink-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '0.2s' }} />
-                                        <div className="absolute -bottom-1 left-1/4 w-2 h-2 bg-purple-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '0.4s' }} />
-                                    </div>
+                        {/* Completion message for mobile */}
+                        {status === JobStatus.COMPLETED && (
+                            <div className="mt-6 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 rounded-3xl p-6 text-center text-white animate-in fade-in zoom-in duration-700 shadow-2xl">
+                                <div className="text-5xl mb-3 animate-bounce">🎉</div>
+                                <h2 className="text-2xl font-heading mb-2">Your Story is Ready!</h2>
+                                <p className="opacity-90 text-sm mb-1">All pages created successfully</p>
+                                <p className="opacity-70 text-xs mb-3">Redirecting to your magical creation...</p>
+                                <div className="flex justify-center gap-1.5 mt-3">
+                                    {[...Array(5)].map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className="w-1.5 h-1.5 bg-white rounded-full animate-bounce"
+                                            style={{ animationDelay: `${i * 0.1}s` }}
+                                        />
+                                    ))}
                                 </div>
-                            )}
-                        </div>
-                    );
-                })}
-
-                {/* Completion Message */}
-                {status === JobStatus.COMPLETED && (
-                    <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 rounded-3xl p-8 text-center text-white animate-in fade-in zoom-in duration-700 shadow-2xl">
-                        <div className="text-6xl mb-4 animate-bounce">🎉</div>
-                        <h2 className="text-3xl font-heading mb-2">Your Story is Ready!</h2>
-                        <p className="opacity-90 mb-1">All {completedPages.length + 1} pages created</p>
-                        <p className="opacity-70 text-sm mb-4">Redirecting to your magical creation...</p>
-                        <div className="flex justify-center gap-2 mt-4 mb-4">
-                            {[...Array(5)].map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="w-2 h-2 bg-white rounded-full animate-bounce"
-                                    style={{ animationDelay: `${i * 0.1}s` }}
-                                />
-                            ))}
-                        </div>
-                        <button
-                            onClick={() => navigate('/my-creations')}
-                            className="mt-2 px-6 py-2 bg-white/20 hover:bg-white/30 rounded-full text-sm font-medium transition"
-                        >
-                            ← Back to My Creations
-                        </button>
+                            </div>
+                        )}
                     </div>
-                )}
-
-                {/* Bottom Spacer for last card visibility */}
-                <div className="h-20" />
-            </div>
+                    {/* Bottom Spacer for mobile */}
+                    <div className="h-20" />
+                </div>
             )}
 
             {/* Bottom Spacer for desktop */}
