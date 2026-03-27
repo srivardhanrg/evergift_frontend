@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Book, Check } from 'lucide-react';
+import { X, Book, Check, Sparkles } from 'lucide-react';
 import { PHYSICAL_BOOK_SOFTCOVER_PRICE, PHYSICAL_BOOK_HARDCOVER_PRICE } from '../constants';
 
 interface CoverSelectionModalProps {
@@ -36,7 +36,7 @@ const CoverSelectionModal: React.FC<CoverSelectionModalProps> = ({
     'Perfect for everyday reading',
     'Glossy laminated cover',
     'Saddle-stitch binding',
-    '24 interior pages'
+    '24 vibrant interior pages'
   ];
 
   const hardcoverFeatures = [
@@ -44,149 +44,188 @@ const CoverSelectionModal: React.FC<CoverSelectionModalProps> = ({
     'Perfect gift quality',
     'Rigid protective cover',
     'Perfect bound',
-    '24 interior pages'
+    '24 vibrant interior pages'
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Choose Your Book Type</h2>
-            <p className="text-sm text-gray-600 mt-1">Select the perfect cover for your personalized storybook</p>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-in fade-in duration-200">
+      {/* Mobile: Bottom Sheet | Desktop: Centered Modal */}
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl sm:mx-4 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300">
+        {/* Header - Compact on mobile */}
+        <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
+          <div className="flex-1">
+            <h2 className="text-lg sm:text-2xl font-heading font-bold text-gray-900">Choose Your Book Type</h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">Select the perfect cover for your personalized storybook</p>
           </div>
           <button
             onClick={onClose}
             disabled={isProcessing}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+            className="ml-2 p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50 flex-shrink-0"
             aria-label="Close modal"
           >
-            <X className="w-6 h-6 text-gray-600" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          <div className="grid md:grid-cols-2 gap-6">
+        {/* Content - Mobile-optimized spacing */}
+        <div className="p-4 sm:p-6">
+          {/* Cards - Stacked on mobile, side-by-side on desktop */}
+          <div className="flex flex-col sm:grid sm:grid-cols-2 gap-3 sm:gap-6">
             {/* Softcover Card */}
-            <div
-              className={`relative border-2 rounded-xl p-6 transition-all cursor-pointer ${
-                selectedCover === 'softcover' && isProcessing
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-blue-300 hover:shadow-lg'
-              }`}
+            <button
               onClick={() => !isProcessing && handleSelectCover('softcover')}
+              disabled={isProcessing}
+              className={`relative border-2 rounded-2xl p-4 sm:p-6 transition-all text-left ${
+                selectedCover === 'softcover' && isProcessing
+                  ? 'border-blue-500 bg-blue-50 shadow-lg scale-[0.98]'
+                  : 'border-gray-200 hover:border-blue-300 hover:shadow-lg active:scale-[0.98]'
+              } disabled:opacity-50`}
             >
+              {/* Processing Indicator */}
               {selectedCover === 'softcover' && isProcessing && (
-                <div className="absolute top-4 right-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+                  <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-blue-600"></div>
                 </div>
               )}
 
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-blue-100 p-3 rounded-lg">
-                  <Book className="w-6 h-6 text-blue-600" />
+              {/* Header - Compact on mobile */}
+              <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                <div className="bg-blue-100 p-2 sm:p-3 rounded-lg flex-shrink-0">
+                  <Book className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">Softcover</h3>
-                  <p className="text-sm text-gray-600">Classic & Affordable</p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">Softcover</h3>
+                  <p className="text-xs sm:text-sm text-gray-600">Classic Quality</p>
                 </div>
               </div>
 
-              <div className="mb-6">
-                <div className="text-3xl font-bold text-blue-600">
-                  ${(PHYSICAL_BOOK_SOFTCOVER_PRICE / 100).toFixed(0)}
+              {/* Price - More prominent */}
+              <div className="mb-4 sm:mb-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl sm:text-3xl font-bold text-blue-600">
+                    ${(PHYSICAL_BOOK_SOFTCOVER_PRICE / 100).toFixed(0)}
+                  </span>
+                  <span className="text-sm text-gray-500">USD</span>
                 </div>
-                <p className="text-sm text-gray-600">USD</p>
               </div>
 
-              <ul className="space-y-3 mb-6">
+              {/* Features - Compact on mobile */}
+              <ul className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
                 {softcoverFeatures.map((feature, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700">{feature}</span>
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span className="text-xs sm:text-sm text-gray-700">{feature}</span>
                   </li>
                 ))}
               </ul>
 
-              <button
-                disabled={isProcessing}
-                className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${
-                  isProcessing
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {selectedCover === 'softcover' && isProcessing ? 'Processing...' : 'Select Softcover'}
-              </button>
-            </div>
+              {/* CTA - Touch-friendly on mobile */}
+              <div className={`w-full py-2.5 sm:py-3 px-4 rounded-xl font-semibold text-center transition-colors text-sm sm:text-base ${
+                isProcessing
+                  ? 'bg-gray-200 text-gray-500'
+                  : 'bg-blue-600 text-white'
+              }`}>
+                {selectedCover === 'softcover' && isProcessing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Processing...
+                  </span>
+                ) : (
+                  'Select Softcover'
+                )}
+              </div>
+            </button>
 
             {/* Hardcover Card */}
-            <div
-              className={`relative border-2 rounded-xl p-6 transition-all cursor-pointer ${
-                selectedCover === 'hardcover' && isProcessing
-                  ? 'border-purple-500 bg-purple-50'
-                  : 'border-gray-200 hover:border-purple-300 hover:shadow-lg'
-              }`}
+            <button
               onClick={() => !isProcessing && handleSelectCover('hardcover')}
+              disabled={isProcessing}
+              className={`relative border-2 rounded-2xl p-4 sm:p-6 transition-all text-left ${
+                selectedCover === 'hardcover' && isProcessing
+                  ? 'border-purple-500 bg-purple-50 shadow-lg scale-[0.98]'
+                  : 'border-gray-200 hover:border-purple-300 hover:shadow-lg active:scale-[0.98]'
+              } disabled:opacity-50`}
             >
+              {/* Processing Indicator */}
               {selectedCover === 'hardcover' && isProcessing && (
-                <div className="absolute top-4 right-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+                  <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-purple-600"></div>
                 </div>
               )}
 
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-purple-100 p-3 rounded-lg">
-                  <Book className="w-6 h-6 text-purple-600" />
+              {/* Premium Badge - Responsive */}
+              <div className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-900 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold shadow-lg flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                <span>PREMIUM</span>
+              </div>
+
+              {/* Header - Compact on mobile */}
+              <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                <div className="bg-purple-100 p-2 sm:p-3 rounded-lg flex-shrink-0">
+                  <Book className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">Hardcover</h3>
-                  <p className="text-sm text-gray-600">Premium Quality</p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">Hardcover</h3>
+                  <p className="text-xs sm:text-sm text-gray-600">Premium Quality</p>
                 </div>
               </div>
 
-              <div className="mb-6">
-                <div className="text-3xl font-bold text-purple-600">
-                  ${(PHYSICAL_BOOK_HARDCOVER_PRICE / 100).toFixed(0)}
+              {/* Price - More prominent */}
+              <div className="mb-4 sm:mb-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl sm:text-3xl font-bold text-purple-600">
+                    ${(PHYSICAL_BOOK_HARDCOVER_PRICE / 100).toFixed(0)}
+                  </span>
+                  <span className="text-sm text-gray-500">USD</span>
                 </div>
-                <p className="text-sm text-gray-600">USD</p>
               </div>
 
-              <ul className="space-y-3 mb-6">
+              {/* Features - Compact on mobile */}
+              <ul className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
                 {hardcoverFeatures.map((feature, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700">{feature}</span>
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span className="text-xs sm:text-sm text-gray-700">{feature}</span>
                   </li>
                 ))}
               </ul>
 
-              <button
-                disabled={isProcessing}
-                className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${
-                  isProcessing
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-purple-600 text-white hover:bg-purple-700'
-                }`}
-              >
-                {selectedCover === 'hardcover' && isProcessing ? 'Processing...' : 'Select Hardcover'}
-              </button>
-
-              {/* Premium Badge */}
-              <div className="absolute -top-3 -right-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                PREMIUM
+              {/* CTA - Touch-friendly on mobile */}
+              <div className={`w-full py-2.5 sm:py-3 px-4 rounded-xl font-semibold text-center transition-colors text-sm sm:text-base ${
+                isProcessing
+                  ? 'bg-gray-200 text-gray-500'
+                  : 'bg-purple-600 text-white'
+              }`}>
+                {selectedCover === 'hardcover' && isProcessing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Processing...
+                  </span>
+                ) : (
+                  'Select Hardcover'
+                )}
               </div>
-            </div>
+            </button>
           </div>
 
-          {/* Additional Info */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 text-center">
-              📦 Free shipping on all orders • ✨ Professionally printed • 🎁 Gift-ready quality
+          {/* Additional Info - Compact on mobile */}
+          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-100">
+            <p className="text-xs sm:text-sm text-gray-600 text-center leading-relaxed">
+              <span className="inline-block mr-2">📦</span>
+              <span className="font-medium">Free shipping</span> on all orders
+              <span className="hidden sm:inline"> • </span>
+              <br className="sm:hidden" />
+              <span className="inline-block mr-2 sm:ml-0">✨</span>
+              <span className="font-medium">Professionally printed</span>
+              <span className="hidden sm:inline"> • </span>
+              <br className="sm:hidden" />
+              <span className="inline-block mr-2 sm:ml-0">🎁</span>
+              <span className="font-medium">Gift-ready quality</span>
             </p>
           </div>
+
+          {/* Bottom spacer for mobile pull-down gesture */}
+          <div className="h-4 sm:h-0" />
         </div>
       </div>
     </div>
