@@ -279,7 +279,7 @@ const PreviewStoryV2: React.FC = () => {
             previewId={book.id}
             childName={book.childName}
             theme={book.theme}
-            style={book.style || 'photorealistic'}
+            style="photorealistic" // Hardcoded - no user selection
             bookStructure={bookStructure}
             isPurchased={book.paymentStatus === 'paid'}
             generationPhase={machine.generationPhase || 'idle'}

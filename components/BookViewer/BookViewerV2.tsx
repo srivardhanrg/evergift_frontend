@@ -48,6 +48,7 @@ const BookViewerV2: React.FC<BookViewerV2Props> = ({
 
   // Calculate generation progress
   const generationProgress = bookStructure.generationProgress || 0;
+  const isGenerating = generationProgress < 100;
 
   // Show loading state if no pages available
   const hasVisiblePages = bookStructure.pages.some(
@@ -77,6 +78,7 @@ const BookViewerV2: React.FC<BookViewerV2Props> = ({
           isPurchased={isPurchased}
           currentPage={currentPage}
           generationProgress={generationProgress}
+          isGenerating={isGenerating}
           onPageChange={handlePageChange}
           onPurchaseClick={onPurchaseClick}
         />

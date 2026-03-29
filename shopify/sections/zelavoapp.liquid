@@ -16,8 +16,8 @@
 {% comment %} ============================================
    CONFIGURATION - Update these on each deploy
    ============================================ {% endcomment %}
-{% assign js_bundle = "index-B88oRYe4.js" %}
-{% assign css_bundle = "index-Ckgvckbw.css" %}
+{% assign js_bundle = "index-EpW5D0Qi.js" %}
+{% assign css_bundle = "index-HkA66jzO.css" %}
 {% assign r2_base = "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales" %}
 
 {% comment %} ============================================
@@ -27,17 +27,16 @@
 <!-- Preconnect to critical origins -->
 <link rel="preconnect" href="https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://storygift-backend.onrender.com" crossorigin>
+<link rel="preconnect" href="https://magictales-backend.onrender.com" crossorigin>
 
 <!-- Preload critical bundles -->
 <link rel="modulepreload" href="{{ r2_base }}/assets/{{ js_bundle }}">
-<link rel="preload" as="style" href="{{ r2_base }}/assets/{{ css_bundle }}" crossorigin>
 
 <!-- Preload theme cover images (top 4 visible on load) -->
-<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/enchanted_forest_cover.png" fetchpriority="high">
-<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/magic_castle_cover.png">
-<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/space.png">
-<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/mighty_guardian.png.png">
+<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/enchanted_forest_cover.webp" fetchpriority="high">
+<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/magic_castle_cover.webp">
+<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/space.webp">
+<link rel="preload" as="image" href="{{ r2_base }}/theme_covers/mighty_guardian.png.webp">
 
 {% comment %} ============================================
    DEFENSIVE CSS - Hide Shopify chrome when app is active
@@ -53,6 +52,35 @@
     display: none !important;
   }
 
+  /* FIX 1: Kill Shopify mobile drawers/overlays that block touches.
+     These are the primary cause of mobile navigation failure.
+     Shopify themes render invisible fixed-position drawer elements
+     (menu, cart, search) that capture touch events on mobile even
+     when visually "closed". */
+  body:has(#zelavo-app) header,
+  body:has(#zelavo-app) .header-wrapper,
+  body:has(#zelavo-app) menu-drawer,
+  body:has(#zelavo-app) cart-drawer,
+  body:has(#zelavo-app) .drawer,
+  body:has(#zelavo-app) .menu-drawer,
+  body:has(#zelavo-app) .cart-drawer,
+  body:has(#zelavo-app) details-modal,
+  body:has(#zelavo-app) details-disclosure,
+  body:has(#zelavo-app) .cart-notification,
+  body:has(#zelavo-app) .predictive-search,
+  body:has(#zelavo-app) .site-nav-mobile,
+  body:has(#zelavo-app) .mobile-nav {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Hide ALL Shopify sections except our app section */
+  body:has(#zelavo-app) .shopify-section:not(.storygift-section) {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
   body:has(#zelavo-app) #MainContent {
     padding: 0 !important;
     margin: 0 !important;
@@ -61,6 +89,19 @@
   body:has(#zelavo-app) {
     margin: 0 !important;
     padding: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* FIX 2: Elevate app container above any surviving Shopify elements,
+     enable fast-tap for mobile, remove tap highlight */
+  #zelavo-app {
+    display: block;
+    min-height: 100vh;
+    width: 100%;
+    position: relative;
+    z-index: 100;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Instant loading state styles */
@@ -107,11 +148,6 @@
 </style>
 
 {% comment %} ============================================
-   EXTERNAL SCRIPTS (need main document access)
-   ============================================ {% endcomment %}
-<script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
-
-{% comment %} ============================================
    APP CONTAINER
    ============================================ {% endcomment %}
 <div id="zelavo-app"
@@ -119,7 +155,7 @@
      data-customer-email="{{ customer.email }}"
      data-shop-domain="{{ shop.domain }}"
      data-country-code="{{ localization.country.iso_code }}"
-     data-backend-url="https://storygift-backend.onrender.com"
+     data-backend-url="https://magictales-backend.onrender.com"
      data-css-url="{{ r2_base }}/assets/{{ css_bundle }}">
 
   {% comment %} Instant loading state - React will dismiss this {% endcomment %}
@@ -151,15 +187,30 @@
     }
   });
 
-  // Fallback: Hide loader after 5 seconds if React fails to signal
-  // This prevents infinite loading state
+  // FIX 3: Fallback hides AND removes loader from DOM after 5 seconds
+  // Prevents the fixed z-9999 element from blocking touches on slow networks
   setTimeout(function() {
     var loader = document.getElementById('zelavo-app-loader');
     if (loader && !loader.classList.contains('hidden')) {
       console.warn('[StoryGift] Loader timeout - React may have failed to mount');
       loader.classList.add('hidden');
+      setTimeout(function() { loader.remove(); }, 300);
     }
   }, 5000);
+
+  // FIX 4: JS defense - neutralize Shopify drawer elements that may
+  // have been injected dynamically after CSS rules applied
+  document.addEventListener('DOMContentLoaded', function() {
+    var selectors = 'menu-drawer, cart-drawer, details-modal, .drawer, ' +
+      '.header-wrapper, header, .cart-notification, .predictive-search';
+    var els = document.querySelectorAll(selectors);
+    els.forEach(function(el) {
+      if (!el.closest('#zelavo-app')) {
+        el.style.setProperty('display', 'none', 'important');
+        el.style.setProperty('pointer-events', 'none', 'important');
+      }
+    });
+  });
 </script>
 
 {% schema %}

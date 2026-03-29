@@ -52,7 +52,7 @@ const TermsOfService: React.FC = () => {
                         <ul className="space-y-2 text-gray-600">
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
-                                Orders are processed through Shopify
+                                Orders are processed through our secure checkout system
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
@@ -60,7 +60,7 @@ const TermsOfService: React.FC = () => {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
-                                Payment is securely handled by third-party providers
+                                Payment is securely handled by Stripe and other trusted providers. We never store your card details.
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
@@ -77,7 +77,7 @@ const TermsOfService: React.FC = () => {
                                 <ul className="space-y-1 text-gray-600">
                                     <li className="flex items-start gap-2">
                                         <span className="text-primary">•</span>
-                                        Delivered via email within 2-3 minutes after payment
+                                        Delivered via email within 2–3 minutes after payment
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <span className="text-primary">•</span>
@@ -90,11 +90,11 @@ const TermsOfService: React.FC = () => {
                                 <ul className="space-y-1 text-gray-600">
                                     <li className="flex items-start gap-2">
                                         <span className="text-primary">•</span>
-                                        Printed by our partner Lulu
+                                        Printed by our professional printing partner
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <span className="text-primary">•</span>
-                                        3-5 days printing + 5-10 days delivery (India) / 10-20 days (International)
+                                        3–5 days printing + 5–10 business days shipping (varies by location)
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <span className="text-primary">•</span>
@@ -107,76 +107,35 @@ const TermsOfService: React.FC = () => {
 
                     <section>
                         <h2 className="text-xl font-heading text-gray-900 mb-4">5. Cancellation & Refund Policy</h2>
-                        <p className="text-gray-600 mb-3">
-                            We offer a <strong>30-day money-back guarantee</strong> on both digital and physical books.
-                        </p>
-
-                        <div className="space-y-3">
+                        <div className="space-y-4">
+                            <p className="text-gray-600 font-medium">
+                                Due to the personalized nature of our products, orders cannot be canceled once production begins. However, if you experience any issues, we’re here to help and will work with you to make it right.
+                            </p>
+                            
                             <div>
-                                <p className="text-gray-600 font-semibold mb-1">Digital Books:</p>
-                                <ul className="space-y-1 text-gray-600">
-                                    <li className="flex items-start gap-2">
-                                        <span className="text-primary">•</span>
-                                        Full refund within 30 days if you're not satisfied
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <span className="text-primary">•</span>
-                                        Refunds processed within 5-10 business days
-                                    </li>
-                                </ul>
+                                <p className="text-gray-600 font-semibold mb-1">Custom Digital Products:</p>
+                                <p className="text-gray-600">
+                                    Digital books are personalized specifically for your child using AI technology. By purchasing, you agree that your personalized digital product will be delivered immediately and is non-returnable once accessed.
+                                </p>
                             </div>
+
                             <div>
                                 <p className="text-gray-600 font-semibold mb-1">Printed Books:</p>
-                                <ul className="space-y-1 text-gray-600">
-                                    <li className="flex items-start gap-2">
-                                        <span className="text-primary">•</span>
-                                        Full refund for defective printing or shipping damage
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <span className="text-primary">•</span>
-                                        Return required for refund (prepaid label provided for defects)
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <span className="text-primary">•</span>
-                                        No refunds for subjective preferences about AI art style (preview available before purchase)
-                                    </li>
-                                </ul>
+                                <p className="text-gray-600">
+                                    Physical books are custom-printed through our professional partner. While we do not offer refunds for subjective preferences, we will provide a replacement at no cost if your book arrives with significant manufacturing defects or shipping damage. To report a defect, please email us within 7 days of delivery.
+                                </p>
                             </div>
+
+                            <p className="text-gray-600 italic">
+                                If you have any concerns, please contact us first at{' '}
+                                <a href="mailto:hello@juvilabs.com" className="text-primary hover:underline">
+                                    hello@juvilabs.com
+                                </a>{' '}
+                                so we can resolve the issue promptly.
+                            </p>
                         </div>
-
-                        <p className="text-gray-600 mt-3">
-                            To request a refund, email{' '}
-                            <a href="mailto:hello@juvilabs.com" className="text-primary hover:underline">
-                                hello@juvilabs.com
-                            </a>
-                            {' '}with your order number.
-                        </p>
                     </section>
 
-                    <section>
-                        <h2 className="text-xl font-heading text-gray-900 mb-4">6. AI-Generated Content</h2>
-                        <p className="text-gray-600 mb-3">
-                            <strong>Important:</strong> All storybook illustrations and text are generated using artificial intelligence. By purchasing, you acknowledge that:
-                        </p>
-                        <ul className="space-y-2 text-gray-600">
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                Illustrations may vary slightly from preview images
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                Facial resemblance is approximate, not exact
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                Minor imperfections in AI-generated art may occur
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                We do not use facial recognition technology
-                            </li>
-                        </ul>
-                    </section>
 
                     <section>
                         <h2 className="text-xl font-heading text-gray-900 mb-4">7. Intellectual Property</h2>
@@ -187,11 +146,7 @@ const TermsOfService: React.FC = () => {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
-                                AI-generated illustrations and text remain the intellectual property of Juvilabs Pvt Limited
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                You receive a personal-use license for your purchased storybook
+                                The illustrations and story content remain the intellectual property of Juvi Labs LLC
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
@@ -226,37 +181,12 @@ const TermsOfService: React.FC = () => {
                     <section>
                         <h2 className="text-xl font-heading text-gray-900 mb-4">9. Limitation of Liability</h2>
                         <p className="text-gray-600">
-                            To the maximum extent permitted by law, Juvilabs Pvt Limited is not liable for any indirect, incidental, or consequential damages arising from use of our service. Our total liability for any claim is limited to the amount you paid for the specific storybook in question.
+                            To the maximum extent permitted by law, Juvi Labs LLC is not liable for any indirect, incidental, or consequential damages arising from use of our service. Our total liability for any claim is limited to the amount you paid for the specific storybook in question.
                         </p>
                     </section>
 
                     <section>
-                        <h2 className="text-xl font-heading text-gray-900 mb-4">10. Third-Party Services</h2>
-                        <p className="text-gray-600 mb-3">Our service integrates with:</p>
-                        <ul className="space-y-2 text-gray-600">
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                <strong>Shopify:</strong> Payment processing and order management
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                <strong>Lulu:</strong> Print-on-demand fulfillment for physical books
-                            </li>
-                        </ul>
-                        <p className="text-gray-600 mt-3">
-                            We are not responsible for the policies, practices, or performance of these third-party services.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-heading text-gray-900 mb-4">11. Updates to Terms</h2>
-                        <p className="text-gray-600">
-                            We may update these Terms at any time. Updates will be posted here with a revised 'Effective Date.' Continued use of StoryGift constitutes acceptance of the updated Terms.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-heading text-gray-900 mb-4">12. Contact Us</h2>
+                        <h2 className="text-xl font-heading text-gray-900 mb-4">10. Contact Us</h2>
                         <p className="text-gray-600">
                             If you have any questions about these Terms, email us at{' '}
                             <a href="mailto:hello@juvilabs.com" className="text-primary hover:underline">
@@ -267,11 +197,11 @@ const TermsOfService: React.FC = () => {
 
                     <div className="pt-6 border-t border-gray-100 space-y-4">
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <h3 className="font-semibold text-gray-900 mb-2">Key Limitations & Responsibilities</h3>
+                            <h3 className="font-semibold text-gray-900 mb-2">Key Points</h3>
                             <ul className="space-y-1 text-sm text-gray-600">
                                 <li className="flex items-start gap-2">
                                     <span className="text-primary">•</span>
-                                    <strong>Refunds:</strong> 30-day money-back guarantee on both digital and physical books
+                                    <strong>Refunds:</strong> See our <Link to="/refund-policy" className="text-primary hover:underline">Refund Policy</Link> for full details
                                 </li>
                                 <li className="flex items-start gap-2">
                                     <span className="text-primary">•</span>
@@ -286,13 +216,10 @@ const TermsOfService: React.FC = () => {
 
                         <div className="text-center">
                             <p className="text-sm text-gray-500">
-                                <strong>Effective Date:</strong> March 2026
+                                <strong>Last updated:</strong> March 2026
                             </p>
                             <p className="text-sm text-gray-500 mt-2">
-                                Operated by Juvilabs Pvt Limited
-                            </p>
-                            <p className="text-sm text-gray-500 mt-4">
-                                Terms are reviewed quarterly and updated as needed to reflect service changes and legal requirements.
+                                Operated by Juvi Labs LLC
                             </p>
                         </div>
 

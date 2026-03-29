@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles } from 'lucide-react';
 
 interface BookCoverProps {
@@ -14,6 +14,16 @@ const BookCover: React.FC<BookCoverProps> = ({
   themeTitle,
   onOpen,
 }) => {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Handle cached images: onLoad won't fire if browser already has the image
+  useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      setImgLoaded(true);
+    }
+  }, []);
+
   return (
     <div className="flex items-center justify-center min-h-[70vh] p-4">
       <div
@@ -39,11 +49,23 @@ const BookCover: React.FC<BookCoverProps> = ({
             e.currentTarget.style.transform = 'rotateY(-5deg) scale(1)';
           }}
         >
+          {/* Skeleton shown while cover image loads */}
+          {!imgLoaded && (
+            <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-purple-100 via-pink-50 to-purple-100" />
+          )}
+
           {/* Cover image */}
           <img
             src={coverUrl}
             alt={`${childName}'s ${themeTitle} Adventure`}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            // @ts-ignore
+            fetchpriority="high"
+            loading="eager"
+            decoding="async"
+            ref={imgRef}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgLoaded(true)}
           />
 
           {/* Overlay gradient for text readability */}

@@ -195,24 +195,25 @@ export const trackChildDetailsEntered = (
     });
 };
 
-export const trackArtStyleSelected = (style: 'photorealistic' | '3d_cartoon'): void => {
-    posthog.capture('art_style_selected', {
-        art_style: style,
-        timestamp: Date.now(),
-    });
-};
+// V1: Art style tracking disabled - photorealistic only
+// export const trackArtStyleSelected = (style: 'photorealistic' | '3d_cartoon'): void => {
+//     posthog.capture('art_style_selected', {
+//         art_style: style,
+//         timestamp: Date.now(),
+//     });
+// };
 
 // ===================
 // PREVIEW GENERATION
 // ===================
 
 export const trackPreviewGenerationStarted = (
-    themeId: string,
-    artStyle: string
+    themeId: string
+    // artStyle parameter removed - always photorealistic
 ): void => {
     posthog.capture('preview_generation_started', {
         theme_id: themeId,
-        art_style: artStyle,
+        // art_style removed - always photorealistic
         timestamp: Date.now(),
     });
 };

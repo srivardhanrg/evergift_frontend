@@ -121,7 +121,7 @@ const LockedPageV2: React.FC<LockedPageV2Props> = ({
         {/* Simple unlock message */}
         <div className="bg-black/40 backdrop-blur-sm rounded-xl px-6 py-4 max-w-xs text-center border border-white/10">
           <p className="text-white text-base font-medium">
-            Purchase to unlock full storybook
+            Purchase to unlock full 24 page book
           </p>
         </div>
       </div>

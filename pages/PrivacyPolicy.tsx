@@ -47,7 +47,7 @@ const PrivacyPolicy: React.FC = () => {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
-                                Order details including delivery and payment status (via Shopify)
+                                Order details including delivery and payment status
                             </li>
                         </ul>
                     </section>
@@ -90,15 +90,15 @@ const PrivacyPolicy: React.FC = () => {
                         <ul className="space-y-2 text-gray-600">
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
-                                If you do not save your preview, all uploaded photos are automatically deleted within 48 hours
+                                All uploaded photos are automatically deleted as soon as the generation process is complete
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
-                                If you save a preview or place an order, images are securely stored for up to 30 days so you can access your book or request a reprint
+                                We do not retain images for long-term storage; they are used exclusively for the creation and delivery of your personalized book
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
-                                After 30 days, all images are permanently deleted from our servers
+                                After use, all images are permanently deleted from our secure infrastructure
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary">•</span>
@@ -108,39 +108,7 @@ const PrivacyPolicy: React.FC = () => {
                     </section>
 
                     <section>
-                        <h2 className="text-xl font-heading text-gray-900 mb-4">5. Sharing with Third Parties</h2>
-                        <p className="text-gray-600 mb-3">
-                            To provide our AI-powered storybook service, we use the following trusted third-party services:
-                        </p>
-                        <ul className="space-y-2 text-gray-600">
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                <strong>Shopify:</strong> Payment processing and order management
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                <strong>Fal.ai:</strong> AI image generation for story illustrations
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                <strong>Segmind:</strong> Face transformation for cartoon-style illustrations
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                <strong>Lulu:</strong> Print-on-demand partner for physical books
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-primary">•</span>
-                                <strong>Cloudflare R2:</strong> Secure cloud storage for generated PDFs and images
-                            </li>
-                        </ul>
-                        <p className="text-gray-600 mt-3">
-                            These services are bound by strict confidentiality and data security standards. We never sell or rent your data to third parties.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-heading text-gray-900 mb-4">6. Your Rights</h2>
+                        <h2 className="text-xl font-heading text-gray-900 mb-4">5. Your Rights</h2>
                         <p className="text-gray-600 mb-3">You have the following rights regarding your personal data:</p>
                         <ul className="space-y-2 text-gray-600">
                             <li className="flex items-start gap-2">
@@ -169,14 +137,14 @@ const PrivacyPolicy: React.FC = () => {
                     </section>
 
                     <section>
-                        <h2 className="text-xl font-heading text-gray-900 mb-4">7. Data Security</h2>
+                        <h2 className="text-xl font-heading text-gray-900 mb-4">6. Data Security</h2>
                         <p className="text-gray-600">
-                            We implement strict security measures including encryption, secure file storage, and limited access to personal data. Your photos are used only to create your personalized book and are never shared with unauthorized third parties, never sold, and never used for advertising or AI training.
+                            We implement strict security measures including high-level encryption and secure automated processing. Access to uploaded images is strictly limited to secure automated systems and authorized processes required to generate your book. Your photos stay private and are used only to create your personalized storybook.
                         </p>
                     </section>
 
                     <section>
-                        <h2 className="text-xl font-heading text-gray-900 mb-4">8. Children's Privacy</h2>
+                        <h2 className="text-xl font-heading text-gray-900 mb-4">7. Children's Privacy</h2>
                         <p className="text-gray-600 mb-3">
                             StoryGift is intended for parents and guardians. We do not knowingly collect personal data directly from children. All information must be submitted by a consenting adult who is the parent or legal guardian of the child.
                         </p>
@@ -186,14 +154,14 @@ const PrivacyPolicy: React.FC = () => {
                     </section>
 
                     <section>
-                        <h2 className="text-xl font-heading text-gray-900 mb-4">9. International Data Transfers</h2>
+                        <h2 className="text-xl font-heading text-gray-900 mb-4">8. International Data Transfers</h2>
                         <p className="text-gray-600">
-                            If you are accessing StoryGift from outside India, please note that your data may be transferred to and processed in India or other countries where our infrastructure or partners are located. We ensure adequate safeguards are in place for international transfers.
+                            If you are accessing StoryGift from outside the US, please note that your data may be transferred to and processed in countries where our infrastructure or partners are located. We ensure adequate safeguards are in place for international transfers.
                         </p>
                     </section>
 
                     <section>
-                        <h2 className="text-xl font-heading text-gray-900 mb-4">10. Changes to This Policy</h2>
+                        <h2 className="text-xl font-heading text-gray-900 mb-4">9. Changes to This Policy</h2>
                         <p className="text-gray-600">
                             We may revise this Privacy Policy from time to time. Updates will be posted here with a revised 'Effective Date.' Please check back regularly.
                         </p>
@@ -204,7 +172,7 @@ const PrivacyPolicy: React.FC = () => {
                             <strong>Effective Date:</strong> March 2026
                         </p>
                         <p className="text-sm text-gray-500 text-center mt-2">
-                            Operated by Juvilabs Pvt Limited
+                            Operated by Juvi Labs LLC
                         </p>
                     </div>
                 </div>

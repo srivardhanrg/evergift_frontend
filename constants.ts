@@ -11,7 +11,7 @@ export const THEMES: Theme[] = [
     tags: ['Nature', 'Fantasy'],
     color: 'bg-green-100 border-green-200 text-green-700',
     coverPrompt: 'A magical enchanted forest with sparkling trees, a purple singing stream, and soft pillow mountains in the distance, whimsical children\'s book illustration',
-    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/enchanted_forest_cover.png"
+    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/enchanted_forest_cover.webp"
   },
   {
     id: ThemeType.MAGIC_CASTLE,
@@ -22,7 +22,7 @@ export const THEMES: Theme[] = [
     tags: ['School', 'Wizards'],
     color: 'bg-purple-100 border-purple-200 text-purple-700',
     coverPrompt: 'A grand gothic castle magic school with towers disappearing into mist, a wise owl professor, and a baby dragon, cinematic magical atmosphere',
-    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/magic_castle_cover.png"
+    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/magic_castle_cover.webp"
   },
   {
     id: ThemeType.COSMIC_DREAMER,
@@ -33,7 +33,7 @@ export const THEMES: Theme[] = [
     tags: ['Space', 'Discovery'],
     color: 'bg-indigo-100 border-indigo-200 text-indigo-700',
     coverPrompt: 'Child in astronaut suit standing on glowing asteroid with nebula and stars, epic space adventure, cosmic journey',
-    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/space.png"
+    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/space.webp"
   },
   {
     id: ThemeType.MIGHTY_GUARDIAN,
@@ -44,7 +44,7 @@ export const THEMES: Theme[] = [
     tags: ['Superhero', 'Courage'],
     color: 'bg-red-100 border-red-200 text-red-700',
     coverPrompt: 'Child in superhero costume flying over city skyline at sunset, cape billowing, heroic pose, empowering',
-    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/mighty_guardian.png.png"
+    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/mighty_guardian.png.webp"
   },
   {
     id: ThemeType.OCEAN_EXPLORER,
@@ -55,7 +55,7 @@ export const THEMES: Theme[] = [
     tags: ['Ocean', 'Underwater'],
     color: 'bg-cyan-100 border-cyan-200 text-cyan-700',
     coverPrompt: 'Child swimming underwater with sea turtle, colorful coral reef, tropical fish, magical underwater kingdom',
-    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/underwater.png"
+    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/underwater.webp"
   },
   {
     id: ThemeType.BIRTHDAY_MAGIC,
@@ -66,7 +66,7 @@ export const THEMES: Theme[] = [
     tags: ['Birthday', 'Celebration'],
     color: 'bg-pink-100 border-pink-200 text-pink-700',
     coverPrompt: 'Child with birthday crown making a wish on magical cake, fairy sparkles, balloons, joyful celebration',
-    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/birthday_magic.png"
+    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/birthday_magic.webp"
   },
   {
     id: ThemeType.SAFARI_ADVENTURE,
@@ -77,7 +77,7 @@ export const THEMES: Theme[] = [
     tags: ['Safari', 'Animals'],
     color: 'bg-amber-100 border-amber-200 text-amber-700',
     coverPrompt: 'Child in safari outfit with elephant and lion in golden African savanna at sunset, epic adventure',
-    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/SAFARI_ADVENTURE.png"
+    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/SAFARI_ADVENTURE.webp"
   },
   // {
   //   id: ThemeType.DREAM_WEAVER,
@@ -99,7 +99,7 @@ export const THEMES: Theme[] = [
     tags: ['Spy', 'Adventure'],
     color: 'bg-slate-100 border-slate-200 text-slate-700',
     coverPrompt: 'Child in sleek spy suit on city rooftop at night, holographic screens, secret agent gadgets',
-    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/unwatermarked_Gemini_Generated_Image_bggn0abggn0abggn.png"
+    defaultCover: "https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/Magictales/theme_covers/unwatermarked_Gemini_Generated_Image_bggn0abggn0abggn.webp"
   }
 ];
 

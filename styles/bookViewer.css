@@ -1,4 +1,36 @@
+/* Auto-swipe segment fill animation — sweeps left-to-right over the slide interval */
+@keyframes segmentFill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
 /* Book Viewer Styles */
+
+/* "The End" closing animation — dark overlay fade */
+@keyframes bookCloseOverlay {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* "The End" text scale-in then fade-out */
+@keyframes theEndText {
+  0%   { opacity: 0; transform: scale(0.75); }
+  25%  { opacity: 1; transform: scale(1.05); }
+  55%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.9); }
+}
+
+.animate-book-close-overlay {
+  animation: bookCloseOverlay 1.8s ease-in-out forwards;
+  pointer-events: none;
+}
+
+.animate-the-end-text {
+  animation: theEndText 1.8s ease-in-out forwards;
+}
+
 
 .book-viewer-container {
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);

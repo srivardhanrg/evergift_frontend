@@ -29,7 +29,7 @@ export enum Theme {
 
 export enum BookStyle {
     PHOTOREALISTIC = 'photorealistic',
-    CARTOON_3D = 'cartoon_3d',
+    // CARTOON_3D = 'cartoon_3d', // V1: Removed - photorealistic only
 }
 
 export enum JobStatus {
@@ -61,7 +61,7 @@ export interface PreviewCreateRequest {
     child_age: number;
     child_gender: 'male' | 'female';
     theme: Theme;
-    style?: BookStyle;
+    // style?: BookStyle; // V1: Removed - backend defaults to photorealistic
     session_id?: string;
     customer_email?: string;
 }

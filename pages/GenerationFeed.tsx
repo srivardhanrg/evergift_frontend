@@ -637,13 +637,13 @@ const GenerationFeed: React.FC = () => {
                             </div>
                         )}
                     </div>
-                    {/* Bottom Spacer for mobile */}
-                    <div className="h-20" />
+                    {/* Bottom Spacer — accounts for iOS home indicator */}
+                    <div style={{ height: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }} />
                 </div>
             )}
 
-            {/* Bottom Spacer for desktop */}
-            {isDesktop && <div className="h-20" />}
+            {/* Bottom Spacer for desktop — accounts for iOS home indicator */}
+            {isDesktop && <div style={{ height: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }} />}
 
             {/* Auth Modal for Guest Save Prompt */}
             <AuthModal

@@ -81,8 +81,10 @@ const ContactUs: React.FC = () => {
               </div>
               <h3 className="text-xl font-heading text-gray-900 mb-2">Visit Us</h3>
               <p className="text-sm text-gray-600 leading-relaxed">
-                <strong className="text-gray-900">[Business Address]</strong><br />
-                <span className="text-xs text-gray-500 italic">(Address to be added)</span>
+                <strong className="text-gray-900">Juvi Labs LLC</strong><br />
+                1940 Broadway<br />
+                Suite 314C<br />
+                Boulder, CO 80302, US
               </p>
             </div>
           </div>
@@ -97,7 +99,7 @@ const ContactUs: React.FC = () => {
             <div className="grid md:grid-cols-2 gap-6 text-sm">
               <div>
                 <p className="font-semibold text-gray-900 mb-1">Legal Entity</p>
-                <p className="text-gray-600">Juvilabs Pvt Limited</p>
+                <p className="text-gray-600">Juvi Labs LLC</p>
               </div>
               <div>
                 <p className="font-semibold text-gray-900 mb-1">Established</p>

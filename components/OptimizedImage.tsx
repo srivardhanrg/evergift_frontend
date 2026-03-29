@@ -157,8 +157,6 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
                     // Fetch priority for critical images (LCP optimization)
                     // @ts-ignore - fetchpriority is valid HTML attribute
                     fetchpriority={fetchPriority || (priority ? 'high' : undefined)}
-                    // Prevent partially loaded image from showing
-                    style={{ visibility: isLoaded ? 'visible' : 'hidden' }}
                 />
             )}
 

@@ -96,7 +96,7 @@ const Footer: React.FC = () => {
                 © {currentYear} StoryGift. All rights reserved.
               </p>
               <p className="text-gray-400 text-xs mt-1">
-                Operated by Juvilabs Pvt Limited
+                Operated by Juvi Labs LLC
               </p>
             </div>
             <div className="flex items-center gap-1 text-gray-500 text-sm">

@@ -7,7 +7,7 @@ const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ThemeType, ChildDetails, Theme } from '../types';
 import { THEMES } from '../constants';
 import { Upload, Trash2, ChevronRight, Sparkles, Loader2, ArrowLeft, Camera, AlertCircle } from 'lucide-react';
@@ -25,23 +25,13 @@ import {
   trackFaceDetectionSuccess,
   trackFaceDetectionFailed,
   trackChildDetailsEntered,
-  trackArtStyleSelected,
+  // trackArtStyleSelected, // V1: Removed - photorealistic only
   trackPreviewGenerationStarted,
   trackFunnelStep,
   trackApiError,
 } from '../src/services/analytics';
 
-// Responsive CSS to override Shopify theme conflicts
-const CreateResponsiveStyles = () => (
-  <style>{`
-    #sg-mobile-sticky { display: block !important; }
-    #sg-mobile-spacer { display: block !important; }
-    @media (min-width: 1024px) {
-      #sg-mobile-sticky { display: none !important; }
-      #sg-mobile-spacer { display: none !important; }
-    }
-  `}</style>
-);
+
 
 const WHIMSICAL_MESSAGES = [
   "Consulting the Star Atlas...",
@@ -61,14 +51,16 @@ const CreateStory: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [guestLimitReached, setGuestLimitReached] = useState(false);
   const [uploadError, setUploadError] = useState<FriendlyError | null>(null);
+  const [consentChecked, setConsentChecked] = useState(false);
 
   const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [childDetails, setChildDetails] = useState<ChildDetails>({
     name: '', age: 5, gender: 'Boy', interests: '', elements: '', dedication: ''
   });
 
-  // Art style selection
-  const [artStyle, setArtStyle] = useState<'photorealistic' | 'cartoon_3d'>('photorealistic');
+  // V1: Art style selection removed - always use photorealistic
+  // const [artStyle, setArtStyle] = useState<'photorealistic' | 'cartoon_3d'>('photorealistic');
 
   // Get selected theme from location state, fallback to Enchanted Forest
   const selectedThemeId = (location.state?.selectedTheme as ThemeType) || ThemeType.ENCHANTED_FOREST;
@@ -96,6 +88,15 @@ const CreateStory: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [loading]);
+
+  useEffect(() => {
+    const previewUrls = photos.map((photo) => URL.createObjectURL(photo));
+    setPhotoPreviewUrls(previewUrls);
+
+    return () => {
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [photos]);
 
   // Warn user about unsaved changes when navigating away
   useEffect(() => {
@@ -176,23 +177,24 @@ const CreateStory: React.FC = () => {
       trackChildDetailsEntered(String(childDetails.age), childDetails.gender);
       trackFunnelStep('details_entered', { age: childDetails.age, gender: childDetails.gender });
 
-      // Track art style
-      trackArtStyleSelected(artStyle === 'cartoon_3d' ? '3d_cartoon' : 'photorealistic');
+      // V1: Art style tracking removed - photorealistic only
+      // trackArtStyleSelected(artStyle === 'cartoon_3d' ? '3d_cartoon' : 'photorealistic');
 
       const mapGender = (g: string): 'male' | 'female' =>
         g.toLowerCase() === 'boy' ? 'male' : 'female';
 
-      // Track generation started
-      trackPreviewGenerationStarted(selectedThemeId, artStyle);
-      trackFunnelStep('generation_started', { theme_id: selectedThemeId, art_style: artStyle });
+      // Track generation started (no art style parameter in v1)
+      trackPreviewGenerationStarted(selectedThemeId);
+      trackFunnelStep('generation_started', { theme_id: selectedThemeId });
 
+      // V1: Style parameter removed - backend defaults to photorealistic
       const { job_id, preview_id } = await api.createPreview({
         photo_urls: uploadResponse.valid_photo_urls,  // Use all valid photo URLs
         child_name: childDetails.name,
         child_age: childDetails.age,
         child_gender: mapGender(childDetails.gender),
         theme: mapThemeToApi(selectedThemeId),
-        style: artStyle === 'cartoon_3d' ? BookStyle.CARTOON_3D : BookStyle.PHOTOREALISTIC,
+        // style removed - backend defaults to photorealistic
       });
 
       // Navigate to GenerationFeed for live streaming view
@@ -235,6 +237,32 @@ const CreateStory: React.FC = () => {
     startGeneration();
   };
 
+  const handlePhotoSelection = (fileList: FileList | null) => {
+    const selectedFiles = Array.from(fileList || []);
+    if (selectedFiles.length === 0) return;
+
+    setUploadError(null);
+
+    const remainingSlots = 3 - photos.length;
+    if (selectedFiles.length > remainingSlots) {
+      setUploadError({
+        title: 'Too many photos',
+        message: `You can upload ${remainingSlots} more photo${remainingSlots > 1 ? 's' : ''}.`,
+        suggestion: 'Please select fewer photos.',
+        icon: 'photo'
+      });
+      return;
+    }
+
+    const oversizedFiles = selectedFiles.filter(file => file.size > MAX_FILE_SIZE_BYTES);
+    if (oversizedFiles.length > 0) {
+      setUploadError(getFriendlyError('FILE_TOO_LARGE'));
+      return;
+    }
+
+    setPhotos(prev => [...prev, ...selectedFiles]);
+  };
+
 
 
   // Loading State - Compact "Preparing" screen before redirecting to GenerationFeed
@@ -268,7 +296,6 @@ const CreateStory: React.FC = () => {
 
   return (
     <>
-      <CreateResponsiveStyles />
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         {/* Main Container */}
         <div className="max-w-5xl mx-auto">
@@ -379,140 +406,95 @@ const CreateStory: React.FC = () => {
                     Hero's Photos (1-3 images)
                   </label>
 
-                  <div className="flex items-start gap-4">
+                  <div className="flex flex-col gap-3">
                     {/* Photo Previews or Uploader */}
-                    {photos.length > 0 ? (
-                      <div className="flex gap-3 flex-wrap">
-                        {photos.map((photo, index) => (
-                          <div key={index} className="relative group flex-shrink-0">
-                            <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg ring-4 ring-primary/10">
-                              <img
-                                src={URL.createObjectURL(photo)}
-                                alt={`Uploaded hero ${index + 1}`}
-                                className="w-full h-full object-cover"
+                    <div className="flex-shrink-0">
+                      {photos.length > 0 ? (
+                        <div className="flex gap-2 flex-wrap">
+                          {photos.map((photo, index) => (
+                            <div key={index} className="relative group flex-shrink-0">
+                              <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg ring-4 ring-primary/10">
+                                <img
+                                  src={photoPreviewUrls[index]}
+                                  alt={`Uploaded hero ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setUploadError(null);
+                                  setPhotos(photos.filter((_, i) => i !== index));
+                                }}
+                                aria-label={`Remove photo ${index + 1}`}
+                                className="absolute -top-1 -right-1 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-green-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow">
+                                {index + 1}
+                              </div>
+                            </div>
+                          ))}
+                          {/* Add More circle */}
+                          {photos.length < 3 && (
+                            <label className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:text-primary hover:border-primary/40 transition-colors cursor-pointer flex-shrink-0">
+                              <Upload className="w-5 h-5 mb-1" />
+                              <span className="text-[9px] font-bold uppercase">Add More</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                hidden
+                                aria-label="Add more photos"
+                                onChange={e => {
+                                  handlePhotoSelection(e.target.files);
+                                  e.target.value = '';
+                                }}
                               />
-                            </div>
+                            </label>
+                          )}
+                          {/* Clear All circle */}
+                          {photos.length > 1 && (
                             <button
-                              onClick={() => setPhotos(photos.filter((_, i) => i !== index))}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                              onClick={() => setPhotos([])}
+                              className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors flex-shrink-0"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-5 h-5 mb-1" />
+                              <span className="text-[9px] font-bold uppercase">Clear All</span>
                             </button>
-                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-green-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow">
-                              {index + 1}
-                            </div>
-                          </div>
-                        ))}
-                        {/* Add more photos button if less than 3 */}
-                        {photos.length < 3 && (
-                          <label className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:text-primary hover:border-primary/40 transition-colors cursor-pointer">
-                            <Upload className="w-5 h-5 mb-1" />
-                            <span className="text-[9px] font-bold uppercase">Add More</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              hidden
-                              aria-label="Add more photos"
-                              onChange={e => {
-                                const newFiles = Array.from(e.target.files || []);
-                                if (newFiles.length === 0) return;
-
-                                // Clear any previous error
-                                setUploadError(null);
-
-                                // Check if we'd exceed 3 files total
-                                if (photos.length + newFiles.length > 3) {
-                                  setUploadError({
-                                    title: 'Too many photos',
-                                    message: `You can only upload ${3 - photos.length} more photo${3 - photos.length > 1 ? 's' : ''}.`,
-                                    suggestion: 'Please select fewer photos.',
-                                    icon: 'photo'
-                                  });
-                                  e.target.value = ''; // Reset input
-                                  return;
-                                }
-
-                                // Validate file sizes
-                                const oversizedFiles = newFiles.filter(file => file.size > MAX_FILE_SIZE_BYTES);
-                                if (oversizedFiles.length > 0) {
-                                  setUploadError(getFriendlyError('FILE_TOO_LARGE'));
-                                  e.target.value = ''; // Reset input
-                                  return;
-                                }
-
-                                setPhotos([...photos, ...newFiles]);
-                                e.target.value = ''; // Reset input for next use
-                              }}
-                            />
-                          </label>
-                        )}
-                        {/* Clear all button if multiple photos */}
-                        {photos.length > 1 && (
-                          <button
-                            onClick={() => setPhotos([])}
-                            className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors"
-                          >
-                            <Trash2 className="w-5 h-5 mb-1" />
-                            <span className="text-[9px] font-bold uppercase">Clear All</span>
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <label className="w-20 h-20 rounded-full border-3 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all text-gray-400 hover:text-primary group flex-shrink-0">
-                        <Upload className="w-5 h-5 mb-1" />
-                        <span className="text-[9px] font-bold uppercase">Add Photos</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          hidden
-                          aria-label="Upload child's photos (1-3 images)"
-                          onChange={e => {
-                            const files = Array.from(e.target.files || []);
-                            if (files.length === 0) return;
-
-                            // Clear any previous error
-                            setUploadError(null);
-
-                            // Limit to 3 files
-                            if (files.length > 3) {
-                              setUploadError({
-                                title: 'Too many photos',
-                                message: 'Please select up to 3 photos for the best quality.',
-                                suggestion: 'Choose 1-3 clear photos of your child.',
-                                icon: 'photo'
-                              });
-                              e.target.value = ''; // Reset input
-                              return;
-                            }
-
-                            // Validate file sizes (10MB max each)
-                            const oversizedFiles = files.filter(file => file.size > MAX_FILE_SIZE_BYTES);
-                            if (oversizedFiles.length > 0) {
-                              setUploadError(getFriendlyError('FILE_TOO_LARGE'));
-                              e.target.value = ''; // Reset input
-                              return;
-                            }
-
-                            setPhotos(files);
-                          }}
-                        />
-                      </label>
-                    )}
+                          )}
+                        </div>
+                      ) : (
+                        <label className="w-20 h-20 rounded-full border-3 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all text-gray-400 hover:text-primary group">
+                          <Upload className="w-5 h-5 mb-1" />
+                          <span className="text-[9px] font-bold uppercase">Add Photos</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            hidden
+                            aria-label="Upload child's photos (1-3 images)"
+                            onChange={e => {
+                              handlePhotoSelection(e.target.files);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
 
                     {/* Tips or Error */}
                     {uploadError ? (
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex-1">
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-3">
                         <div className="flex items-start space-x-2">
-                          <span className="text-lg">{uploadError.icon}</span>
+                          <span className="text-lg flex-shrink-0">{uploadError.icon}</span>
                           <div>
                             <p className="text-red-800 text-xs font-bold mb-0.5">{uploadError.title}</p>
                             <p className="text-red-600 text-xs leading-relaxed">{uploadError.message}</p>
                             {uploadError.suggestion && (
-                              <p className="text-red-500 text-xs mt-1 flex items-center">
+                              <p className="text-red-500 text-xs mt-1 flex items-start">
                                 <span className="mr-1">💡</span>
-                                {uploadError.suggestion}
+                                <span>{uploadError.suggestion}</span>
                               </p>
                             )}
                           </div>
@@ -525,20 +507,20 @@ const CreateStory: React.FC = () => {
                         </button>
                       </div>
                     ) : (
-                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-3 flex-1">
+                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-3">
                         <p className="text-amber-800 text-xs font-bold mb-2">📸 Photo Tips</p>
                         <div className="space-y-1.5 text-[11px]">
                           <div className="flex items-center space-x-1.5 text-green-700">
-                            <span className="text-green-500">✓</span>
+                            <span className="text-green-500 flex-shrink-0">✓</span>
                             <span>Clear, front-facing shot</span>
                           </div>
                           <div className="flex items-center space-x-1.5 text-green-700">
-                            <span className="text-green-500">✓</span>
+                            <span className="text-green-500 flex-shrink-0">✓</span>
                             <span>Face fills most of photo</span>
                           </div>
                           <div className="flex items-center space-x-1.5 text-amber-700">
-                            <span className="text-amber-500">💡</span>
-                            <span>Photo clarity directly affects your story quality</span>
+                            <span className="text-amber-500 flex-shrink-0">💡</span>
+                            <span>Photo clarity directly affects story quality</span>
                           </div>
                         </div>
                       </div>
@@ -546,38 +528,7 @@ const CreateStory: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Art Style Selection */}
-                <div className="mb-3">
-                  <label className="block text-xs font-black text-gray-600 uppercase tracking-widest mb-1.5">
-                    Choose Art Style
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Photorealistic Option */}
-                    <button
-                      type="button"
-                      onClick={() => setArtStyle('photorealistic')}
-                      className={`p-2.5 rounded-lg border-2 transition-all text-center focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${artStyle === 'photorealistic'
-                        ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                    >
-                      <span className="text-lg block mb-0.5">📸</span>
-                      <p className="font-bold text-gray-900 text-xs">Photorealistic</p>
-                    </button>
-                    {/* 3D Cartoon Option */}
-                    <button
-                      type="button"
-                      onClick={() => setArtStyle('cartoon_3d')}
-                      className={`p-2.5 rounded-lg border-2 transition-all text-center focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${artStyle === 'cartoon_3d'
-                        ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                    >
-                      <span className="text-lg block mb-0.5">🎬</span>
-                      <p className="font-bold text-gray-900 text-xs">3D Cartoon</p>
-                    </button>
-                  </div>
-                </div>
+                {/* V1: Art Style Selection removed - photorealistic only */}
                 {/* Name Input */}
                 <div className="mb-3">
                   <label className="block text-xs font-black text-gray-600 uppercase tracking-widest mb-1.5">
@@ -618,14 +569,39 @@ const CreateStory: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Consent Checkbox */}
+                <label className="flex items-start gap-2.5 cursor-pointer mb-3 mt-1">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={consentChecked}
+                      onChange={e => setConsentChecked(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="w-4 h-4 rounded border-2 border-gray-300 peer-checked:bg-primary peer-checked:border-primary transition-colors flex items-center justify-center">
+                      {consentChecked && (
+                        <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 8" fill="none">
+                          <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[11px] text-gray-500 leading-relaxed">
+                    I confirm I am 18 or older and the parent or legal guardian of the child pictured. I agree to the{' '}
+                    <Link to="/privacy-policy" className="text-primary underline hover:text-primary/80" onClick={e => e.stopPropagation()}>Privacy Policy</Link>
+                    {' '}and{' '}
+                    <Link to="/terms-of-service" className="text-primary underline hover:text-primary/80" onClick={e => e.stopPropagation()}>Terms of Service</Link>.
+                  </span>
+                </label>
+
                 {/* Submit Button */}
                 <button
                   onClick={handleGenerateClick}
-                  disabled={!childDetails.name || photos.length < 1}
+                  disabled={!childDetails.name || photos.length < 1 || !consentChecked}
                   className="w-full bg-gradient-to-r from-primary to-pink-500 text-white py-3 rounded-xl font-black text-base shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all flex items-center justify-center space-x-2 disabled:opacity-40 disabled:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed"
                 >
                   <Sparkles className="w-5 h-5" />
-                  <span>Begin the Magic</span>
+                  <span>Preview Your Book</span>
                 </button>
               </div>
             </div>
@@ -660,20 +636,7 @@ const CreateStory: React.FC = () => {
             </div>
           </div>
 
-          {/* Mobile Sticky Submit (only when form is valid but scrolled) */}
-          <div id="sg-mobile-sticky" className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-100 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50">
-            <button
-              onClick={handleGenerateClick}
-              disabled={!childDetails.name || photos.length < 1}
-              className="w-full bg-gradient-to-r from-primary to-pink-500 text-white py-4 rounded-xl font-black text-lg shadow-lg flex items-center justify-center space-x-3 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Sparkles className="w-5 h-5" />
-              <span>Begin the Magic</span>
-            </button>
-          </div>
 
-          {/* Bottom padding for mobile sticky button */}
-          <div id="sg-mobile-spacer" className="h-24"></div>
         </div >
 
         {/* Auth Modal */}

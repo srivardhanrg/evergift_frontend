@@ -1,33 +1,63 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import AnnouncementBar from './components/AnnouncementBar';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './src/components/Toast';
+// Eagerly load Home (first visible page) and CreateStory (next step)
 import Home from './pages/Home';
 import CreateStory from './pages/CreateStory';
-import PreviewStoryV2 from './pages/PreviewStoryV2';
-import GenerationFeed from './pages/GenerationFeed';
-import About from './pages/About';
-import ContactUs from './pages/ContactUs';
-import MyCreations from './pages/MyCreations';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsOfService from './pages/TermsOfService';
-import FAQ from './pages/FAQ';
-import Feedback from './pages/Feedback';
+// Lazy-load remaining pages to reduce initial bundle parse time
+const PreviewStoryV2 = lazy(() => import('./pages/PreviewStoryV2'));
+const GenerationFeed = lazy(() => import('./pages/GenerationFeed'));
+const About = lazy(() => import('./pages/About'));
+const ContactUs = lazy(() => import('./pages/ContactUs'));
+const MyCreations = lazy(() => import('./pages/MyCreations'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const FAQ = lazy(() => import('./pages/FAQ'));
+const Feedback = lazy(() => import('./pages/Feedback'));
+
+const PageLoader: React.FC = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+  </div>
+);
 import { api, isShopifyCustomerLoggedIn, getPendingCheckout, clearPendingCheckout, getLoginRedirect, clearLoginRedirect } from './src/api/client';
 import { initAnalytics, trackPageView, identifyUser } from './src/services/analytics';
 
 /**
  * ScrollToTop - Scrolls to top on every route change
- * Fixes the issue where navigating to a new page keeps the scroll position
+ * Fixes the issue where navigating to a new page keeps the scroll position.
+ * Uses manual scroll restoration to prevent iOS Safari from overriding scrollTo(0,0).
  */
 const ScrollToTop: React.FC = () => {
   const { pathname } = useLocation();
 
+  // Disable browser scroll restoration once on mount so our explicit scrollTo
+  // is never overridden by iOS Safari / Chrome on pushState navigation.
   useEffect(() => {
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+  }, []);
+
+  useEffect(() => {
+    // Hit all scroll containers: window covers most browsers,
+    // documentElement/body cover WebKit variants inside Shopify / Shadow DOM.
     window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    // Fire again after the next paint to catch lazy-loaded page content
+    // expanding the document height and causing a reflow.
+    const raf = requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
+    return () => cancelAnimationFrame(raf);
   }, [pathname]);
 
   return null;
@@ -181,25 +211,27 @@ const App: React.FC = () => {
             <Navbar />
             <main className="flex-grow">
               <ErrorBoundary>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<ContactUs />} />
-                  {/* Auth route - always redirect to home (Shopify handles auth) */}
-                  <Route path="/auth" element={<Navigate to="/" replace />} />
-                  {/* My Creations */}
-                  <Route path="/my-creations" element={<MyCreations />} />
-                  {/* Redirect old dashboard to my-creations */}
-                  <Route path="/dashboard" element={<Navigate to="/my-creations" replace />} />
-                  <Route path="/create" element={<CreateStory />} />
-                  <Route path="/generating/:jobId" element={<GenerationFeed />} />
-                  <Route path="/preview/:id" element={<PreviewStoryV2 />} />
-                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                  <Route path="/terms-of-service" element={<TermsOfService />} />
-                  <Route path="/faq" element={<FAQ />} />
-                  <Route path="/feedback" element={<Feedback />} />
-                  <Route path="*" element={<Navigate to="/" />} />
-                </Routes>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<ContactUs />} />
+                    {/* Auth route - always redirect to home (Shopify handles auth) */}
+                    <Route path="/auth" element={<Navigate to="/" replace />} />
+                    {/* My Creations */}
+                    <Route path="/my-creations" element={<MyCreations />} />
+                    {/* Redirect old dashboard to my-creations */}
+                    <Route path="/dashboard" element={<Navigate to="/my-creations" replace />} />
+                    <Route path="/create" element={<CreateStory />} />
+                    <Route path="/generating/:jobId" element={<GenerationFeed />} />
+                    <Route path="/preview/:id" element={<PreviewStoryV2 />} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                    <Route path="/terms-of-service" element={<TermsOfService />} />
+                    <Route path="/faq" element={<FAQ />} />
+                    <Route path="/feedback" element={<Feedback />} />
+                    <Route path="*" element={<Navigate to="/" />} />
+                  </Routes>
+                </Suspense>
               </ErrorBoundary>
             </main>
             <Footer />

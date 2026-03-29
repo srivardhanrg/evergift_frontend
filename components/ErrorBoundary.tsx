@@ -35,14 +35,22 @@ class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // Log error to console (could send to error tracking service like Sentry)
+    // Chunk-load failures (React.lazy network errors) cannot be recovered by re-rendering.
+    // A full page reload is the only reliable fix — it re-fetches the failed chunk.
+    const isChunkLoadError =
+      error.name === 'ChunkLoadError' ||
+      error.message?.includes('dynamically imported module') ||
+      error.message?.includes('Loading chunk') ||
+      error.message?.includes('error loading dynamically imported module');
+
+    if (isChunkLoadError) {
+      window.location.reload();
+      return;
+    }
+
     console.error('ErrorBoundary caught an error:', error);
     console.error('Component stack:', errorInfo.componentStack);
-
     this.setState({ errorInfo });
-
-    // TODO: Send to error tracking service
-    // Example: Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
   }
 
   handleRetry = (): void => {
@@ -50,7 +58,9 @@ class ErrorBoundary extends React.Component<Props, State> {
   };
 
   handleGoHome = (): void => {
-    window.location.href = '/';
+    // Reload the current page instead of navigating to '/', which would exit
+    // the Shopify embedded app context (App Proxy URL !== store root).
+    window.location.reload();
   };
 
   render(): ReactNode {

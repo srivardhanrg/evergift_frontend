@@ -113,7 +113,7 @@ const Home: React.FC = () => {
               />
               <FeatureCard
                 icon="📖"
-                title="10 Illustrated Pages"
+                title="24 Illustrated Pages"
                 description="A magical gift they'll ask to read every night"
               />
               <FeatureCard
@@ -196,6 +196,7 @@ const Home: React.FC = () => {
                 name="Sarah M."
                 location="California, USA"
                 avatar="SM"
+                rating={4.8}
               />
               <TestimonialCard
                 quote="Best birthday gift we've ever given! The quality exceeded our expectations and our son feels like a star."
@@ -203,12 +204,14 @@ const Home: React.FC = () => {
                 location="Toronto, Canada"
                 avatar="JK"
                 featured={true}
+                rating={5}
               />
               <TestimonialCard
                 quote="Got one for my niece and now every parent in the family wants one. Already ordered our fourth book!"
                 name="Emma S."
                 location="London, UK"
                 avatar="ES"
+                rating={4.5}
               />
             </div>
 
@@ -337,16 +340,28 @@ interface TestimonialCardProps {
   location: string;
   avatar: string;
   featured?: boolean;
+  rating?: number;
 }
 
-const TestimonialCard: React.FC<TestimonialCardProps> = ({ quote, name, location, avatar, featured = false }) => {
+const TestimonialCard: React.FC<TestimonialCardProps> = ({ quote, name, location, avatar, featured = false, rating = 5 }) => {
+  const fullStars = Math.floor(rating);
+  const partial = Math.round((rating % 1) * 10) / 10; // 0, 0.5, 0.8 etc.
   return (
     <div className={`bg-white rounded-2xl p-5 shadow-sm border ${featured ? 'border-primary/30 ring-1 ring-primary/10' : 'border-gray-100'} hover:shadow-md transition-shadow`}>
       {/* Stars */}
       <div className="flex items-center gap-0.5 text-amber-400 mb-3">
-        {'★★★★★'.split('').map((star, i) => (
-          <span key={i} className="text-sm">{star}</span>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <span
+            key={i}
+            className="text-sm"
+            style={{
+              opacity: i < fullStars ? 1 : partial > 0 && i === fullStars ? partial : 0.25,
+            }}
+          >★</span>
         ))}
+        {rating < 5 && (
+          <span className="text-xs text-amber-500 font-semibold ml-1">{rating.toFixed(1)}</span>
+        )}
       </div>
 
       {/* Quote */}

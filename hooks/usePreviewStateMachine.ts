@@ -596,6 +596,23 @@ export function usePreviewStateMachine(previewId: string | undefined): UsePrevie
             })));
         }
 
+        // Pre-set completion flags BEFORE setLoading(false) to eliminate the
+        // "Creating your book..." flash on return visits to already-complete books.
+        // Guard: only for purchased + non-checkout-redirect (return visits).
+        const earlyPhase = previewData.generation_phase as GenerationPhase;
+        const earlyIsPurchased = previewData.status === 'purchased';
+        if (earlyIsPurchased && !isCheckoutSuccess) {
+            if (earlyPhase === 'complete' || earlyPhase === 'pdf_failed') {
+                setIsPdfReady(true);
+            }
+            if (earlyPhase === 'print_submitted') {
+                setOverlayPhase('print_submitted');
+            }
+            if (earlyPhase === 'print_failed') {
+                setIsPdfReady(true);
+            }
+        }
+
         setLoading(false);
 
         // =================================================================

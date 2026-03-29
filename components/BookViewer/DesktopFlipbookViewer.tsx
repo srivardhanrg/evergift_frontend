@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, useEffect, useCallback, forwardRef, useImperativeHandle, useState } from 'react';
 import HTMLFlipBook from 'react-pageflip';
 import { ChevronLeft, ChevronRight, Lock, Sparkles, Loader2 } from 'lucide-react';
 import type { BookPageInfoV2, BookStructureV2, BookStyle } from '../../types/book.types';
@@ -7,6 +7,50 @@ import GeneratingPageV2 from './GeneratingPageV2';
 
 // CRITICAL: Import react-pageflip CSS for proper positioning
 import 'page-flip/src/Style/stPageFlip.css';
+import '../../styles/bookViewer.css';
+
+/**
+ * Desktop page image with skeleton loading.
+ * Renders directly into the parent's position:relative context (no extra wrapper div
+ * that could break height:100% chains in react-pageflip's absolute-positioned pages).
+ */
+const DesktopPageImage: React.FC<{ src: string; pageIndex: number }> = ({ src, pageIndex }) => {
+  const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Handle cached images: onLoad won't fire if the browser already has the image
+  useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      setLoaded(true);
+    }
+  }, []);
+
+  return (
+    <>
+      {!loaded && (
+        <div
+          className="absolute inset-0 animate-pulse bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50"
+        />
+      )}
+      <img
+        ref={imgRef}
+        src={src}
+        alt={`Page ${pageIndex + 1}`}
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{
+          opacity: loaded ? 1 : 0,
+          transition: 'opacity 0.25s ease-out',
+        }}
+        loading={pageIndex <= 2 ? 'eager' : 'lazy'}
+        // @ts-ignore
+        fetchpriority={pageIndex === 0 ? 'high' : 'auto'}
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
+      />
+    </>
+  );
+};
 
 /**
  * DesktopFlipbookViewer - Realistic page-flip book viewer for desktop
@@ -86,6 +130,15 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
     ref
   ) => {
     const bookRef = useRef<any>(null);
+    const [showClosingAnimation, setShowClosingAnimation] = useState(false);
+    const [isCoverHovered, setIsCoverHovered] = useState(false);
+    const hasShownClosingRef = useRef(false);
+    // Track last user interaction so auto-flip doesn't interrupt active page turns
+    const lastUserInteractionTimeRef = useRef<number>(0);
+
+    const handleUserInteraction = useCallback(() => {
+      lastUserInteractionTimeRef.current = Date.now();
+    }, []);
 
     // Expose methods to parent
     useImperativeHandle(ref, () => ({
@@ -115,6 +168,9 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
     const maxVisibleIndex = firstPendingAiPage ? firstPendingAiPage.index : 999;
 
     const filteredPages = bookStructure.pages.filter((page) => {
+      // Hide the plain white end_page (index 24) — it's a blank filler, not shown to users
+      if (page.pageType === 'end_page') return false;
+
       // Only show pages sequentially up to the current active AI page
       if (page.index > maxVisibleIndex) return false;
 
@@ -124,7 +180,7 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
       // - Show if purchased (user has access)
       // - Show if has imageUrl (already generated)
       // - Show to indicate locked state for purchase CTA
-      if (page.isLocked) return isPurchased || page.imageUrl || page.index === 14;
+      if (page.isLocked) return isPurchased || page.imageUrl || page.index === 14 || page.index === 15;
       // Show any page with content
       if (page.imageUrl) return true;
       return true;
@@ -175,10 +231,12 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
 
         if (newPageIndex >= 0 && bookRef.current) {
           setTimeout(() => {
+            // Don't interrupt if user interacted with the book in the last 5 seconds
+            if (Date.now() - lastUserInteractionTimeRef.current < 5000) return;
             if (bookRef.current) {
               bookRef.current.pageFlip().flip(newPageIndex);
             }
-          }, 2500); // 2.5s delay for better user experience - gives time to appreciate the new page
+          }, 2500);
         }
       }
 
@@ -193,10 +251,16 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
           const page = visiblePages[pageIndex];
           if (page) {
             onPageChange(page.index);
+            // Trigger "The End" closing animation when reaching back cover (purchased users, once only)
+            if (page.pageType === 'back_cover' && isPurchased && !hasShownClosingRef.current) {
+              hasShownClosingRef.current = true;
+              setShowClosingAnimation(true);
+              setTimeout(() => setShowClosingAnimation(false), 1800);
+            }
           }
         }
       },
-      [visiblePages, onPageChange]
+      [visiblePages, onPageChange, isPurchased]
     );
 
     // Navigation functions
@@ -274,33 +338,48 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
       // 3. Has image - render the actual page content
       if (page.imageUrl) {
         return (
-          <div className="relative w-full h-full overflow-hidden">
-            <img
-              src={page.imageUrl}
-              alt={`Page ${page.index + 1}`}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: 'block'
-              }}
-            />
-            {/* If this is the cover, add the Open Book button */}
+          <div
+            className="relative w-full h-full overflow-hidden"
+            onMouseEnter={page.index === 0 ? () => setIsCoverHovered(true) : undefined}
+            onMouseLeave={page.index === 0 ? () => setIsCoverHovered(false) : undefined}
+          >
+            <DesktopPageImage src={page.imageUrl} pageIndex={page.index} />
+            {/* Cover: hover-reveal vignette + ghost button */}
             {page.index === 0 && (
               <>
-                <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto z-50">
+                {/* Dark vignette — fades in on hover */}
+                <div
+                  className="absolute inset-x-0 bottom-0 pointer-events-none transition-opacity duration-400"
+                  style={{
+                    top: '40%',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)',
+                    opacity: isCoverHovered ? 1 : 0,
+                  }}
+                />
+                {/* Ghost button (always visible, small) — becomes full on hover */}
+                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 pointer-events-auto z-50">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       if (bookRef.current) bookRef.current.pageFlip().flipNext();
                     }}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-full font-bold text-lg shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center gap-2"
+                    className="flex items-center gap-2 rounded-full font-bold transition-all duration-400"
+                    style={{
+                      padding: isCoverHovered ? '10px 28px' : '7px 18px',
+                      fontSize: isCoverHovered ? '1rem' : '0.8rem',
+                      background: isCoverHovered
+                        ? 'linear-gradient(to right, #9333ea, #ec4899)'
+                        : 'rgba(255,255,255,0.18)',
+                      backdropFilter: 'blur(8px)',
+                      border: isCoverHovered ? '1.5px solid transparent' : '1.5px solid rgba(255,255,255,0.5)',
+                      color: '#fff',
+                      boxShadow: isCoverHovered
+                        ? '0 8px 32px rgba(147,51,234,0.45)'
+                        : '0 2px 12px rgba(0,0,0,0.25)',
+                    }}
                   >
                     <span>Open Book</span>
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight style={{ width: isCoverHovered ? '20px' : '14px', height: isCoverHovered ? '20px' : '14px', transition: 'all 0.4s' }} />
                   </button>
                 </div>
               </>
@@ -356,16 +435,42 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
     const canGoPrev = currentVisibleIndex > 0;
     const canGoNext = currentVisibleIndex < visiblePages.length - 1;
 
+    // Stable indicator values
+    const displayTotal = isPurchased ? bookStructure.totalPages : bookStructure.previewPageCount;
+    const displayPosition = currentVisibleIndex >= 0 ? currentVisibleIndex + 1 : 1;
+
+    // Segmented progress bar — group pages into spreads (pairs)
+    const indicatorPages = (isPurchased
+      ? bookStructure.pages.filter(p => p.pageType !== 'end_page')
+      : bookStructure.pages.filter(p => p.isPreview)
+    ).sort((a, b) => a.index - b.index);
+    const spreads: BookPageInfoV2[][] = [];
+    for (let i = 0; i < indicatorPages.length; i += 2) {
+      spreads.push(indicatorPages.slice(i, Math.min(i + 2, indicatorPages.length)));
+    }
+    const lockedSpreadCount = isPurchased
+      ? 0
+      : Math.ceil(bookStructure.pages.filter(p => p.isLocked && p.pageType !== 'end_page').length / 2);
+    const activeSpreadIndex = spreads.findIndex(spread => spread.some(p => p.index === currentPage));
+
     // Check if we're viewing the cover (page 0)
     const isViewingCover = currentVisibleIndex === 0;
+    // Check if we're viewing the back cover (last page, pageType = 'back_cover')
+    const isViewingBackCover = visiblePages[currentVisibleIndex]?.pageType === 'back_cover';
 
     return (
       <div className="relative flex flex-col items-center justify-center w-full overflow-hidden">
         {/* Flipbook container */}
         <div
-          className="relative shadow-2xl rounded-lg overflow-visible transition-transform duration-[600ms] ease-out"
+          className="relative rounded-lg overflow-visible transition-transform duration-[600ms] ease-out"
+          onMouseDown={handleUserInteraction}
+          onTouchStart={handleUserInteraction}
           style={{
-            transform: isViewingCover ? `translateX(-${pageWidth / 2}px)` : 'translateX(0)',
+            transform: isViewingCover
+              ? `translateX(-${pageWidth / 2}px)`
+              : isViewingBackCover
+              ? `translateX(${pageWidth / 2}px)`
+              : 'translateX(0)',
             perspective: '1500px',
             transformStyle: 'preserve-3d',
             minHeight: `${pageHeight}px`,
@@ -374,7 +479,17 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
             maxWidth: '100%',
           }}
         >
-          {/* Book shadow effect */}
+          {/* Dynamic book shadow — resizes to only cover visible pages (no shadow bleed under cover/backcover masks) */}
+          <div
+            className="absolute top-0 rounded-lg shadow-2xl pointer-events-none"
+            style={{
+              left: isViewingCover ? `${pageWidth}px` : '0',
+              width: (isViewingCover || isViewingBackCover) ? `${pageWidth}px` : `${pageWidth * 2}px`,
+              height: '100%',
+              transition: 'left 600ms ease-out, width 600ms ease-out',
+            }}
+          />
+          {/* Book spine gradient effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/10 pointer-events-none z-10" />
 
           <HTMLFlipBook
@@ -407,6 +522,34 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
               <Page key={page.index}>{renderPageContent(page)}</Page>
             ))}
           </HTMLFlipBook>
+          {/* Cover mask: hides the blank virtual page on the left when viewing cover */}
+          {isViewingCover && (
+            <div
+              className="absolute top-0 left-0 h-full bg-gray-50 z-30 pointer-events-none"
+              style={{ width: `${pageWidth}px` }}
+            />
+          )}
+          {/* Back cover mask: hides the empty page slot on the right when viewing back cover */}
+          {isViewingBackCover && (
+            <div
+              className="absolute top-0 right-0 h-full bg-gray-50 z-30 pointer-events-none"
+              style={{ width: `${pageWidth}px` }}
+            />
+          )}
+
+          {/* "The End" book-closing animation overlay (purchased users only, plays once) */}
+          {showClosingAnimation && (
+            <div
+              className="absolute inset-0 z-50 flex flex-col items-center justify-center animate-book-close-overlay"
+              style={{ background: 'rgba(15, 5, 30, 0.92)' }}
+            >
+              <div className="animate-the-end-text text-center select-none">
+                <div className="text-6xl mb-5">✨</div>
+                <div className="text-white font-heading font-bold" style={{ fontSize: '2.5rem' }}>The End</div>
+              </div>
+            </div>
+          )}
+
           {/* Overlay Navigation Arrows - Premium Design */}
           {canGoPrev && (
             <button
@@ -428,44 +571,51 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
           )}
         </div>
 
-        {/* Minimal Page Indicator - Below Book */}
-        <div className="flex items-center justify-center gap-4 mt-6">
-          {/* Page dots */}
-          <div className="flex gap-1.5">
-            {visiblePages
-              .filter(page => page.index !== 0) // Exclude cover only
-              .slice(0, 13) // Show first 13 pages (not including cover)
-              .map((page) => {
-                // Find the actual index in visiblePages array for navigation
-                const actualIndex = visiblePages.findIndex(p => p.index === page.index);
-                return (
-                  <button
-                    key={page.index}
-                    onClick={() => {
-                      if (bookRef.current && actualIndex >= 0) {
-                        bookRef.current.pageFlip().flip(actualIndex);
-                      }
-                    }}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      page.index === currentPage
-                        ? 'bg-purple-600 w-4'
-                        : page.isLocked
-                        ? 'bg-gray-300'
-                        : 'bg-purple-200 hover:bg-purple-300'
-                    }`}
-                    aria-label={`Go to page ${page.index + 1}`}
-                  />
-                );
-              })}
-            {visiblePages.length > 14 && (
-              <span className="flex items-center text-gray-400 text-xs ml-2">
-                <Lock className="w-3 h-3 mr-1" />+{bookStructure.lockedPageCount}
-              </span>
-            )}
-          </div>
+        {/* Segmented Progress Bar */}
+        <div className="flex items-center gap-1 mt-5 w-full max-w-[520px] px-3">
+          {spreads.map((spread, i) => {
+            const isActive = i === activeSpreadIndex;
+            const isGenerating = spread.some(p => p.isGenerating);
+            const isPast = i < activeSpreadIndex;
+            const hasContent = spread.some(p => p.imageUrl && !p.isGenerating);
+            return (
+              <button
+                key={i}
+                onClick={() => {
+                  const targetIndex = visiblePages.findIndex(p => p.index === spread[0].index);
+                  if (bookRef.current && targetIndex >= 0) bookRef.current.pageFlip().flip(targetIndex);
+                }}
+                className="flex-1 min-w-0 rounded-full cursor-pointer transition-all duration-300"
+                style={{
+                  height: isActive ? '6px' : '4px',
+                  background: isActive
+                    ? 'linear-gradient(to right, #9333ea, #ec4899)'
+                    : isGenerating
+                    ? '#f9a8d4'
+                    : isPast || hasContent
+                    ? '#c4b5fd'
+                    : '#e5e7eb',
+                  boxShadow: isActive ? '0 0 8px rgba(147,51,234,0.4)' : 'none',
+                }}
+                aria-label={`Go to spread ${i + 1}`}
+              />
+            );
+          })}
+          {/* Locked zone — proportional width, clickable to purchase */}
+          {lockedSpreadCount > 0 && (
+            <button
+              onClick={onPurchaseClick}
+              className="flex items-center gap-1 min-w-0 group"
+              style={{ flex: lockedSpreadCount }}
+              aria-label="Unlock full story"
+            >
+              <div className="flex-1 h-1 rounded-full bg-gray-200 group-hover:bg-gray-300 transition-colors min-w-0" />
+              <Lock className="w-3 h-3 text-gray-400 group-hover:text-purple-400 flex-shrink-0 transition-colors" />
+            </button>
+          )}
           {/* Page counter */}
-          <span className="text-gray-600 text-sm font-medium">
-            {currentVisibleIndex >= 0 ? currentVisibleIndex + 1 : 1} / {visiblePages.length}
+          <span className="text-gray-500 text-xs font-medium ml-2 whitespace-nowrap flex-shrink-0">
+            {displayPosition}/{displayTotal}
           </span>
         </div>
       </div>

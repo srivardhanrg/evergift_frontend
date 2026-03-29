@@ -35,11 +35,11 @@ const About: React.FC = () => {
             Trusted by Families Worldwide
           </div>
           <h1 className="text-5xl md:text-6xl font-heading mb-6 text-gray-900">
-            Every Child Deserves to Be a <span className="text-primary">Hero</span>
+            A Story That Captures the Magic Within Your  <span className="text-primary">Child</span>
           </h1>
           <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
-            We create personalized storybooks that transform your child into the hero of their own adventure.
-            Every book is unique, safe, and crafted with love.
+            A personalized storybook that reflects your child’s courage, imagination,
+            and magic — beautifully crafted to be cherished forever.
           </p>
         </div>
       </section>
@@ -51,7 +51,7 @@ const About: React.FC = () => {
             <div className="flex flex-col items-center text-center">
               <Shield className="w-8 h-8 text-green-600 mb-2" />
               <span className="text-sm font-semibold text-gray-700">100% Safe</span>
-              <span className="text-xs text-gray-500">Photos auto-deleted</span>
+              <span className="text-xs text-gray-500">Photos automatically deleted</span>
             </div>
             <div className="flex flex-col items-center text-center">
               <Lock className="w-8 h-8 text-blue-600 mb-2" />
@@ -61,12 +61,12 @@ const About: React.FC = () => {
             <div className="flex flex-col items-center text-center">
               <Clock className="w-8 h-8 text-purple-600 mb-2" />
               <span className="text-sm font-semibold text-gray-700">Fast Delivery</span>
-              <span className="text-xs text-gray-500">Digital instant, print ships in days</span>
+              <span className="text-xs text-gray-500">Access your digital book instantly. Your printed copy will arrive in a few days.”</span>
             </div>
             <div className="flex flex-col items-center text-center">
               <Heart className="w-8 h-8 text-pink-600 mb-2" />
               <span className="text-sm font-semibold text-gray-700">Made with Love</span>
-              <span className="text-xs text-gray-500">By parents, for parents</span>
+              <span className="text-xs text-gray-500">By parents, for children</span>
             </div>
           </div>
         </div>
@@ -95,7 +95,7 @@ const About: React.FC = () => {
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                Automatically deleted after 7 days
+                Automatically deleted after generation
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
@@ -137,23 +137,22 @@ const About: React.FC = () => {
             <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mb-6">
               <Heart className="w-7 h-7 text-amber-600" />
             </div>
-            <h3 className="text-xl font-heading text-gray-900 mb-3">100% Satisfaction</h3>
+            <h3 className="text-xl font-heading text-gray-900 mb-4">Quality Guaranteed</h3>
+            <p className="text-gray-600 text-sm mb-4 italic leading-relaxed">
+              Due to the personalized nature of our products, orders cannot be canceled once production begins. However, if you experience any issues, we’re here to help and will work with you to make it right.
+            </p>
             <ul className="space-y-2 text-gray-600 text-sm">
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                Preview before you buy
+                No-cost replacements for manufacturing defects
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                30-day money-back guarantee
+                AI stylistic variations disclaimer applied
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                Unlimited re-downloads + print option
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                Friendly customer support
+                Dedicated support at hello@juvilabs.com
               </li>
             </ul>
           </div>
@@ -236,27 +235,27 @@ const About: React.FC = () => {
               <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mb-6">
                 <Download className="w-7 h-7 text-blue-600" />
               </div>
-              <h3 className="text-xl font-heading text-gray-900 mb-2">Digital PDF</h3>
+              <h3 className="text-xl font-heading text-gray-900 mb-2">Digital Edition</h3>
               <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
                 <Clock className="w-3.5 h-3.5" />
-                Instant Download
+                Start the magic instantly
               </div>
               <ul className="space-y-3 text-gray-600 text-sm">
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                  Ready within 2-3 minutes after payment
+                  Delivered within minutes after purchase
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                  Download link sent to your email
+                  Sent directly to your email
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                  Unlimited re-downloads for 30 days
+                  Access anytime with easy re-downloads
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                  Print at home or any print shop
+                  Print at home or at your preferred print shop
                 </li>
               </ul>
             </div>
@@ -278,11 +277,11 @@ const About: React.FC = () => {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5 shrink-0" />
-                  <span><strong>Shipping to India:</strong> 5-10 business days</span>
+                  <span><strong>Shipping to USA:</strong> 5-10 business days</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5 shrink-0" />
-                  <span><strong>International:</strong> 10-20 business days</span>
+                  <span><strong>International:</strong> 10-15 business days</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5 shrink-0" />
@@ -314,7 +313,7 @@ const About: React.FC = () => {
                   <Printer className="w-5 h-5" />
                 </div>
                 <span className="text-xs text-gray-600 font-medium">Printing</span>
-                <span className="text-xs text-gray-400">Days 1-5</span>
+                <span className="text-xs text-gray-400">Days 1-2</span>
               </div>
 
               <div className="flex flex-col items-center">
@@ -322,7 +321,7 @@ const About: React.FC = () => {
                   <Truck className="w-5 h-5" />
                 </div>
                 <span className="text-xs text-gray-600 font-medium">Shipped</span>
-                <span className="text-xs text-gray-400">Day 5-6</span>
+                <span className="text-xs text-gray-400">Day 3-6</span>
               </div>
 
               <div className="flex flex-col items-center">
@@ -330,7 +329,7 @@ const About: React.FC = () => {
                   <Package className="w-5 h-5" />
                 </div>
                 <span className="text-xs text-gray-600 font-medium">Delivered</span>
-                <span className="text-xs text-gray-400">Days 10-15</span>
+                <span className="text-xs text-gray-400">Days 7-12</span>
               </div>
             </div>
 

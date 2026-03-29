@@ -223,8 +223,9 @@ export type GenerationPhase =
 
 /**
  * Book style enum.
+ * V1: Only photorealistic style is supported. Cartoon style removed for simplification.
  */
-export type BookStyle = 'photorealistic' | 'cartoon_3d';
+export type BookStyle = 'photorealistic'; // | 'cartoon_3d' - Removed for v1
 
 /**
  * Purchase information.
