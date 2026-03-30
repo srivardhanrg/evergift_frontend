@@ -25,6 +25,7 @@ const SHADOW_DOM_CSS = `
 .stf__wrapper {
   position: relative;
   width: 100%;
+  height: 500px;
   box-sizing: border-box;
 }
 .stf__parent canvas {
@@ -399,6 +400,28 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
 
       prevCompletedRef.current = completedCount;
     }, [visiblePages]);
+
+    // CRITICAL FIX: The root cause is that page-flip adds the 'stf__item' class to
+    // every page element synchronously (step 4 in fromHTML), which applies
+    // 'display:none; position:absolute', removing all items from normal flow.
+    // When render.start() fires (step 6), calculateBoundsRect() calls
+    // getBlockHeight() = .stf__block.offsetHeight.  Because .stf__block has
+    // 'height: 100%' and its containing block .stf__wrapper has only 'width: 100%'
+    // (no explicit height, no in-flow content), offsetHeight = 0 permanently.
+    // This gives boundsRect.top = 0/2 - 500/2 = -250px, positioning all pages
+    // 250px above the container.
+    //
+    // The fix is structural: add 'height: 500px' to .stf__wrapper in SHADOW_DOM_CSS
+    // (matching pageHeight = 500).  This makes .stf__block.offsetHeight = 500,
+    // so boundsRect.top = 500/2 - 500/2 = 0px.  Pages render at the correct position.
+    //
+    // Dispatching resize as a belt-and-suspenders measure is still fine.
+    useEffect(() => {
+      const rafId = requestAnimationFrame(() => {
+        window.dispatchEvent(new Event('resize'));
+      });
+      return () => cancelAnimationFrame(rafId);
+    }, []);
 
     // Handle page flip
     const handleFlip = useCallback(
