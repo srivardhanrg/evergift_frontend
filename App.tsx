@@ -16,6 +16,7 @@ const ContactUs = lazy(() => import('./pages/ContactUs'));
 const MyCreations = lazy(() => import('./pages/MyCreations'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
 const FAQ = lazy(() => import('./pages/FAQ'));
 const Feedback = lazy(() => import('./pages/Feedback'));
 
@@ -78,6 +79,7 @@ const AnalyticsTracker: React.FC = () => {
       '/my-creations': 'My Creations',
       '/privacy-policy': 'Privacy Policy',
       '/terms-of-service': 'Terms of Service',
+      '/refund-policy': 'Refund Policy',
       '/faq': 'FAQ',
       '/contact': 'Contact Us',
     };
@@ -227,6 +229,7 @@ const App: React.FC = () => {
                     <Route path="/preview/:id" element={<PreviewStoryV2 />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                     <Route path="/terms-of-service" element={<TermsOfService />} />
+                    <Route path="/refund-policy" element={<RefundPolicy />} />
                     <Route path="/faq" element={<FAQ />} />
                     <Route path="/feedback" element={<Feedback />} />
                     <Route path="*" element={<Navigate to="/" />} />

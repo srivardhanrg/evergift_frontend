@@ -82,6 +82,9 @@ const Footer: React.FC = () => {
               <li>
                 <Link to="/terms-of-service" className="text-gray-500 hover:text-primary transition font-medium">Terms of Service</Link>
               </li>
+              <li>
+                <Link to="/refund-policy" className="text-gray-500 hover:text-primary transition font-medium">Refund Policy</Link>
+              </li>
             </ul>
           </div>
         </div>
