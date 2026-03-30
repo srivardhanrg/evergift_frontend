@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Lock, Sparkles, Loader2 } from 'lucide-react
 import type { BookPageInfoV2, BookStructureV2, BookStyle } from '../../types/book.types';
 import LockedPageV2 from './LockedPageV2';
 import GeneratingPageV2 from './GeneratingPageV2';
+import PendingPageV2 from './PendingPageV2';
 
 /**
  * Get display label for a page based on its index.
@@ -300,15 +301,7 @@ const MobileScrollViewer: React.FC<MobileScrollViewerProps> = ({
 
     // 5. AI page pending - not yet started generating
     // Shows for AI pages that are queued but not actively generating
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-gray-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center px-4">
-          <Sparkles className="w-8 h-8 text-purple-300 mx-auto mb-2 opacity-50" />
-          <p className="text-gray-500 font-medium text-sm mb-1">Waiting for magic...</p>
-          <p className="text-gray-400 text-xs">{getPageLabel(page.index)}</p>
-        </div>
-      </div>
-    );
+    return <PendingPageV2 page={page} />;
   };
 
   return (

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Lock, Sparkles, Loader2 } from 'lucide-react
 import type { BookPageInfoV2, BookStructureV2, BookStyle } from '../../types/book.types';
 import LockedPageV2 from './LockedPageV2';
 import GeneratingPageV2 from './GeneratingPageV2';
+import PendingPageV2 from './PendingPageV2';
 
 // CRITICAL: Import react-pageflip CSS for proper positioning
 import 'page-flip/src/Style/stPageFlip.css';
@@ -198,16 +199,16 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
         // Insert blank page object after cover (desktop view only)
         const blankPage: BookPageInfoV2 = {
           index: -1,  // Virtual page, negative index to avoid conflicts
-          page_type: 'blank' as any,
-          image_url: null,
-          story_text: null,
-          is_preview: true,
-          is_locked: false,
-          is_filler: false,
-          is_generating: false,
-          is_generated: true,
-          requires_text_overlay: false,
-          text_page_number: null
+          pageType: 'blank' as any,
+          imageUrl: null,
+          storyText: null,
+          isPreview: true,
+          isLocked: false,
+          isFiller: false,
+          isGenerating: false,
+          isGenerated: true,
+          requiresTextOverlay: false,
+          textPageNumber: null
         };
 
         pages.splice(coverIndex + 1, 0, blankPage);
@@ -283,7 +284,7 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
     // Render a single page content based on page state
     const renderPageContent = (page: BookPageInfoV2) => {
       // 0. Blank page (virtual page for book opening UX)
-      if (page.page_type === 'blank' || page.index === -1) {
+      if (page.pageType === ('blank' as any) || page.index === -1) {
         return <div className="w-full h-full bg-white" />;
       }
 
@@ -420,15 +421,7 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
 
       // 5. AI page pending - not yet started generating
       // Shows for AI pages that are queued but not actively generating
-      return (
-        <div className="w-full h-full bg-gradient-to-br from-gray-50 via-purple-50 to-pink-50 flex items-center justify-center">
-          <div className="text-center px-6">
-            <Sparkles className="w-10 h-10 text-purple-300 mx-auto mb-3 opacity-50" />
-            <p className="text-gray-500 font-medium text-sm mb-1">Waiting for magic...</p>
-            <p className="text-gray-400 text-xs">{getPageLabel(page.index)}</p>
-          </div>
-        </div>
-      );
+      return <PendingPageV2 page={page} />;
     };
 
     const currentVisibleIndex = visiblePages.findIndex((p) => p.index === currentPage);
@@ -516,6 +509,7 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
             autoSize={false}
             maxShadowOpacity={0.5}
             showPageCorners={true}
+            swipeDistance={50}
             disableFlipByClick={false}
           >
             {visiblePages.map((page) => (

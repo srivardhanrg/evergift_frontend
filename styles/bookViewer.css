@@ -4,6 +4,21 @@
   to   { transform: scaleX(1); }
 }
 
+/* Gradient shimmer animation for pending pages — cycles through indigo → purple → pink */
+@keyframes gradient-shimmer {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient-shimmer {
+  background-size: 200% 200%;
+  animation: gradient-shimmer 6s ease-in-out infinite;
+}
+
 /* Book Viewer Styles */
 
 /* "The End" closing animation — dark overlay fade */
