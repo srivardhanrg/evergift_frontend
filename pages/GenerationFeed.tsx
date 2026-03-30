@@ -115,6 +115,15 @@ const GenerationFeed: React.FC = () => {
     const { jobId } = useParams<{ jobId: string }>();
     const navigate = useNavigate();
 
+    // CRITICAL: Scroll to top on mount (most reliable fix for mobile)
+    // This fires AFTER the lazy-loaded component is fully mounted in the DOM,
+    // catching cases where App.tsx's ScrollToTop was too early.
+    useEffect(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+    }, []); // Empty deps = run once on mount
+
     // State
     const [progress, setProgress] = useState(0);
     const [currentStep, setCurrentStep] = useState('Starting the magic...');

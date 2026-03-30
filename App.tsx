@@ -32,6 +32,9 @@ import { initAnalytics, trackPageView, identifyUser } from './src/services/analy
  * ScrollToTop - Scrolls to top on every route change
  * Fixes the issue where navigating to a new page keeps the scroll position.
  * Uses manual scroll restoration to prevent iOS Safari from overriding scrollTo(0,0).
+ *
+ * Multiple retry attempts to handle lazy-loaded components (GenerationFeed, etc.)
+ * which need time to mount and paint before scroll position stabilizes.
  */
 const ScrollToTop: React.FC = () => {
   const { pathname } = useLocation();
@@ -45,20 +48,36 @@ const ScrollToTop: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Hit all scroll containers: window covers most browsers,
-    // documentElement/body cover WebKit variants inside Shopify / Shadow DOM.
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-
-    // Fire again after the next paint to catch lazy-loaded page content
-    // expanding the document height and causing a reflow.
-    const raf = requestAnimationFrame(() => {
+    // Scroll to top function - hits all known scroll containers
+    const scrollToTop = () => {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
+    };
+
+    // Immediate scroll
+    scrollToTop();
+
+    // Retry after next paint (~16ms) - catches fast renders
+    const raf = requestAnimationFrame(() => {
+      scrollToTop();
     });
-    return () => cancelAnimationFrame(raf);
+
+    // Retry at 100ms - catches lazy-loaded component mount
+    const timeout100 = setTimeout(() => {
+      scrollToTop();
+    }, 100);
+
+    // Final retry at 300ms - catches slow mobile devices + momentum scrolling
+    const timeout300 = setTimeout(() => {
+      scrollToTop();
+    }, 300);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timeout100);
+      clearTimeout(timeout300);
+    };
   }, [pathname]);
 
   return null;

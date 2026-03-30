@@ -197,6 +197,11 @@ const CreateStory: React.FC = () => {
         // style removed - backend defaults to photorealistic
       });
 
+      // Scroll to top BEFORE navigation (helps mobile browsers start at top)
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+
       // Navigate to GenerationFeed for live streaming view
       navigate(`/generating/${job_id}`);
     } catch (error: any) {
