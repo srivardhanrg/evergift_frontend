@@ -6,9 +6,171 @@ import LockedPageV2 from './LockedPageV2';
 import GeneratingPageV2 from './GeneratingPageV2';
 import PendingPageV2 from './PendingPageV2';
 
-// CRITICAL: Import react-pageflip CSS for proper positioning
-import 'page-flip/src/Style/stPageFlip.css';
-import '../../styles/bookViewer.css';
+// CRITICAL: All react-pageflip + bookViewer CSS is inlined below.
+// Vite's dynamic CSS injection puts chunk CSS into document.head, which is
+// OUTSIDE the Shadow DOM in production (Shopify). Shadow DOM blocks those
+// styles entirely → pages lose absolute positioning → layout breaks.
+// Inline <style> renders inside the Shadow DOM where the component lives.
+
+const SHADOW_DOM_CSS = `
+/* === page-flip/src/Style/stPageFlip.css (positioning) === */
+.stf__parent {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  transform: translateZ(0);
+  -ms-touch-action: pan-y;
+  touch-action: pan-y;
+}
+.stf__wrapper {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+.stf__parent canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+}
+.stf__block {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  perspective: 2000px;
+}
+.stf__item {
+  display: none;
+  position: absolute;
+  transform-style: preserve-3d;
+}
+.stf__outerShadow,
+.stf__innerShadow,
+.stf__hardShadow,
+.stf__hardInnerShadow {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+/* === bookViewer.css (animations + overrides) === */
+@keyframes segmentFill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@keyframes gradient-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+.animate-gradient-shimmer {
+  background-size: 200% 200%;
+  animation: gradient-shimmer 6s ease-in-out infinite;
+}
+@keyframes bookCloseOverlay {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes theEndText {
+  0%   { opacity: 0; transform: scale(0.75); }
+  25%  { opacity: 1; transform: scale(1.05); }
+  55%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.9); }
+}
+.animate-book-close-overlay {
+  animation: bookCloseOverlay 1.8s ease-in-out forwards;
+  pointer-events: none;
+}
+.animate-the-end-text {
+  animation: theEndText 1.8s ease-in-out forwards;
+}
+.book-viewer-container {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 70vh;
+}
+.book-flip {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+.book-page {
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+.stf__item {
+  box-shadow:
+    inset -7px 0 30px -7px rgba(0, 0, 0, 0.1),
+    2px 0 5px rgba(0, 0, 0, 0.05);
+}
+.stf__hardInner {
+  transition: transform 0.5s cubic-bezier(0.645, 0.045, 0.355, 1.000);
+}
+.book-cover {
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  perspective: 1000px;
+}
+.book-cover:hover {
+  transform: scale(1.02);
+}
+.text-overlay {
+  transition: opacity 0.3s ease;
+}
+.child-name-highlight {
+  background: linear-gradient(to bottom, rgba(254, 243, 199, 0.5), transparent);
+  padding: 0 4px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+.drop-cap {
+  font-family: 'Fredoka', sans-serif;
+  text-shadow: 2px 2px 0 rgba(251, 191, 36, 0.3);
+  transition: color 0.3s ease;
+}
+.page-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.page-dot {
+  transition: all 0.2s ease;
+}
+.page-dot:hover:not(.active) {
+  background: #bbb !important;
+}
+.watermark-overlay {
+  animation: watermarkPulse 3s ease-in-out infinite;
+}
+@keyframes watermarkPulse {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 0.5; }
+}
+@media (max-width: 767px) {
+  .book-viewer-container { padding: 12px; }
+  .page-navigation { flex-wrap: wrap; gap: 8px; }
+  .page-dot { width: 6px !important; height: 6px !important; }
+  .page-dot.active { width: 10px !important; height: 10px !important; }
+}
+.book-viewer-skeleton {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+.book-page img {
+  transition: transform 0.3s ease;
+}
+.book-page:hover img {
+  transform: scale(1.01);
+}
+`;
 
 /**
  * Desktop page image with skeleton loading.
@@ -161,19 +323,13 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
     }));
 
     // Get pages to display - MUST be declared before useEffect that uses it
-    // Show ALL preview pages during generation (they'll render appropriate states)
-    // For locked pages, only show if purchased or if showing locked indicator
-    const firstPendingAiPage = bookStructure.pages.find(
-      p => (p.pageType === 'ai_page' || p.pageType === 'cover') && !p.isGenerated
-    );
-    const maxVisibleIndex = firstPendingAiPage ? firstPendingAiPage.index : 999;
-
+    // ROOT CAUSE FIX: Always show ALL preview pages from the start so the visiblePages
+    // array stays stable throughout generation. The old maxVisibleIndex filter caused
+    // the array to jump from ~2 to ~7 pages when the cover finished generating, forcing
+    // react-pageflip to reinitialize and producing "going upward" / mismatched layouts.
     const filteredPages = bookStructure.pages.filter((page) => {
       // Hide the plain white end_page (index 24) — it's a blank filler, not shown to users
       if (page.pageType === 'end_page') return false;
-
-      // Only show pages sequentially up to the current active AI page
-      if (page.index > maxVisibleIndex) return false;
 
       // Always show preview pages (indices 0-12) - they're part of the free preview
       if (page.isPreview) return true;
@@ -453,6 +609,8 @@ const DesktopFlipbookViewer = forwardRef<FlipbookRef, DesktopFlipbookViewerProps
 
     return (
       <div className="relative flex flex-col items-center justify-center w-full overflow-hidden">
+        {/* Inline critical CSS — must live inside Shadow DOM (Vite chunk CSS can't reach it) */}
+        <style dangerouslySetInnerHTML={{ __html: SHADOW_DOM_CSS }} />
         {/* Flipbook container */}
         <div
           className="relative rounded-lg overflow-visible transition-transform duration-[600ms] ease-out"
