@@ -134,6 +134,7 @@ const GenerationFeed: React.FC = () => {
 
     // V2: Book structure for BookViewerV2 (unified mobile + desktop)
     const [bookStructure, setBookStructure] = useState<BookStructureV2 | null>(null);
+    const [generationPhase, setGenerationPhase] = useState<GenerationPhase>('preview');
     const [theme, setTheme] = useState<string>('');
     // V1: Style state removed - hardcoded to photorealistic
     // const [style, setStyle] = useState<BookStyle>('photorealistic');
@@ -273,12 +274,14 @@ const GenerationFeed: React.FC = () => {
                                     fillerPagesProcessed: {} as Record<string, boolean>,
                                 };
 
-                                const generationPhase: GenerationPhase =
+                                const currentPhase: GenerationPhase =
                                     (previewData.generation_phase as GenerationPhase) || 'preview';
+
+                                setGenerationPhase(currentPhase);
 
                                 const convertedStructure = convertBackendBookStructureToV2(
                                     bookDataForConverter,
-                                    generationPhase
+                                    currentPhase
                                 );
 
                                 // Set the properly converted structure for BookViewerV2
@@ -561,13 +564,13 @@ const GenerationFeed: React.FC = () => {
                     <div className="bg-white rounded-2xl shadow-lg p-6">
                         <RotatingGenerationMessage status={status} />
                         <BookViewerV2
-                            previewId={bookStructure.previewId || ''}
+                            previewId={pendingPreviewId || ''}
                             bookStructure={bookStructure}
                             childName={childName}
                             theme={theme}
                             style="photorealistic" // Hardcoded - no user selection
                             isPurchased={false}
-                            generationPhase={bookStructure.generationPhase}
+                            generationPhase={generationPhase}
                             onPageChange={(pageIndex) => {
                                 console.log(`[Desktop Generation] Viewing page ${pageIndex + 1}`);
                             }}
@@ -604,13 +607,13 @@ const GenerationFeed: React.FC = () => {
                     <div className="bg-white rounded-2xl shadow-lg p-4">
                         <RotatingGenerationMessage status={status} />
                         <BookViewerV2
-                            previewId={bookStructure.previewId || ''}
+                            previewId={pendingPreviewId || ''}
                             bookStructure={bookStructure}
                             childName={childName}
                             theme={theme}
                             style="photorealistic" // Hardcoded - no user selection
                             isPurchased={false}
-                            generationPhase={bookStructure.generationPhase}
+                            generationPhase={generationPhase}
                             onPageChange={(pageIndex) => {
                                 console.log(`[Mobile Generation] Viewing page ${pageIndex + 1}`);
                             }}

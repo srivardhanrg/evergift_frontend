@@ -22,7 +22,7 @@ import { usePreviewStateMachine } from '../hooks/usePreviewStateMachine';
 import { usePaymentFlow } from '../hooks/usePaymentFlow';
 import { usePdfDownload } from '../hooks/usePdfDownload';
 import { convertBackendBookStructureToV2 } from '../src/utils/bookStructureConverter';
-import type { BookStructureV2 } from '../types/book.types';
+import type { BookStructureV2, GenerationPhase as BookGenerationPhase } from '../types/book.types';
 
 // Responsive CSS to override Shopify theme conflicts
 const PreviewResponsiveStyles = () => (
@@ -159,7 +159,7 @@ const PreviewStoryV2: React.FC = () => {
     try {
       return convertBackendBookStructureToV2(
         machine.book,
-        machine.generationPhase || 'idle'
+        (machine.generationPhase as unknown as BookGenerationPhase) || 'preview'
       );
     } catch (error) {
       console.error('[PreviewStoryV2] Failed to convert book structure:', error);
@@ -282,7 +282,7 @@ const PreviewStoryV2: React.FC = () => {
             style="photorealistic" // Hardcoded - no user selection
             bookStructure={bookStructure}
             isPurchased={book.paymentStatus === 'paid'}
-            generationPhase={machine.generationPhase || 'idle'}
+            generationPhase={(machine.generationPhase as unknown as BookGenerationPhase) || 'preview'}
             onPageChange={(page) => {
               console.log(`[V2] Viewing page ${page + 1}`);
             }}
