@@ -110,7 +110,7 @@ const Home: React.FC = () => {
           setIsTransitioning(false);
         }, 300);
       }
-    }, 4000);
+    }, 2000);
   }, []);
 
   useEffect(() => {
@@ -160,26 +160,6 @@ const Home: React.FC = () => {
       <ResponsiveStyles />
       <div className="bg-white min-h-screen">
 
-        {/* Trust Bar */}
-        <div className="bg-white border-b border-gray-100 py-2">
-          <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-2">
-            <div className="flex -space-x-2">
-              {['SM', 'JK', 'ES'].map((initials, i) => (
-                <div key={i} className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-pink-400 flex items-center justify-center text-white text-[10px] font-bold border-2 border-white">
-                  {initials}
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center gap-0.5 text-amber-400">
-              {'★★★★★'.split('').map((s, i) => <span key={i} className="text-sm">{s}</span>)}
-            </div>
-            <span className="text-sm text-gray-600">
-              Trusted by over <strong>1,000+</strong> happy families.{' '}
-              <Link to="/feedback" className="text-primary underline underline-offset-2 hover:text-primary/80">See our reviews!</Link>
-            </span>
-          </div>
-        </div>
-
         {/* Hero Section - Photo → Book Transformation Carousel */}
         <section className="relative py-8 md:py-10 bg-gradient-to-b from-softPink via-white to-purple-50/30 overflow-hidden">
           {/* Decorative Elements */}
@@ -207,17 +187,17 @@ const Home: React.FC = () => {
               onMouseEnter={() => { isPausedRef.current = true; }}
               onMouseLeave={() => { isPausedRef.current = false; }}
             >
-              {/* Decorative edges - left */}
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-3 items-center opacity-35 pointer-events-none">
-                <span className="text-3xl lg:text-4xl animate-sparkle" style={{ animationDelay: '0.2s' }}>🌸</span>
-                <span className="text-4xl lg:text-5xl">🌿</span>
-                <span className="text-2xl animate-sparkle" style={{ animationDelay: '0.8s' }}>⭐</span>
+              {/* Decorative edges - left (magical/neutral) */}
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-4 items-center opacity-35 pointer-events-none">
+                <span className="text-3xl lg:text-4xl animate-sparkle" style={{ animationDelay: '0.2s' }}>✨</span>
+                <span className="text-2xl lg:text-3xl animate-sparkle" style={{ animationDelay: '0.9s' }}>🌟</span>
+                <span className="text-3xl lg:text-4xl animate-sparkle" style={{ animationDelay: '0.5s' }}>⭐</span>
               </div>
-              {/* Decorative edges - right */}
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-3 items-center opacity-35 pointer-events-none">
-                <span className="text-2xl animate-sparkle" style={{ animationDelay: '0.5s' }}>💫</span>
-                <span className="text-4xl lg:text-5xl transform -scale-x-100">🌿</span>
-                <span className="text-3xl lg:text-4xl animate-sparkle" style={{ animationDelay: '1s' }}>🌺</span>
+              {/* Decorative edges - right (magical/neutral) */}
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-4 items-center opacity-35 pointer-events-none">
+                <span className="text-2xl lg:text-3xl animate-sparkle" style={{ animationDelay: '0.4s' }}>💫</span>
+                <span className="text-3xl lg:text-4xl animate-sparkle" style={{ animationDelay: '1s' }}>✨</span>
+                <span className="text-2xl lg:text-3xl animate-sparkle" style={{ animationDelay: '0.7s' }}>🌟</span>
               </div>
 
               {/* Left - Child Photo (placeholder) */}
@@ -233,45 +213,69 @@ const Home: React.FC = () => {
                 </div>
               </div>
 
-              {/* Center - Broad curved arrow with wand */}
+              {/* Center - Magical tapered arrow with sparkles */}
               <div className="flex flex-col items-center mx-4 lg:mx-6 flex-shrink-0" style={{ minWidth: '160px' }}>
-                <svg width="180" height="100" viewBox="0 0 180 100" className="mb-0">
+                <svg width="180" height="110" viewBox="0 0 180 110" className="mb-0">
                   <defs>
-                    {/* Gradient for the arrow body */}
-                    <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#FF6B9D" stopOpacity="0.3" />
-                      <stop offset="50%" stopColor="#FF6B9D" stopOpacity="0.5" />
+                    {/* Sparkly gradient fill for the arrow shape */}
+                    <linearGradient id="arrowFill" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#FF6B9D" stopOpacity="0.25" />
+                      <stop offset="40%" stopColor="#FF6B9D" stopOpacity="0.45" />
+                      <stop offset="70%" stopColor="#E85D8A" stopOpacity="0.5" />
                       <stop offset="100%" stopColor="#4ECDC4" stopOpacity="0.6" />
                     </linearGradient>
+                    {/* Glow filter for sparkle effect */}
+                    <filter id="sparkleGlow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
                   </defs>
-                  {/* Broad curved arrow body - thick band */}
+                  {/* Tapered arrow shape: slim at start, broadens in middle, wide at arrowhead */}
                   <path
-                    d="M 8 68 C 35 5, 130 0, 148 48"
-                    fill="none"
-                    stroke="url(#arrowGrad)"
-                    strokeWidth="14"
-                    strokeLinecap="round"
+                    d="M 12 68
+                       C 25 58, 35 35, 55 22
+                       C 75 10, 100 8, 125 18
+                       C 140 24, 148 35, 150 45
+                       L 172 60
+                       L 142 65
+                       C 140 55, 135 42, 120 32
+                       C 100 20, 75 22, 55 32
+                       C 38 40, 28 55, 18 65
+                       Z"
+                    fill="url(#arrowFill)"
                   />
-                  {/* Inner lighter stroke for depth */}
+                  {/* Inner shimmer highlight */}
                   <path
-                    d="M 8 68 C 35 5, 130 0, 148 48"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="6"
-                    strokeLinecap="round"
-                    opacity="0.3"
+                    d="M 18 66
+                       C 30 55, 42 35, 60 25
+                       C 80 14, 105 14, 128 25
+                       C 138 30, 144 38, 146 48
+                       L 155 55
+                       L 143 57
+                       C 140 48, 134 38, 122 30
+                       C 102 20, 78 20, 60 30
+                       C 44 40, 32 52, 22 63
+                       Z"
+                    fill="white"
+                    opacity="0.2"
                   />
-                  {/* Large solid arrowhead pointing right-down */}
-                  <path
-                    d="M 140 38 L 170 58 L 138 62 Z"
-                    fill="#4ECDC4"
-                    opacity="0.7"
-                  />
-                  {/* Sparkle dots along the arc */}
-                  <circle cx="20" cy="50" r="3" fill="#FFE66D" opacity="0.7" />
-                  <circle cx="55" cy="18" r="3.5" fill="#FF6B9D" opacity="0.5" />
-                  <circle cx="90" cy="8" r="3" fill="#FFE66D" opacity="0.7" />
-                  <circle cx="125" cy="16" r="3.5" fill="#FF6B9D" opacity="0.5" />
+                  {/* Sparkle stars scattered along the arrow */}
+                  <g filter="url(#sparkleGlow)">
+                    <text x="22" y="58" fontSize="10" opacity="0.8">✦</text>
+                    <text x="48" y="28" fontSize="12" opacity="0.9">✦</text>
+                    <text x="78" y="16" fontSize="14" opacity="0.8">✦</text>
+                    <text x="108" y="20" fontSize="11" opacity="0.9">✦</text>
+                    <text x="135" y="36" fontSize="13" opacity="0.8">✦</text>
+                  </g>
+                  {/* Tiny floating sparkle dots */}
+                  <circle cx="35" cy="42" r="2" fill="#FFE66D" opacity="0.8" />
+                  <circle cx="65" cy="14" r="2.5" fill="#FFE66D" opacity="0.7" />
+                  <circle cx="95" cy="10" r="2" fill="#FFE66D" opacity="0.8" />
+                  <circle cx="118" cy="14" r="2.5" fill="#FFE66D" opacity="0.7" />
+                  <circle cx="148" cy="42" r="2" fill="#FFE66D" opacity="0.8" />
                 </svg>
                 {/* Magic wand circle */}
                 <div className="relative -mt-8 bg-white/80 backdrop-blur-sm w-14 h-14 lg:w-16 lg:h-16 rounded-full flex items-center justify-center shadow-lg border border-pink-100">
