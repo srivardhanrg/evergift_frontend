@@ -203,74 +203,94 @@ const Home: React.FC = () => {
 
             {/* Desktop: Side-by-side Photo → Book transformation */}
             <div
-              className="hidden md:flex items-center justify-center gap-4 lg:gap-8 mb-6"
+              className="hidden md:flex items-center justify-center mb-6 relative"
               onMouseEnter={() => { isPausedRef.current = true; }}
               onMouseLeave={() => { isPausedRef.current = false; }}
             >
+              {/* Decorative edges - left */}
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-3 items-center opacity-35 pointer-events-none">
+                <span className="text-3xl lg:text-4xl animate-sparkle" style={{ animationDelay: '0.2s' }}>🌸</span>
+                <span className="text-4xl lg:text-5xl">🌿</span>
+                <span className="text-2xl animate-sparkle" style={{ animationDelay: '0.8s' }}>⭐</span>
+              </div>
+              {/* Decorative edges - right */}
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-3 items-center opacity-35 pointer-events-none">
+                <span className="text-2xl animate-sparkle" style={{ animationDelay: '0.5s' }}>💫</span>
+                <span className="text-4xl lg:text-5xl transform -scale-x-100">🌿</span>
+                <span className="text-3xl lg:text-4xl animate-sparkle" style={{ animationDelay: '1s' }}>🌺</span>
+              </div>
+
               {/* Left - Child Photo (placeholder) */}
-              <div className={`transition-all duration-500 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+              <div className={`transition-all duration-500 flex-shrink-0 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                 <div className="relative">
-                  <div className={`w-48 lg:w-56 aspect-[4/5] rounded-2xl bg-gradient-to-br ${currentPair.childPlaceholder.gradient} flex flex-col items-center justify-center shadow-xl border-4 border-white transform -rotate-2`}>
-                    <span className="text-6xl lg:text-7xl mb-2">{currentPair.childPlaceholder.emoji}</span>
-                    <span className="text-sm font-heading text-gray-700/80">{currentPair.childPlaceholder.label}</span>
+                  <div className={`w-60 lg:w-72 aspect-square rounded-2xl bg-gradient-to-br ${currentPair.childPlaceholder.gradient} flex flex-col items-center justify-center shadow-xl border-4 border-white transform -rotate-2`}>
+                    <span className="text-7xl lg:text-8xl mb-2">{currentPair.childPlaceholder.emoji}</span>
+                    <span className="text-sm lg:text-base font-heading text-gray-700/80">{currentPair.childPlaceholder.label}</span>
                   </div>
-                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-md text-xs font-heading text-gray-600 whitespace-nowrap border border-gray-100">
+                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md text-xs font-heading text-gray-600 whitespace-nowrap border border-gray-100">
                     Input: Your Child's Photo
                   </div>
                 </div>
               </div>
 
-              {/* Center - Magic Arrow */}
-              <div className="flex flex-col items-center gap-1 px-2">
-                <svg width="120" height="60" viewBox="0 0 120 60" className="text-primary/60">
-                  {/* Curved arrow path */}
+              {/* Center - Magical curved arc with wand */}
+              <div className="flex flex-col items-center mx-4 lg:mx-6 flex-shrink-0" style={{ minWidth: '140px' }}>
+                <svg width="160" height="90" viewBox="0 0 160 90" className="mb-0">
+                  {/* Pink curved arc */}
                   <path
-                    d="M 10 40 Q 60 5 100 35"
+                    d="M 10 65 C 40 5, 120 5, 150 55"
                     fill="none"
-                    stroke="currentColor"
+                    stroke="#FF6B9D"
                     strokeWidth="2.5"
-                    strokeDasharray="6 4"
                     strokeLinecap="round"
+                    opacity="0.45"
                   />
-                  {/* Arrow head */}
-                  <polygon points="95,28 105,35 95,42" fill="currentColor" />
+                  {/* Sparkle dots along the arc */}
+                  <circle cx="25" cy="42" r="2.5" fill="#FF6B9D" opacity="0.4" />
+                  <circle cx="50" cy="20" r="3" fill="#FFE66D" opacity="0.6" />
+                  <circle cx="80" cy="12" r="2" fill="#FF6B9D" opacity="0.5" />
+                  <circle cx="110" cy="18" r="3" fill="#FFE66D" opacity="0.6" />
+                  <circle cx="138" cy="40" r="2.5" fill="#FF6B9D" opacity="0.4" />
+                  {/* Teal arrow head */}
+                  <polygon points="143,47 156,57 141,60" fill="#4ECDC4" opacity="0.7" />
                 </svg>
-                {/* Magic wand icon */}
-                <div className="relative">
-                  <span className="text-3xl">✨</span>
-                  <span className="absolute -top-2 -right-2 text-xs animate-magic-sparkle" style={{ animationDelay: '0.3s' }}>⭐</span>
-                  <span className="absolute -bottom-1 -left-2 text-xs animate-magic-sparkle" style={{ animationDelay: '0.8s' }}>💫</span>
+                {/* Magic wand circle */}
+                <div className="relative -mt-7 bg-white/80 backdrop-blur-sm w-14 h-14 lg:w-16 lg:h-16 rounded-full flex items-center justify-center shadow-lg border border-pink-100">
+                  <span className="text-2xl lg:text-3xl">🪄</span>
+                  <span className="absolute -top-1 -right-1 text-sm animate-magic-sparkle">✨</span>
+                  <span className="absolute -bottom-1 -left-1 text-xs animate-magic-sparkle" style={{ animationDelay: '0.6s' }}>⭐</span>
+                  <span className="absolute top-0 -left-2 text-xs animate-magic-sparkle" style={{ animationDelay: '1.2s' }}>💫</span>
                 </div>
-                <p className="text-xs font-heading text-gray-500 mt-0.5">A Sprinkle of Magic</p>
+                <p className="text-sm font-heading text-gray-500 mt-2">A Sprinkle of Magic</p>
               </div>
 
-              {/* Right - Book Cover (real theme cover) */}
-              <div className={`transition-all duration-500 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+              {/* Right - Book Cover (real theme cover) — square aspect */}
+              <div className={`transition-all duration-500 flex-shrink-0 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                 <div className="relative">
-                  <div className="w-48 lg:w-56 transform rotate-2 hover:rotate-0 transition-transform duration-500">
+                  <div className="w-60 lg:w-72 transform rotate-2 hover:rotate-0 transition-transform duration-500">
                     <div className="rounded-2xl overflow-hidden shadow-2xl shadow-primary/20 border-4 border-white">
                       <OptimizedImage
                         src={currentTheme.defaultCover}
                         alt={`${currentPair.childName}'s ${currentTheme.title} storybook cover`}
-                        aspectRatio="4/5"
+                        aspectRatio="1/1"
                         priority={true}
-                        width={280}
-                        height={350}
+                        width={360}
+                        height={360}
                         fetchPriority="high"
                       />
                     </div>
                     {/* Theme title overlay */}
-                    <div className="absolute top-3 left-3 right-3">
-                      <p className="text-white font-heading text-lg drop-shadow-lg leading-tight">
+                    <div className="absolute top-4 left-4 right-4">
+                      <p className="text-white font-heading text-xl lg:text-2xl drop-shadow-lg leading-tight" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
                         {currentPair.childName}'s {currentTheme.title}
                       </p>
                     </div>
                     {/* Age badge */}
-                    <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-gray-700 shadow-md">
+                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-full text-xs font-bold text-gray-700 shadow-md">
                       {currentTheme.ageRange}
                     </div>
                   </div>
-                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-md text-xs font-heading text-gray-600 whitespace-nowrap border border-gray-100">
+                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md text-xs font-heading text-gray-600 whitespace-nowrap border border-gray-100">
                     Output: Their Personalized Book Cover
                   </div>
                 </div>
@@ -284,27 +304,28 @@ const Home: React.FC = () => {
             >
               <div className={`flex items-center gap-3 transition-all duration-500 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                 {/* Small child photo */}
-                <div className={`w-28 aspect-[4/5] rounded-xl bg-gradient-to-br ${currentPair.childPlaceholder.gradient} flex flex-col items-center justify-center shadow-lg border-2 border-white transform -rotate-2`}>
-                  <span className="text-4xl mb-1">{currentPair.childPlaceholder.emoji}</span>
+                <div className={`w-32 aspect-square rounded-xl bg-gradient-to-br ${currentPair.childPlaceholder.gradient} flex flex-col items-center justify-center shadow-lg border-2 border-white transform -rotate-2`}>
+                  <span className="text-5xl mb-1">{currentPair.childPlaceholder.emoji}</span>
                   <span className="text-[9px] font-heading text-gray-700/70">Your Photo</span>
                 </div>
 
                 {/* Arrow */}
-                <div className="flex flex-col items-center">
-                  <span className="text-2xl">✨</span>
-                  <span className="text-primary text-xl font-bold">→</span>
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-xl">🪄</span>
+                  <span className="text-primary text-lg font-bold">→</span>
+                  <span className="text-xs">✨</span>
                 </div>
 
                 {/* Book cover */}
-                <div className="relative w-28 transform rotate-2">
+                <div className="relative w-32 transform rotate-2">
                   <div className="rounded-xl overflow-hidden shadow-xl border-2 border-white">
                     <OptimizedImage
                       src={currentTheme.defaultCover}
                       alt={`${currentPair.childName}'s ${currentTheme.title}`}
-                      aspectRatio="4/5"
+                      aspectRatio="1/1"
                       priority={true}
-                      width={140}
-                      height={175}
+                      width={160}
+                      height={160}
                       fetchPriority="high"
                     />
                   </div>
