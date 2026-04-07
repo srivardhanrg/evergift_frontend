@@ -385,7 +385,7 @@ const Home: React.FC = () => {
             </div>
 
             {/* CTA Button + subtitle */}
-            <div className="text-center">
+            <div className="flex flex-col items-center gap-2">
               <button
                 onClick={handleCtaClick}
                 className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-heading text-sm md:text-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
@@ -393,7 +393,7 @@ const Home: React.FC = () => {
                 <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
                 Generate Instant Preview - Free!
               </button>
-              <div className="mt-2 inline-flex items-center gap-2 bg-softPink/60 border border-pink-100 px-4 py-1.5 rounded-full">
+              <div className="inline-flex items-center gap-2 bg-softPink/60 border border-pink-100 px-4 py-1.5 rounded-full">
                 <span className="text-amber-400 text-xs">✨</span>
                 <span className="text-primary font-heading text-xs tracking-wide uppercase">Loved by 1,000+ families worldwide</span>
               </div>
