@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
-      allowedHosts: ['magictales.onrender.com'],
+      allowedHosts: true,
       // Proxy /proxy/api to backend during development
       proxy: {
         '/proxy/api': {
