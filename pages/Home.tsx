@@ -1,11 +1,40 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ThemeType, Theme } from '../types';
 import { THEMES } from '../constants';
 import { Sparkles, MessageCircle } from 'lucide-react';
 import OptimizedImage from '../components/OptimizedImage';
 import { trackThemeSelected, trackFunnelStep } from '../src/services/analytics';
+
+// Transformation pairs: placeholder child photo + matching theme cover
+const HERO_PAIRS = [
+  {
+    childName: 'Ava',
+    childPlaceholder: { gradient: 'from-amber-200 to-orange-300', emoji: '👧🏽', label: 'Upload Photo' },
+    themeIndex: 2, // Cosmic Adventure
+  },
+  {
+    childName: 'Liam',
+    childPlaceholder: { gradient: 'from-sky-200 to-blue-300', emoji: '👦🏻', label: 'Upload Photo' },
+    themeIndex: 6, // Safari Adventure
+  },
+  {
+    childName: 'Zara',
+    childPlaceholder: { gradient: 'from-emerald-200 to-green-300', emoji: '👧🏿', label: 'Upload Photo' },
+    themeIndex: 0, // Enchanted Forest
+  },
+  {
+    childName: 'Mateo',
+    childPlaceholder: { gradient: 'from-violet-200 to-purple-300', emoji: '👦🏽', label: 'Upload Photo' },
+    themeIndex: 3, // Mighty Guardian
+  },
+  {
+    childName: 'Sofia',
+    childPlaceholder: { gradient: 'from-rose-200 to-pink-300', emoji: '👧🏻', label: 'Upload Photo' },
+    themeIndex: 4, // Ocean Explorer
+  },
+];
 
 // Responsive CSS to override Shopify theme conflicts
 const ResponsiveStyles = () => (
@@ -21,19 +50,34 @@ const ResponsiveStyles = () => (
     .animate-float-gentle {
       animation: float-gentle 3s ease-in-out infinite;
     }
-    @keyframes float-gentle-delayed {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-6px); }
-    }
-    .animate-float-gentle-delayed {
-      animation: float-gentle-delayed 3.5s ease-in-out 0.5s infinite;
-    }
     @keyframes sparkle-pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.5; transform: scale(0.8); }
     }
     .animate-sparkle {
       animation: sparkle-pulse 2s ease-in-out infinite;
+    }
+    @keyframes crossfade-in {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .animate-crossfade {
+      animation: crossfade-in 0.6s ease-out forwards;
+    }
+    @keyframes draw-arrow {
+      from { stroke-dashoffset: 200; }
+      to { stroke-dashoffset: 0; }
+    }
+    .animate-draw-arrow {
+      animation: draw-arrow 1s ease-out forwards;
+    }
+    @keyframes magic-sparkle {
+      0% { transform: scale(0) rotate(0deg); opacity: 0; }
+      50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+      100% { transform: scale(0) rotate(360deg); opacity: 0; }
+    }
+    .animate-magic-sparkle {
+      animation: magic-sparkle 2s ease-in-out infinite;
     }
   `}</style>
 );
@@ -48,6 +92,41 @@ const Home: React.FC = () => {
       return acc;
     }, {} as Record<ThemeType, string>)
   );
+
+  // Hero carousel state
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isPausedRef = useRef(false);
+
+  // Auto-rotate hero pairs every 4 seconds
+  const startAutoRotate = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      if (!isPausedRef.current) {
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setActiveIndex(prev => (prev + 1) % HERO_PAIRS.length);
+          setIsTransitioning(false);
+        }, 300);
+      }
+    }, 4000);
+  }, []);
+
+  useEffect(() => {
+    startAutoRotate();
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [startAutoRotate]);
+
+  const goToSlide = (index: number) => {
+    if (index === activeIndex) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setActiveIndex(index);
+      setIsTransitioning(false);
+    }, 300);
+    startAutoRotate();
+  };
 
   // Track landing page funnel step
   const landingTracked = useRef(false);
@@ -72,9 +151,9 @@ const Home: React.FC = () => {
     navigate("/create");
   };
 
-  // Featured book = Cosmic Adventure, all remaining themes in collage
-  const featuredTheme = THEMES[2];
-  const collageThemes = THEMES.filter((_, i) => i !== 2);
+  // Current hero pair
+  const currentPair = HERO_PAIRS[activeIndex];
+  const currentTheme = THEMES[currentPair.themeIndex];
 
   return (
     <>
@@ -101,8 +180,8 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* Hero Section */}
-        <section className="relative py-8 md:py-14 bg-gradient-to-b from-softPink via-white to-purple-50/30 overflow-hidden">
+        {/* Hero Section - Photo → Book Transformation Carousel */}
+        <section className="relative py-8 md:py-10 bg-gradient-to-b from-softPink via-white to-purple-50/30 overflow-hidden">
           {/* Decorative Elements */}
           <div className="absolute top-8 left-6 text-2xl animate-sparkle opacity-70">✦</div>
           <div className="absolute top-20 left-[15%] text-pink-300 text-xl animate-sparkle" style={{ animationDelay: '0.5s' }}>★</div>
@@ -112,126 +191,152 @@ const Home: React.FC = () => {
           <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-80 h-80 bg-primary/8 rounded-full blur-3xl pointer-events-none"></div>
           <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-80 h-80 bg-secondary/8 rounded-full blur-3xl pointer-events-none"></div>
 
-          {/* Decorative leaves/flowers at edges - bottom left and right */}
-          <div className="hidden md:block absolute bottom-0 left-0 text-5xl opacity-30 pointer-events-none">🌿</div>
-          <div className="hidden md:block absolute bottom-0 right-0 text-5xl opacity-30 pointer-events-none transform -scale-x-100">🌿</div>
-          <div className="hidden md:block absolute bottom-8 left-12 text-3xl opacity-25 pointer-events-none">🌸</div>
-          <div className="hidden md:block absolute bottom-8 right-12 text-3xl opacity-25 pointer-events-none">🌺</div>
-
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            {/* Book Covers Layout */}
-            <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-10 mb-10">
-
-              {/* Left Side - Featured Book + Annotation */}
-              <div className="relative flex-shrink-0 w-full lg:w-[38%] flex flex-col items-center">
-                {/* Featured Book Cover */}
-                <div className="w-52 sm:w-60 md:w-64 transform -rotate-3 hover:rotate-0 transition-transform duration-500 animate-float-gentle">
-                  <div className="rounded-xl overflow-hidden shadow-2xl shadow-primary/20 border-2 border-white">
-                    <OptimizedImage
-                      src={featuredTheme.defaultCover}
-                      alt={`${featuredTheme.title} - featured storybook cover`}
-                      aspectRatio="4/5"
-                      priority={true}
-                      width={320}
-                      height={400}
-                      fetchPriority="high"
-                    />
-                  </div>
-                  {/* Price Badge */}
-                  <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg shadow-lg text-xs font-heading text-gray-800 z-10">
-                    From <span className="text-primary font-bold">$19</span>
-                  </div>
-                </div>
-                {/* "Your Photo → Their Hero!" - BELOW the image */}
-                <div className="mt-3 flex items-center gap-2">
-                  <p className="font-heading text-gray-700 text-sm leading-tight">
-                    Your Photo <span className="text-primary font-bold">→ Their Hero!</span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Right Side - All 7 Book Collage, organic scattered look */}
-              <div className="relative flex-1 w-full min-h-[320px] sm:min-h-[360px] lg:min-h-[400px] hidden md:block overflow-hidden">
-                {collageThemes.map((theme, i) => {
-                  // Positions tuned so covers overlap slightly but stay within bounds
-                  const positions = [
-                    { top: '0%',  left: '2%',  rotate: -4, size: 'w-28 lg:w-36', z: 4 },
-                    { top: '5%',  left: '28%', rotate: 3,  size: 'w-26 lg:w-32', z: 3 },
-                    { top: '0%',  left: '52%', rotate: -2, size: 'w-24 lg:w-30', z: 3 },
-                    { top: '42%', left: '0%',  rotate: 3,  size: 'w-24 lg:w-30', z: 2 },
-                    { top: '40%', left: '24%', rotate: -4, size: 'w-26 lg:w-34', z: 2 },
-                    { top: '44%', left: '50%', rotate: 5,  size: 'w-22 lg:w-28', z: 2 },
-                    { top: '18%', left: '72%', rotate: -3, size: 'w-22 lg:w-26', z: 1 },
-                  ];
-                  const pos = positions[i];
-                  return (
-                    <div
-                      key={theme.id}
-                      className={`absolute ${pos.size} cursor-pointer group animate-fadeInUp`}
-                      style={{
-                        top: pos.top,
-                        left: pos.left,
-                        transform: `rotate(${pos.rotate}deg)`,
-                        zIndex: pos.z,
-                        animationDelay: `${i * 0.08}s`,
-                      }}
-                      onClick={() => handleThemeSelect(theme.id)}
-                    >
-                      <div className="rounded-lg overflow-hidden shadow-xl border-2 border-white group-hover:shadow-2xl group-hover:scale-110 group-hover:z-50 transition-all duration-300">
-                        <OptimizedImage
-                          src={theme.defaultCover}
-                          alt={`${theme.title} storybook cover`}
-                          aspectRatio="4/5"
-                          width={160}
-                          height={200}
-                          sizes="160px"
-                        />
-                      </div>
-                      {/* Age Badge */}
-                      <div className="absolute -top-2 -right-2 bg-white/95 backdrop-blur-sm px-1.5 py-0.5 rounded-full text-[9px] font-bold text-gray-700 shadow-md z-10 border border-gray-100">
-                        {theme.ageRange}
-                      </div>
-                      {/* Title on hover */}
-                      <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gray-900/80 text-white text-[10px] px-2 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-                        {theme.title}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Mobile: Show small scrollable row of covers */}
-              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 md:hidden w-full">
-                {THEMES.filter((_, i) => i !== 2).map((theme) => (
-                  <div
-                    key={theme.id}
-                    className="flex-shrink-0 w-24 cursor-pointer"
-                    onClick={() => handleThemeSelect(theme.id)}
-                  >
-                    <div className="rounded-lg overflow-hidden shadow-lg border-2 border-white">
-                      <OptimizedImage
-                        src={theme.defaultCover}
-                        alt={`${theme.title} cover`}
-                        aspectRatio="4/5"
-                        width={120}
-                        height={150}
-                      />
-                    </div>
-                    <p className="text-[9px] text-gray-600 text-center mt-1 font-medium truncate">{theme.title}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Hero Text & CTA */}
-            <div className="text-center max-w-3xl mx-auto">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading text-gray-900 leading-tight mb-5" style={{ fontStyle: 'italic' }}>
+            {/* Headline FIRST - visible immediately */}
+            <div className="text-center mb-6 md:mb-8">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading text-gray-900 leading-tight" style={{ fontStyle: 'italic' }}>
                 Turn Your Child Into the Hero
                 <br />
                 of <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-500">Their Own Storybook</span>
               </h1>
+            </div>
 
-              {/* CTA Button */}
+            {/* Desktop: Side-by-side Photo → Book transformation */}
+            <div
+              className="hidden md:flex items-center justify-center gap-4 lg:gap-8 mb-6"
+              onMouseEnter={() => { isPausedRef.current = true; }}
+              onMouseLeave={() => { isPausedRef.current = false; }}
+            >
+              {/* Left - Child Photo (placeholder) */}
+              <div className={`transition-all duration-500 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+                <div className="relative">
+                  <div className={`w-48 lg:w-56 aspect-[4/5] rounded-2xl bg-gradient-to-br ${currentPair.childPlaceholder.gradient} flex flex-col items-center justify-center shadow-xl border-4 border-white transform -rotate-2`}>
+                    <span className="text-6xl lg:text-7xl mb-2">{currentPair.childPlaceholder.emoji}</span>
+                    <span className="text-sm font-heading text-gray-700/80">{currentPair.childPlaceholder.label}</span>
+                  </div>
+                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-md text-xs font-heading text-gray-600 whitespace-nowrap border border-gray-100">
+                    Input: Your Child's Photo
+                  </div>
+                </div>
+              </div>
+
+              {/* Center - Magic Arrow */}
+              <div className="flex flex-col items-center gap-1 px-2">
+                <svg width="120" height="60" viewBox="0 0 120 60" className="text-primary/60">
+                  {/* Curved arrow path */}
+                  <path
+                    d="M 10 40 Q 60 5 100 35"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeDasharray="6 4"
+                    strokeLinecap="round"
+                  />
+                  {/* Arrow head */}
+                  <polygon points="95,28 105,35 95,42" fill="currentColor" />
+                </svg>
+                {/* Magic wand icon */}
+                <div className="relative">
+                  <span className="text-3xl">✨</span>
+                  <span className="absolute -top-2 -right-2 text-xs animate-magic-sparkle" style={{ animationDelay: '0.3s' }}>⭐</span>
+                  <span className="absolute -bottom-1 -left-2 text-xs animate-magic-sparkle" style={{ animationDelay: '0.8s' }}>💫</span>
+                </div>
+                <p className="text-xs font-heading text-gray-500 mt-0.5">A Sprinkle of Magic</p>
+              </div>
+
+              {/* Right - Book Cover (real theme cover) */}
+              <div className={`transition-all duration-500 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+                <div className="relative">
+                  <div className="w-48 lg:w-56 transform rotate-2 hover:rotate-0 transition-transform duration-500">
+                    <div className="rounded-2xl overflow-hidden shadow-2xl shadow-primary/20 border-4 border-white">
+                      <OptimizedImage
+                        src={currentTheme.defaultCover}
+                        alt={`${currentPair.childName}'s ${currentTheme.title} storybook cover`}
+                        aspectRatio="4/5"
+                        priority={true}
+                        width={280}
+                        height={350}
+                        fetchPriority="high"
+                      />
+                    </div>
+                    {/* Theme title overlay */}
+                    <div className="absolute top-3 left-3 right-3">
+                      <p className="text-white font-heading text-lg drop-shadow-lg leading-tight">
+                        {currentPair.childName}'s {currentTheme.title}
+                      </p>
+                    </div>
+                    {/* Age badge */}
+                    <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-gray-700 shadow-md">
+                      {currentTheme.ageRange}
+                    </div>
+                  </div>
+                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-md text-xs font-heading text-gray-600 whitespace-nowrap border border-gray-100">
+                    Output: Their Personalized Book Cover
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile: Compact transformation view */}
+            <div
+              className="md:hidden flex flex-col items-center gap-3 mb-5"
+              onClick={() => goToSlide((activeIndex + 1) % HERO_PAIRS.length)}
+            >
+              <div className={`flex items-center gap-3 transition-all duration-500 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+                {/* Small child photo */}
+                <div className={`w-28 aspect-[4/5] rounded-xl bg-gradient-to-br ${currentPair.childPlaceholder.gradient} flex flex-col items-center justify-center shadow-lg border-2 border-white transform -rotate-2`}>
+                  <span className="text-4xl mb-1">{currentPair.childPlaceholder.emoji}</span>
+                  <span className="text-[9px] font-heading text-gray-700/70">Your Photo</span>
+                </div>
+
+                {/* Arrow */}
+                <div className="flex flex-col items-center">
+                  <span className="text-2xl">✨</span>
+                  <span className="text-primary text-xl font-bold">→</span>
+                </div>
+
+                {/* Book cover */}
+                <div className="relative w-28 transform rotate-2">
+                  <div className="rounded-xl overflow-hidden shadow-xl border-2 border-white">
+                    <OptimizedImage
+                      src={currentTheme.defaultCover}
+                      alt={`${currentPair.childName}'s ${currentTheme.title}`}
+                      aspectRatio="4/5"
+                      priority={true}
+                      width={140}
+                      height={175}
+                      fetchPriority="high"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Labels below */}
+              <div className="flex items-center gap-6 text-[10px] font-heading text-gray-500">
+                <span>Your Child's Photo</span>
+                <span>→</span>
+                <span>Their Storybook Cover</span>
+              </div>
+            </div>
+
+            {/* Dot indicators */}
+            <div className="flex items-center justify-center gap-2 mb-5">
+              {HERO_PAIRS.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goToSlide(i)}
+                  className={`rounded-full transition-all duration-300 ${
+                    i === activeIndex
+                      ? 'w-6 h-2 bg-primary'
+                      : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
+                  }`}
+                  aria-label={`Show theme ${i + 1}`}
+                />
+              ))}
+            </div>
+
+            {/* CTA Button + subtitle */}
+            <div className="text-center">
               <button
                 onClick={handleCtaClick}
                 className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white px-8 py-4 rounded-full font-heading text-lg md:text-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
@@ -240,7 +345,7 @@ const Home: React.FC = () => {
                 Generate Instant Preview - Free! (takes 2 min)
               </button>
 
-              <p className="text-gray-500 text-sm mt-4">
+              <p className="text-gray-500 text-sm mt-3">
                 Loved by 1,000+ families worldwide - no credit card required
               </p>
             </div>
