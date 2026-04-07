@@ -7,31 +7,36 @@ import { Sparkles, MessageCircle } from 'lucide-react';
 import OptimizedImage from '../components/OptimizedImage';
 import { trackThemeSelected, trackFunnelStep } from '../src/services/analytics';
 
-// Transformation pairs: child photo + matching theme cover
+// Transformation pairs: child photo + matching theme cover/page
 const HERO_PAIRS = [
+  {
+    childName: 'Sofia',
+    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/whitegirl.png',
+    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/final/d9bb9f89-c5c1-4fcf-8276-316e343280a5/cover_final.png',
+    themeIndex: 0, // Enchanted Forest
+  },
   {
     childName: 'Ava',
     childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/blackgirl.png',
+    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/theme/Screenshot%202026-04-08%20at%201.18.09%20AM.png',
     themeIndex: 2, // Cosmic Dreamer
   },
   {
     childName: 'Liam',
     childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/hispanicboy.png',
+    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/final/7cc4cce7-60a0-4274-bce2-3316e2e47bea/page_01.jpg',
     themeIndex: 6, // Safari Adventure
-  },
-  {
-    childName: 'Sofia',
-    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/whitegirl.png',
-    themeIndex: 0, // Enchanted Forest
   },
   {
     childName: 'Mateo',
     childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/southasian.png',
+    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/final/b41b5fac-83e8-4782-94b0-68cc97a8af5a/page_04.jpg',
     themeIndex: 3, // Mighty Guardian
   },
   {
     childName: 'Zara',
     childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/whiteboy.png',
+    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/final/91b99731-c891-4258-b1c0-8e66b8f69f03/page_02.jpg',
     themeIndex: 4, // Ocean Explorer
   },
 ];
@@ -297,7 +302,7 @@ const Home: React.FC = () => {
                   <div className="w-60 lg:w-72 transform rotate-2 hover:rotate-0 transition-transform duration-500">
                     <div className="rounded-2xl overflow-hidden shadow-2xl shadow-primary/20 border-4 border-white">
                       <OptimizedImage
-                        src={currentTheme.defaultCover}
+                        src={currentPair.themeImage}
                         alt={`${currentPair.childName}'s ${currentTheme.title} storybook cover`}
                         aspectRatio="1/1"
                         priority={true}
@@ -354,7 +359,7 @@ const Home: React.FC = () => {
                 <div className="relative w-32 transform rotate-2">
                   <div className="rounded-xl overflow-hidden shadow-xl border-2 border-white">
                     <OptimizedImage
-                      src={currentTheme.defaultCover}
+                      src={currentPair.themeImage}
                       alt={`${currentPair.childName}'s ${currentTheme.title}`}
                       aspectRatio="1/1"
                       priority={true}
