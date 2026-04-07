@@ -233,29 +233,48 @@ const Home: React.FC = () => {
                 </div>
               </div>
 
-              {/* Center - Magical curved arc with wand */}
-              <div className="flex flex-col items-center mx-4 lg:mx-6 flex-shrink-0" style={{ minWidth: '140px' }}>
-                <svg width="160" height="90" viewBox="0 0 160 90" className="mb-0">
-                  {/* Pink curved arc */}
+              {/* Center - Broad curved arrow with wand */}
+              <div className="flex flex-col items-center mx-4 lg:mx-6 flex-shrink-0" style={{ minWidth: '160px' }}>
+                <svg width="180" height="100" viewBox="0 0 180 100" className="mb-0">
+                  <defs>
+                    {/* Gradient for the arrow body */}
+                    <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#FF6B9D" stopOpacity="0.3" />
+                      <stop offset="50%" stopColor="#FF6B9D" stopOpacity="0.5" />
+                      <stop offset="100%" stopColor="#4ECDC4" stopOpacity="0.6" />
+                    </linearGradient>
+                  </defs>
+                  {/* Broad curved arrow body - thick band */}
                   <path
-                    d="M 10 65 C 40 5, 120 5, 150 55"
+                    d="M 8 68 C 35 5, 130 0, 148 48"
                     fill="none"
-                    stroke="#FF6B9D"
-                    strokeWidth="2.5"
+                    stroke="url(#arrowGrad)"
+                    strokeWidth="14"
                     strokeLinecap="round"
-                    opacity="0.45"
+                  />
+                  {/* Inner lighter stroke for depth */}
+                  <path
+                    d="M 8 68 C 35 5, 130 0, 148 48"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    opacity="0.3"
+                  />
+                  {/* Large solid arrowhead pointing right-down */}
+                  <path
+                    d="M 140 38 L 170 58 L 138 62 Z"
+                    fill="#4ECDC4"
+                    opacity="0.7"
                   />
                   {/* Sparkle dots along the arc */}
-                  <circle cx="25" cy="42" r="2.5" fill="#FF6B9D" opacity="0.4" />
-                  <circle cx="50" cy="20" r="3" fill="#FFE66D" opacity="0.6" />
-                  <circle cx="80" cy="12" r="2" fill="#FF6B9D" opacity="0.5" />
-                  <circle cx="110" cy="18" r="3" fill="#FFE66D" opacity="0.6" />
-                  <circle cx="138" cy="40" r="2.5" fill="#FF6B9D" opacity="0.4" />
-                  {/* Teal arrow head */}
-                  <polygon points="143,47 156,57 141,60" fill="#4ECDC4" opacity="0.7" />
+                  <circle cx="20" cy="50" r="3" fill="#FFE66D" opacity="0.7" />
+                  <circle cx="55" cy="18" r="3.5" fill="#FF6B9D" opacity="0.5" />
+                  <circle cx="90" cy="8" r="3" fill="#FFE66D" opacity="0.7" />
+                  <circle cx="125" cy="16" r="3.5" fill="#FF6B9D" opacity="0.5" />
                 </svg>
                 {/* Magic wand circle */}
-                <div className="relative -mt-7 bg-white/80 backdrop-blur-sm w-14 h-14 lg:w-16 lg:h-16 rounded-full flex items-center justify-center shadow-lg border border-pink-100">
+                <div className="relative -mt-8 bg-white/80 backdrop-blur-sm w-14 h-14 lg:w-16 lg:h-16 rounded-full flex items-center justify-center shadow-lg border border-pink-100">
                   <span className="text-2xl lg:text-3xl">🪄</span>
                   <span className="absolute -top-1 -right-1 text-sm animate-magic-sparkle">✨</span>
                   <span className="absolute -bottom-1 -left-1 text-xs animate-magic-sparkle" style={{ animationDelay: '0.6s' }}>⭐</span>
