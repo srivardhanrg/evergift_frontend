@@ -119,119 +119,9 @@ const Home: React.FC = () => {
           <div className="hidden md:block absolute bottom-8 right-12 text-3xl opacity-25 pointer-events-none">🌺</div>
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            {/* Book Covers Layout */}
-            <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-10 mb-10">
-
-              {/* Left Side - Featured Book */}
-              <div className="relative flex-shrink-0 w-full lg:w-[40%] flex justify-center">
-                <div className="relative">
-                  {/* "Your Photo → Their Hero!" annotation */}
-                  <div className="absolute -left-4 bottom-16 sm:-left-12 sm:bottom-20 z-20 hidden sm:block">
-                    <p className="font-heading text-gray-700 text-sm md:text-base leading-tight">
-                      Your Photo<br />
-                      <span className="text-primary font-bold">→ Their Hero!</span>
-                    </p>
-                    <svg className="absolute -right-6 top-1/2 w-8 h-6 text-primary/60" fill="none" viewBox="0 0 32 24">
-                      <path d="M2 12 C 10 12, 20 8, 28 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" strokeDasharray="4 3"/>
-                      <path d="M24 2 L28 4 L24 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                    </svg>
-                  </div>
-
-                  {/* Featured Book Cover */}
-                  <div className="w-64 sm:w-72 md:w-80 transform -rotate-3 hover:rotate-0 transition-transform duration-500 animate-float-gentle">
-                    <div className="rounded-xl overflow-hidden shadow-2xl shadow-primary/20 border-2 border-white">
-                      <OptimizedImage
-                        src={featuredTheme.defaultCover}
-                        alt={`${featuredTheme.title} - featured storybook cover`}
-                        aspectRatio="4/5"
-                        priority={true}
-                        width={400}
-                        height={500}
-                        fetchPriority="high"
-                      />
-                    </div>
-                    {/* Price Badge */}
-                    <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg text-sm font-heading text-gray-800 z-10">
-                      From <span className="text-primary font-bold">$19</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Side - Scattered Book Collage */}
-              <div className="relative flex-1 w-full min-h-[320px] sm:min-h-[380px] lg:min-h-[420px] hidden md:block">
-                {/* Collage of book covers at various positions and rotations */}
-                {collageThemes.map((theme, i) => {
-                  const positions = [
-                    { top: '0%', left: '5%', rotate: '-5deg', size: 'w-36 lg:w-44', zIndex: 3, delay: '0s' },
-                    { top: '2%', left: '50%', rotate: '4deg', size: 'w-32 lg:w-40', zIndex: 2, delay: '0.3s' },
-                    { top: '45%', left: '0%', rotate: '3deg', size: 'w-32 lg:w-38', zIndex: 2, delay: '0.6s' },
-                    { top: '48%', left: '40%', rotate: '-4deg', size: 'w-30 lg:w-36', zIndex: 1, delay: '0.9s' },
-                    { top: '30%', left: '72%', rotate: '6deg', size: 'w-28 lg:w-34', zIndex: 1, delay: '1.2s' },
-                  ];
-                  const pos = positions[i];
-                  return (
-                    <div
-                      key={theme.id}
-                      className={`absolute ${pos.size} cursor-pointer group animate-fadeInUp`}
-                      style={{
-                        top: pos.top,
-                        left: pos.left,
-                        transform: `rotate(${pos.rotate})`,
-                        zIndex: pos.zIndex,
-                        animationDelay: pos.delay,
-                      }}
-                      onClick={() => handleThemeSelect(theme.id)}
-                    >
-                      <div className="rounded-lg overflow-hidden shadow-xl border-2 border-white group-hover:shadow-2xl group-hover:scale-105 transition-all duration-300">
-                        <OptimizedImage
-                          src={theme.defaultCover}
-                          alt={`${theme.title} storybook cover`}
-                          aspectRatio="4/5"
-                          width={200}
-                          height={250}
-                          sizes="200px"
-                        />
-                      </div>
-                      {/* Age Badge */}
-                      <div className="absolute -top-2 -right-2 bg-white/95 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-gray-700 shadow-md z-10 border border-gray-100">
-                        {theme.ageRange}
-                      </div>
-                      {/* Title tooltip on hover */}
-                      <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/80 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                        {theme.title}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Mobile: Show small scrollable row of covers instead of collage */}
-              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 md:hidden w-full">
-                {THEMES.filter((_, i) => i !== 2).map((theme) => (
-                  <div
-                    key={theme.id}
-                    className="flex-shrink-0 w-28 cursor-pointer"
-                    onClick={() => handleThemeSelect(theme.id)}
-                  >
-                    <div className="rounded-lg overflow-hidden shadow-lg border-2 border-white">
-                      <OptimizedImage
-                        src={theme.defaultCover}
-                        alt={`${theme.title} cover`}
-                        aspectRatio="4/5"
-                        width={150}
-                        height={188}
-                      />
-                    </div>
-                    <p className="text-[10px] text-gray-600 text-center mt-1 font-medium truncate">{theme.title}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Hero Text & CTA */}
-            <div className="text-center max-w-3xl mx-auto">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading text-gray-900 leading-tight mb-5" style={{ fontStyle: 'italic' }}>
+            {/* Hero Text First */}
+            <div className="text-center max-w-3xl mx-auto mb-6">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading text-gray-900 leading-tight mb-4" style={{ fontStyle: 'italic' }}>
                 Turn Your Child Into the Hero
                 <br />
                 of <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-500">Their Own Storybook</span>
@@ -240,15 +130,83 @@ const Home: React.FC = () => {
               {/* CTA Button */}
               <button
                 onClick={handleCtaClick}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white px-8 py-4 rounded-full font-heading text-lg md:text-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white px-8 py-3.5 rounded-full font-heading text-lg md:text-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 <Sparkles className="w-5 h-5" />
                 Generate Instant Preview - Free! (takes 2 min)
               </button>
 
-              <p className="text-gray-500 text-sm mt-4">
+              <p className="text-gray-500 text-sm mt-3">
                 Loved by 1,000+ families worldwide - no credit card required
               </p>
+            </div>
+
+            {/* Book Covers Row */}
+            <div className="flex items-end justify-center gap-3 md:gap-4 lg:gap-5 mb-2">
+              {/* "Your Photo → Their Hero!" annotation - outside the image */}
+              <div className="hidden lg:flex flex-col items-end mr-1 mb-12 flex-shrink-0">
+                <p className="font-heading text-gray-700 text-sm leading-tight text-right">
+                  Your Photo<br />
+                  <span className="text-primary font-bold">→ Their Hero!</span>
+                </p>
+              </div>
+
+              {/* Featured Book - Larger */}
+              <div className="relative flex-shrink-0 transform -rotate-2 hover:rotate-0 transition-transform duration-500">
+                <div className="w-32 sm:w-40 md:w-48 lg:w-56 rounded-xl overflow-hidden shadow-2xl shadow-primary/20 border-2 border-white">
+                  <OptimizedImage
+                    src={featuredTheme.defaultCover}
+                    alt={`${featuredTheme.title} - featured storybook cover`}
+                    aspectRatio="4/5"
+                    priority={true}
+                    width={300}
+                    height={375}
+                    fetchPriority="high"
+                  />
+                </div>
+                {/* Price Badge */}
+                <div className="absolute bottom-2 right-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-lg shadow-lg text-xs font-heading text-gray-800 z-10">
+                  From <span className="text-primary font-bold">$19</span>
+                </div>
+              </div>
+
+              {/* Collage Books - Smaller, in a row */}
+              {collageThemes.slice(0, 5).map((theme, i) => {
+                const rotations = [3, -2, 4, -3, 2];
+                const sizes = [
+                  'w-24 sm:w-28 md:w-36 lg:w-40',
+                  'w-20 sm:w-24 md:w-32 lg:w-36',
+                  'w-22 sm:w-26 md:w-34 lg:w-38',
+                  'w-20 sm:w-24 md:w-30 lg:w-34 hidden sm:block',
+                  'w-20 sm:w-24 md:w-28 lg:w-32 hidden md:block',
+                ];
+                return (
+                  <div
+                    key={theme.id}
+                    className={`relative flex-shrink-0 ${sizes[i]} cursor-pointer group animate-fadeInUp`}
+                    style={{
+                      transform: `rotate(${rotations[i]}deg)`,
+                      animationDelay: `${i * 0.1}s`,
+                    }}
+                    onClick={() => handleThemeSelect(theme.id)}
+                  >
+                    <div className="rounded-lg overflow-hidden shadow-xl border-2 border-white group-hover:shadow-2xl group-hover:scale-105 transition-all duration-300">
+                      <OptimizedImage
+                        src={theme.defaultCover}
+                        alt={`${theme.title} storybook cover`}
+                        aspectRatio="4/5"
+                        width={180}
+                        height={225}
+                        sizes="180px"
+                      />
+                    </div>
+                    {/* Age Badge */}
+                    <div className="absolute -top-2 -right-2 bg-white/95 backdrop-blur-sm px-1.5 py-0.5 rounded-full text-[9px] font-bold text-gray-700 shadow-md z-10 border border-gray-100">
+                      {theme.ageRange}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
