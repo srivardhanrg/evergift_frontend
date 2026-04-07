@@ -5,7 +5,6 @@ import { ThemeType, Theme } from '../types';
 import { THEMES } from '../constants';
 import { Sparkles, MessageCircle } from 'lucide-react';
 import OptimizedImage from '../components/OptimizedImage';
-import { getFormattedPrice } from '../src/api/client';
 import { trackThemeSelected, trackFunnelStep } from '../src/services/analytics';
 
 // Responsive CSS to override Shopify theme conflicts
@@ -14,6 +13,27 @@ const ResponsiveStyles = () => (
     #sg-divider-1, #sg-divider-2 { display: none !important; }
     @media (min-width: 768px) {
       #sg-divider-1, #sg-divider-2 { display: block !important; }
+    }
+    @keyframes float-gentle {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+    }
+    .animate-float-gentle {
+      animation: float-gentle 3s ease-in-out infinite;
+    }
+    @keyframes float-gentle-delayed {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+    .animate-float-gentle-delayed {
+      animation: float-gentle-delayed 3.5s ease-in-out 0.5s infinite;
+    }
+    @keyframes sparkle-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+    .animate-sparkle {
+      animation: sparkle-pulse 2s ease-in-out infinite;
     }
   `}</style>
 );
@@ -48,46 +68,201 @@ const Home: React.FC = () => {
     navigate("/create", { state: { selectedTheme: themeId } });
   };
 
+  const handleCtaClick = () => {
+    navigate("/create");
+  };
+
+  // Featured book = first theme (Enchanted Forest), rest go in collage
+  const featuredTheme = THEMES[2]; // Cosmic Adventure - space-themed like the reference
+  const collageThemes = THEMES.filter((_, i) => i !== 2).slice(0, 5);
+
   return (
     <>
       <ResponsiveStyles />
       <div className="bg-white min-h-screen">
-        {/* Compressed Hero Section */}
-        <section className="relative py-10 bg-gradient-to-br from-softPink via-white to-purple-50 overflow-hidden">
+
+        {/* Trust Bar */}
+        <div className="bg-white border-b border-gray-100 py-2">
+          <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-2">
+            <div className="flex -space-x-2">
+              {['SM', 'JK', 'ES'].map((initials, i) => (
+                <div key={i} className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-pink-400 flex items-center justify-center text-white text-[10px] font-bold border-2 border-white">
+                  {initials}
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-0.5 text-amber-400">
+              {'★★★★★'.split('').map((s, i) => <span key={i} className="text-sm">{s}</span>)}
+            </div>
+            <span className="text-sm text-gray-600">
+              Trusted by over <strong>1,000+</strong> happy families.{' '}
+              <Link to="/feedback" className="text-primary underline underline-offset-2 hover:text-primary/80">See our reviews!</Link>
+            </span>
+          </div>
+        </div>
+
+        {/* Hero Section */}
+        <section className="relative py-8 md:py-14 bg-gradient-to-b from-softPink via-white to-purple-50/30 overflow-hidden">
+          {/* Decorative Elements */}
+          <div className="absolute top-8 left-6 text-2xl animate-sparkle opacity-70">✦</div>
+          <div className="absolute top-20 left-[15%] text-pink-300 text-xl animate-sparkle" style={{ animationDelay: '0.5s' }}>★</div>
+          <div className="absolute top-12 right-[10%] text-primary/40 text-3xl animate-sparkle" style={{ animationDelay: '1s' }}>✧</div>
+          <div className="absolute bottom-16 left-[8%] text-purple-300 text-lg animate-sparkle" style={{ animationDelay: '0.7s' }}>⋆</div>
+          <div className="absolute bottom-24 right-[5%] text-amber-300 text-2xl animate-sparkle" style={{ animationDelay: '1.2s' }}>★</div>
+          <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-80 h-80 bg-primary/8 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-80 h-80 bg-secondary/8 rounded-full blur-3xl pointer-events-none"></div>
+
+          {/* Decorative leaves/flowers at edges - bottom left and right */}
+          <div className="hidden md:block absolute bottom-0 left-0 text-5xl opacity-30 pointer-events-none">🌿</div>
+          <div className="hidden md:block absolute bottom-0 right-0 text-5xl opacity-30 pointer-events-none transform -scale-x-100">🌿</div>
+          <div className="hidden md:block absolute bottom-8 left-12 text-3xl opacity-25 pointer-events-none">🌸</div>
+          <div className="hidden md:block absolute bottom-8 right-12 text-3xl opacity-25 pointer-events-none">🌺</div>
+
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            {/* Book Covers Layout */}
+            <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-10 mb-10">
+
+              {/* Left Side - Featured Book */}
+              <div className="relative flex-shrink-0 w-full lg:w-[40%] flex justify-center">
+                <div className="relative">
+                  {/* "Your Photo → Their Hero!" annotation */}
+                  <div className="absolute -left-4 bottom-16 sm:-left-12 sm:bottom-20 z-20 hidden sm:block">
+                    <p className="font-heading text-gray-700 text-sm md:text-base leading-tight">
+                      Your Photo<br />
+                      <span className="text-primary font-bold">→ Their Hero!</span>
+                    </p>
+                    <svg className="absolute -right-6 top-1/2 w-8 h-6 text-primary/60" fill="none" viewBox="0 0 32 24">
+                      <path d="M2 12 C 10 12, 20 8, 28 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" strokeDasharray="4 3"/>
+                      <path d="M24 2 L28 4 L24 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                    </svg>
+                  </div>
+
+                  {/* Featured Book Cover */}
+                  <div className="w-64 sm:w-72 md:w-80 transform -rotate-3 hover:rotate-0 transition-transform duration-500 animate-float-gentle">
+                    <div className="rounded-xl overflow-hidden shadow-2xl shadow-primary/20 border-2 border-white">
+                      <OptimizedImage
+                        src={featuredTheme.defaultCover}
+                        alt={`${featuredTheme.title} - featured storybook cover`}
+                        aspectRatio="4/5"
+                        priority={true}
+                        width={400}
+                        height={500}
+                        fetchPriority="high"
+                      />
+                    </div>
+                    {/* Price Badge */}
+                    <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg text-sm font-heading text-gray-800 z-10">
+                      From <span className="text-primary font-bold">$19</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Side - Scattered Book Collage */}
+              <div className="relative flex-1 w-full min-h-[320px] sm:min-h-[380px] lg:min-h-[420px] hidden md:block">
+                {/* Collage of book covers at various positions and rotations */}
+                {collageThemes.map((theme, i) => {
+                  const positions = [
+                    { top: '0%', left: '5%', rotate: '-5deg', size: 'w-36 lg:w-44', zIndex: 3, delay: '0s' },
+                    { top: '2%', left: '50%', rotate: '4deg', size: 'w-32 lg:w-40', zIndex: 2, delay: '0.3s' },
+                    { top: '45%', left: '0%', rotate: '3deg', size: 'w-32 lg:w-38', zIndex: 2, delay: '0.6s' },
+                    { top: '48%', left: '40%', rotate: '-4deg', size: 'w-30 lg:w-36', zIndex: 1, delay: '0.9s' },
+                    { top: '30%', left: '72%', rotate: '6deg', size: 'w-28 lg:w-34', zIndex: 1, delay: '1.2s' },
+                  ];
+                  const pos = positions[i];
+                  return (
+                    <div
+                      key={theme.id}
+                      className={`absolute ${pos.size} cursor-pointer group animate-fadeInUp`}
+                      style={{
+                        top: pos.top,
+                        left: pos.left,
+                        transform: `rotate(${pos.rotate})`,
+                        zIndex: pos.zIndex,
+                        animationDelay: pos.delay,
+                      }}
+                      onClick={() => handleThemeSelect(theme.id)}
+                    >
+                      <div className="rounded-lg overflow-hidden shadow-xl border-2 border-white group-hover:shadow-2xl group-hover:scale-105 transition-all duration-300">
+                        <OptimizedImage
+                          src={theme.defaultCover}
+                          alt={`${theme.title} storybook cover`}
+                          aspectRatio="4/5"
+                          width={200}
+                          height={250}
+                          sizes="200px"
+                        />
+                      </div>
+                      {/* Age Badge */}
+                      <div className="absolute -top-2 -right-2 bg-white/95 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-gray-700 shadow-md z-10 border border-gray-100">
+                        {theme.ageRange}
+                      </div>
+                      {/* Title tooltip on hover */}
+                      <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/80 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        {theme.title}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Mobile: Show small scrollable row of covers instead of collage */}
+              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 md:hidden w-full">
+                {THEMES.filter((_, i) => i !== 2).map((theme) => (
+                  <div
+                    key={theme.id}
+                    className="flex-shrink-0 w-28 cursor-pointer"
+                    onClick={() => handleThemeSelect(theme.id)}
+                  >
+                    <div className="rounded-lg overflow-hidden shadow-lg border-2 border-white">
+                      <OptimizedImage
+                        src={theme.defaultCover}
+                        alt={`${theme.title} cover`}
+                        aspectRatio="4/5"
+                        width={150}
+                        height={188}
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-600 text-center mt-1 font-medium truncate">{theme.title}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Hero Text & CTA */}
             <div className="text-center max-w-3xl mx-auto">
-              <span className="inline-block bg-white/80 backdrop-blur-sm px-4 py-1.5 rounded-full text-xs font-black text-primary mb-4 uppercase tracking-[0.15em] shadow-sm border border-primary/10">
-                ✨ Loved by 1,000+ families worldwide
-              </span>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading text-gray-900 leading-tight mb-4">
-                Turn Your Child Into the Hero of <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-500">Their Own Storybook</span>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading text-gray-900 leading-tight mb-5" style={{ fontStyle: 'italic' }}>
+                Turn Your Child Into the Hero
+                <br />
+                of <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-500">Their Own Storybook</span>
               </h1>
+
+              {/* CTA Button */}
+              <button
+                onClick={handleCtaClick}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white px-8 py-4 rounded-full font-heading text-lg md:text-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <Sparkles className="w-5 h-5" />
+                Generate Instant Preview - Free! (takes 2 min)
+              </button>
+
+              <p className="text-gray-500 text-sm mt-4">
+                Loved by 1,000+ families worldwide - no credit card required
+              </p>
             </div>
           </div>
-
-          {/* Subtle background decorations */}
-          <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-72 h-72 bg-primary/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-72 h-72 bg-secondary/10 rounded-full blur-3xl"></div>
         </section>
 
-        {/* Netflix-Style Horizontal Theme Carousel */}
-        <section className="py-8 bg-gray-50/50">
+        {/* "Choose your story" Theme Grid */}
+        <section className="py-10 bg-gray-50/50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Section Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl md:text-3xl font-heading text-gray-900">Pick Your Adventure</h2>
-                <p className="text-gray-600 text-sm mt-1">{THEMES.length} magical worlds await your hero</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1.5 text-primary font-semibold text-sm sm:text-base bg-primary/5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-primary/10 whitespace-nowrap">
-                  <Sparkles className="w-4 h-4" />
-                  From $19
-                </span>
-              </div>
+            <div className="text-center mb-8">
+              <h2 className="text-3xl md:text-4xl font-heading text-gray-900 mb-2">Choose your story and start personalizing</h2>
+              <p className="text-gray-600">{THEMES.length} magical worlds await your hero</p>
             </div>
 
-            {/* Theme Cards Grid - Vertical scroll on mobile, Grid on tablet/desktop */}
+            {/* Theme Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               {THEMES.map((theme, index) => (
                 <ThemeCard
@@ -389,4 +564,3 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({ quote, name, location
 };
 
 export default Home;
-
