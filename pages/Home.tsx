@@ -7,31 +7,31 @@ import { Sparkles, MessageCircle } from 'lucide-react';
 import OptimizedImage from '../components/OptimizedImage';
 import { trackThemeSelected, trackFunnelStep } from '../src/services/analytics';
 
-// Transformation pairs: placeholder child photo + matching theme cover
+// Transformation pairs: child photo + matching theme cover
 const HERO_PAIRS = [
   {
     childName: 'Ava',
-    childPlaceholder: { gradient: 'from-amber-200 to-orange-300', emoji: '👧🏽', label: 'Upload Photo' },
-    themeIndex: 2, // Cosmic Adventure
+    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/blackgirl.png',
+    themeIndex: 2, // Cosmic Dreamer
   },
   {
     childName: 'Liam',
-    childPlaceholder: { gradient: 'from-sky-200 to-blue-300', emoji: '👦🏻', label: 'Upload Photo' },
+    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/hispanicboy.png',
     themeIndex: 6, // Safari Adventure
   },
   {
-    childName: 'Zara',
-    childPlaceholder: { gradient: 'from-emerald-200 to-green-300', emoji: '👧🏿', label: 'Upload Photo' },
+    childName: 'Sofia',
+    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/whitegirl.png',
     themeIndex: 0, // Enchanted Forest
   },
   {
     childName: 'Mateo',
-    childPlaceholder: { gradient: 'from-violet-200 to-purple-300', emoji: '👦🏽', label: 'Upload Photo' },
+    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/southasian.png',
     themeIndex: 3, // Mighty Guardian
   },
   {
-    childName: 'Sofia',
-    childPlaceholder: { gradient: 'from-rose-200 to-pink-300', emoji: '👧🏻', label: 'Upload Photo' },
+    childName: 'Zara',
+    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/whiteboy.png',
     themeIndex: 4, // Ocean Explorer
   },
 ];
@@ -197,12 +197,19 @@ const Home: React.FC = () => {
               <span className="absolute left-10 top-[30%] text-sm opacity-25 pointer-events-none animate-sparkle" style={{ animationDelay: '1.7s' }}>⭐</span>
               <span className="absolute right-8 top-[70%] text-lg opacity-20 pointer-events-none animate-sparkle" style={{ animationDelay: '0.5s' }}>💫</span>
 
-              {/* Left - Child Photo (placeholder) */}
+              {/* Left - Child Photo */}
               <div className={`transition-all duration-500 flex-shrink-0 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                 <div className="relative">
-                  <div className={`w-60 lg:w-72 aspect-square rounded-2xl bg-gradient-to-br ${currentPair.childPlaceholder.gradient} flex flex-col items-center justify-center shadow-xl border-4 border-white transform -rotate-2`}>
-                    <span className="text-7xl lg:text-8xl mb-2">{currentPair.childPlaceholder.emoji}</span>
-                    <span className="text-sm lg:text-base font-heading text-gray-700/80">{currentPair.childPlaceholder.label}</span>
+                  <div className="w-60 lg:w-72 rounded-2xl overflow-hidden shadow-xl border-4 border-white transform -rotate-2">
+                    <OptimizedImage
+                      src={currentPair.childPhoto}
+                      alt={`${currentPair.childName}'s photo`}
+                      aspectRatio="1/1"
+                      priority={true}
+                      width={360}
+                      height={360}
+                      fetchPriority="high"
+                    />
                   </div>
                   <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md text-xs font-heading text-gray-600 whitespace-nowrap border border-gray-100">
                     Input: Your Child's Photo
@@ -324,9 +331,16 @@ const Home: React.FC = () => {
             >
               <div className={`flex items-center gap-3 transition-all duration-500 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                 {/* Small child photo */}
-                <div className={`w-32 aspect-square rounded-xl bg-gradient-to-br ${currentPair.childPlaceholder.gradient} flex flex-col items-center justify-center shadow-lg border-2 border-white transform -rotate-2`}>
-                  <span className="text-5xl mb-1">{currentPair.childPlaceholder.emoji}</span>
-                  <span className="text-[9px] font-heading text-gray-700/70">Your Photo</span>
+                <div className="w-32 rounded-xl overflow-hidden shadow-lg border-2 border-white transform -rotate-2">
+                  <OptimizedImage
+                    src={currentPair.childPhoto}
+                    alt={`${currentPair.childName}'s photo`}
+                    aspectRatio="1/1"
+                    priority={true}
+                    width={160}
+                    height={160}
+                    fetchPriority="high"
+                  />
                 </div>
 
                 {/* Arrow */}
