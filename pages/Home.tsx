@@ -223,82 +223,50 @@ const Home: React.FC = () => {
                       fetchPriority="high"
                     />
                   </div>
-                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md text-xs font-heading text-gray-600 whitespace-nowrap border border-gray-100">
-                    Input: Your Child's Photo
+                  <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary/10 to-pink-100 px-4 py-1.5 rounded-full shadow-md whitespace-nowrap border border-primary/20">
+                    <span className="text-xs font-heading text-gray-700">📸 Your child's photo</span>
                   </div>
                 </div>
               </div>
 
-              {/* Center - Magical tapered arrow with sparkles */}
-              <div className="flex flex-col items-center mx-4 lg:mx-6 flex-shrink-0" style={{ minWidth: '160px' }}>
-                <svg width="180" height="110" viewBox="0 0 180 110" className="mb-0">
+              {/* Center - Clear curved arrow with sparkles */}
+              <div className="flex flex-col items-center mx-2 lg:mx-4 flex-shrink-0" style={{ minWidth: '140px' }}>
+                <svg width="160" height="100" viewBox="0 0 160 100" className="mb-1">
                   <defs>
-                    {/* Sparkly gradient fill for the arrow shape */}
-                    <linearGradient id="arrowFill" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#FF6B9D" stopOpacity="0.25" />
-                      <stop offset="40%" stopColor="#FF6B9D" stopOpacity="0.45" />
-                      <stop offset="70%" stopColor="#E85D8A" stopOpacity="0.5" />
-                      <stop offset="100%" stopColor="#4ECDC4" stopOpacity="0.6" />
+                    <linearGradient id="arrowStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#FF6B9D" stopOpacity="0.6" />
+                      <stop offset="100%" stopColor="#4ECDC4" stopOpacity="0.8" />
                     </linearGradient>
-                    {/* Glow filter for sparkle effect */}
-                    <filter id="sparkleGlow" x="-50%" y="-50%" width="200%" height="200%">
-                      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
-                      <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
                   </defs>
-                  {/* Tapered arrow shape: slim at start, broadens in middle, wide at arrowhead */}
+                  {/* Main curved arrow line - bold and clear */}
                   <path
-                    d="M 12 68
-                       C 25 58, 35 35, 55 22
-                       C 75 10, 100 8, 125 18
-                       C 140 24, 148 35, 150 45
-                       L 172 60
-                       L 142 65
-                       C 140 55, 135 42, 120 32
-                       C 100 20, 75 22, 55 32
-                       C 38 40, 28 55, 18 65
-                       Z"
-                    fill="url(#arrowFill)"
+                    d="M 15 70 Q 80 -5 140 50"
+                    fill="none"
+                    stroke="url(#arrowStroke)"
+                    strokeWidth="5"
+                    strokeLinecap="round"
                   />
-                  {/* Inner shimmer highlight */}
+                  {/* Bold arrowhead - large chevron shape */}
                   <path
-                    d="M 18 66
-                       C 30 55, 42 35, 60 25
-                       C 80 14, 105 14, 128 25
-                       C 138 30, 144 38, 146 48
-                       L 155 55
-                       L 143 57
-                       C 140 48, 134 38, 122 30
-                       C 102 20, 78 20, 60 30
-                       C 44 40, 32 52, 22 63
-                       Z"
-                    fill="white"
-                    opacity="0.2"
+                    d="M 125 32 L 150 52 L 128 60"
+                    fill="none"
+                    stroke="#4ECDC4"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    opacity="0.8"
                   />
-                  {/* Sparkle stars scattered along the arrow */}
-                  <g filter="url(#sparkleGlow)">
-                    <text x="22" y="58" fontSize="10" opacity="0.8">✦</text>
-                    <text x="48" y="28" fontSize="12" opacity="0.9">✦</text>
-                    <text x="78" y="16" fontSize="14" opacity="0.8">✦</text>
-                    <text x="108" y="20" fontSize="11" opacity="0.9">✦</text>
-                    <text x="135" y="36" fontSize="13" opacity="0.8">✦</text>
-                  </g>
-                  {/* Tiny floating sparkle dots */}
-                  <circle cx="35" cy="42" r="2" fill="#FFE66D" opacity="0.8" />
-                  <circle cx="65" cy="14" r="2.5" fill="#FFE66D" opacity="0.7" />
-                  <circle cx="95" cy="10" r="2" fill="#FFE66D" opacity="0.8" />
-                  <circle cx="118" cy="14" r="2.5" fill="#FFE66D" opacity="0.7" />
-                  <circle cx="148" cy="42" r="2" fill="#FFE66D" opacity="0.8" />
+                  {/* Sparkle dots along the curve */}
+                  <circle cx="30" cy="48" r="3" fill="#FFE66D" opacity="0.7" />
+                  <circle cx="60" cy="18" r="3.5" fill="#FF6B9D" opacity="0.5" />
+                  <circle cx="95" cy="12" r="3" fill="#FFE66D" opacity="0.7" />
+                  <circle cx="120" cy="25" r="3.5" fill="#FF6B9D" opacity="0.5" />
                 </svg>
                 {/* Magic wand circle */}
-                <div className="relative -mt-8 bg-white/80 backdrop-blur-sm w-14 h-14 lg:w-16 lg:h-16 rounded-full flex items-center justify-center shadow-lg border border-pink-100">
+                <div className="relative -mt-6 bg-white/80 backdrop-blur-sm w-14 h-14 lg:w-16 lg:h-16 rounded-full flex items-center justify-center shadow-lg border border-pink-100">
                   <span className="text-2xl lg:text-3xl">🪄</span>
                   <span className="absolute -top-1 -right-1 text-sm animate-magic-sparkle">✨</span>
                   <span className="absolute -bottom-1 -left-1 text-xs animate-magic-sparkle" style={{ animationDelay: '0.6s' }}>⭐</span>
-                  <span className="absolute top-0 -left-2 text-xs animate-magic-sparkle" style={{ animationDelay: '1.2s' }}>💫</span>
                 </div>
                 <p className="text-sm font-heading text-gray-500 mt-2">A Sprinkle of Magic</p>
               </div>
@@ -340,8 +308,8 @@ const Home: React.FC = () => {
                       {currentTheme.ageRange}
                     </div>
                   </div>
-                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md text-xs font-heading text-gray-600 whitespace-nowrap border border-gray-100">
-                    Output: Their Personalized Book Cover
+                  <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-secondary/10 to-teal-100 px-4 py-1.5 rounded-full shadow-md whitespace-nowrap border border-secondary/20">
+                    <span className="text-xs font-heading text-gray-700">✨ Their own storybook!</span>
                   </div>
                 </div>
               </div>
@@ -423,9 +391,10 @@ const Home: React.FC = () => {
                 Generate Instant Preview - Free! (takes 2 min)
               </button>
 
-              <p className="text-gray-500 text-sm mt-3">
-                Loved by 1,000+ families worldwide - no credit card required
-              </p>
+              <div className="mt-4 inline-flex items-center gap-2 bg-softPink/60 border border-pink-100 px-5 py-2 rounded-full">
+                <span className="text-amber-400 text-sm">✨</span>
+                <span className="text-primary font-heading text-sm tracking-wide uppercase">Loved by 1,000+ families worldwide</span>
+              </div>
             </div>
           </div>
         </section>
