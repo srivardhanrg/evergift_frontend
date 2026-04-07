@@ -150,53 +150,43 @@ const Home: React.FC = () => {
                 </div>
               </div>
 
-              {/* Right Side - All 7 Book Collage */}
-              <div className="relative flex-1 w-full min-h-[280px] sm:min-h-[340px] lg:min-h-[380px] hidden md:block">
-                {collageThemes.map((theme, i) => {
-                  const positions = [
-                    { top: '0%', left: '0%', rotate: '-4deg', size: 'w-28 lg:w-32', zIndex: 3, delay: '0s' },
-                    { top: '0%', left: '35%', rotate: '3deg', size: 'w-26 lg:w-30', zIndex: 3, delay: '0.1s' },
-                    { top: '0%', left: '68%', rotate: '-2deg', size: 'w-26 lg:w-30', zIndex: 3, delay: '0.2s' },
-                    { top: '48%', left: '5%', rotate: '4deg', size: 'w-26 lg:w-30', zIndex: 2, delay: '0.3s' },
-                    { top: '48%', left: '32%', rotate: '-3deg', size: 'w-28 lg:w-32', zIndex: 2, delay: '0.4s' },
-                    { top: '46%', left: '60%', rotate: '5deg', size: 'w-24 lg:w-28', zIndex: 2, delay: '0.5s' },
-                    { top: '22%', left: '82%', rotate: '-5deg', size: 'w-22 lg:w-26', zIndex: 1, delay: '0.6s' },
-                  ];
-                  const pos = positions[i];
-                  return (
-                    <div
-                      key={theme.id}
-                      className={`absolute ${pos.size} cursor-pointer group animate-fadeInUp`}
-                      style={{
-                        top: pos.top,
-                        left: pos.left,
-                        transform: `rotate(${pos.rotate})`,
-                        zIndex: pos.zIndex,
-                        animationDelay: pos.delay,
-                      }}
-                      onClick={() => handleThemeSelect(theme.id)}
-                    >
-                      <div className="rounded-lg overflow-hidden shadow-xl border-2 border-white group-hover:shadow-2xl group-hover:scale-105 transition-all duration-300">
-                        <OptimizedImage
-                          src={theme.defaultCover}
-                          alt={`${theme.title} storybook cover`}
-                          aspectRatio="4/5"
-                          width={160}
-                          height={200}
-                          sizes="160px"
-                        />
+              {/* Right Side - All 7 Book Collage as grid */}
+              <div className="flex-1 hidden md:block">
+                <div className="grid grid-cols-4 gap-3 lg:gap-4 max-w-xl">
+                  {collageThemes.map((theme, i) => {
+                    const rotations = [-3, 2, -2, 3, -4, 2, -3];
+                    return (
+                      <div
+                        key={theme.id}
+                        className="relative cursor-pointer group animate-fadeInUp"
+                        style={{
+                          transform: `rotate(${rotations[i]}deg)`,
+                          animationDelay: `${i * 0.08}s`,
+                        }}
+                        onClick={() => handleThemeSelect(theme.id)}
+                      >
+                        <div className="rounded-lg overflow-hidden shadow-xl border-2 border-white group-hover:shadow-2xl group-hover:scale-105 transition-all duration-300">
+                          <OptimizedImage
+                            src={theme.defaultCover}
+                            alt={`${theme.title} storybook cover`}
+                            aspectRatio="4/5"
+                            width={160}
+                            height={200}
+                            sizes="160px"
+                          />
+                        </div>
+                        {/* Age Badge */}
+                        <div className="absolute -top-2 -right-2 bg-white/95 backdrop-blur-sm px-1.5 py-0.5 rounded-full text-[9px] font-bold text-gray-700 shadow-md z-10 border border-gray-100">
+                          {theme.ageRange}
+                        </div>
+                        {/* Title on hover */}
+                        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gray-900/80 text-white text-[10px] px-2 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                          {theme.title}
+                        </div>
                       </div>
-                      {/* Age Badge */}
-                      <div className="absolute -top-2 -right-2 bg-white/95 backdrop-blur-sm px-1.5 py-0.5 rounded-full text-[9px] font-bold text-gray-700 shadow-md z-10 border border-gray-100">
-                        {theme.ageRange}
-                      </div>
-                      {/* Title tooltip on hover */}
-                      <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gray-900/80 text-white text-[10px] px-2 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                        {theme.title}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Mobile: Show small scrollable row of covers */}
