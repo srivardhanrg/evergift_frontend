@@ -187,18 +187,15 @@ const Home: React.FC = () => {
               onMouseEnter={() => { isPausedRef.current = true; }}
               onMouseLeave={() => { isPausedRef.current = false; }}
             >
-              {/* Decorative edges - left (magical/neutral) */}
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-4 items-center opacity-35 pointer-events-none">
-                <span className="text-3xl lg:text-4xl animate-sparkle" style={{ animationDelay: '0.2s' }}>✨</span>
-                <span className="text-2xl lg:text-3xl animate-sparkle" style={{ animationDelay: '0.9s' }}>🌟</span>
-                <span className="text-3xl lg:text-4xl animate-sparkle" style={{ animationDelay: '0.5s' }}>⭐</span>
-              </div>
-              {/* Decorative edges - right (magical/neutral) */}
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-4 items-center opacity-35 pointer-events-none">
-                <span className="text-2xl lg:text-3xl animate-sparkle" style={{ animationDelay: '0.4s' }}>💫</span>
-                <span className="text-3xl lg:text-4xl animate-sparkle" style={{ animationDelay: '1s' }}>✨</span>
-                <span className="text-2xl lg:text-3xl animate-sparkle" style={{ animationDelay: '0.7s' }}>🌟</span>
-              </div>
+              {/* Decorative sparkles - scattered abstractly along edges */}
+              <span className="absolute left-2 top-[12%] text-2xl opacity-30 pointer-events-none animate-sparkle" style={{ animationDelay: '0.2s' }}>✨</span>
+              <span className="absolute left-6 top-[55%] text-3xl lg:text-4xl opacity-25 pointer-events-none animate-sparkle" style={{ animationDelay: '1.1s' }}>⭐</span>
+              <span className="absolute left-1 bottom-[18%] text-lg opacity-35 pointer-events-none animate-sparkle" style={{ animationDelay: '0.6s' }}>🌟</span>
+              <span className="absolute right-3 top-[8%] text-xl opacity-30 pointer-events-none animate-sparkle" style={{ animationDelay: '0.8s' }}>💫</span>
+              <span className="absolute right-1 top-[42%] text-3xl opacity-20 pointer-events-none animate-sparkle" style={{ animationDelay: '0.3s' }}>✨</span>
+              <span className="absolute right-5 bottom-[10%] text-2xl lg:text-3xl opacity-30 pointer-events-none animate-sparkle" style={{ animationDelay: '1.4s' }}>🌟</span>
+              <span className="absolute left-10 top-[30%] text-sm opacity-25 pointer-events-none animate-sparkle" style={{ animationDelay: '1.7s' }}>⭐</span>
+              <span className="absolute right-8 top-[70%] text-lg opacity-20 pointer-events-none animate-sparkle" style={{ animationDelay: '0.5s' }}>💫</span>
 
               {/* Left - Child Photo (placeholder) */}
               <div className={`transition-all duration-500 flex-shrink-0 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
