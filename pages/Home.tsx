@@ -160,7 +160,10 @@ const Home: React.FC = () => {
   };
 
   const handleCtaClick = () => {
-    navigate("/create");
+    const themesSection = document.getElementById('theme-grid');
+    if (themesSection) {
+      themesSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   // Current hero pair
@@ -308,7 +311,7 @@ const Home: React.FC = () => {
                       {currentTheme.ageRange}
                     </div>
                   </div>
-                  <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-secondary/10 to-teal-100 px-4 py-1.5 rounded-full shadow-md whitespace-nowrap border border-secondary/20">
+                  <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary/10 to-pink-100 px-4 py-1.5 rounded-full shadow-md whitespace-nowrap border border-primary/20">
                     <span className="text-xs font-heading text-gray-700">✨ Their own storybook!</span>
                   </div>
                 </div>
@@ -385,22 +388,21 @@ const Home: React.FC = () => {
             <div className="text-center">
               <button
                 onClick={handleCtaClick}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white px-8 py-4 rounded-full font-heading text-lg md:text-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-heading text-sm md:text-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                <Sparkles className="w-5 h-5" />
-                Generate Instant Preview - Free! (takes 2 min)
+                <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
+                Generate Instant Preview - Free!
               </button>
-
-              <div className="mt-4 inline-flex items-center gap-2 bg-softPink/60 border border-pink-100 px-5 py-2 rounded-full">
-                <span className="text-amber-400 text-sm">✨</span>
-                <span className="text-primary font-heading text-sm tracking-wide uppercase">Loved by 1,000+ families worldwide</span>
+              <div className="mt-2 inline-flex items-center gap-2 bg-softPink/60 border border-pink-100 px-4 py-1.5 rounded-full">
+                <span className="text-amber-400 text-xs">✨</span>
+                <span className="text-primary font-heading text-xs tracking-wide uppercase">Loved by 1,000+ families worldwide</span>
               </div>
             </div>
           </div>
         </section>
 
         {/* "Choose your story" Theme Grid */}
-        <section className="py-10 bg-gray-50/50">
+        <section id="theme-grid" className="py-10 bg-gray-50/50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Section Header */}
             <div className="text-center mb-8">
