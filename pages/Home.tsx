@@ -296,27 +296,43 @@ const Home: React.FC = () => {
                 <p className="text-sm font-heading text-gray-500 mt-2">A Sprinkle of Magic</p>
               </div>
 
-              {/* Right - Book Cover (real theme cover) — square aspect */}
+              {/* Right - Book Cover / Theme page — square aspect */}
               <div className={`transition-all duration-500 flex-shrink-0 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                 <div className="relative">
                   <div className="w-60 lg:w-72 transform rotate-2 hover:rotate-0 transition-transform duration-500">
-                    <div className="rounded-2xl overflow-hidden shadow-2xl shadow-primary/20 border-4 border-white">
-                      <OptimizedImage
-                        src={currentPair.themeImage}
-                        alt={`${currentPair.childName}'s ${currentTheme.title} storybook cover`}
-                        aspectRatio="1/1"
-                        priority={true}
-                        width={360}
-                        height={360}
-                        fetchPriority="high"
-                      />
+                    {/* Gold gradient border for non-first slides, white border for first */}
+                    <div
+                      className={`rounded-2xl shadow-2xl shadow-primary/20 ${activeIndex === 0 ? 'border-4 border-white overflow-hidden' : 'p-[5px]'}`}
+                      style={activeIndex !== 0 ? { background: 'linear-gradient(180deg, #F5DC78, #D4AF37, #966E19)', borderRadius: '16px' } : undefined}
+                    >
+                      <div className={activeIndex !== 0 ? 'rounded-xl overflow-hidden' : ''}>
+                        <OptimizedImage
+                          src={currentPair.themeImage}
+                          alt={`${currentPair.childName}'s ${currentTheme.title} storybook cover`}
+                          aspectRatio="1/1"
+                          priority={true}
+                          width={360}
+                          height={360}
+                          fetchPriority="high"
+                        />
+                      </div>
                     </div>
-                    {/* Theme title overlay */}
-                    <div className="absolute top-4 left-4 right-4">
-                      <p className="text-white font-heading text-xl lg:text-2xl drop-shadow-lg leading-tight" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
-                        {currentPair.childName}'s {currentTheme.title}
-                      </p>
-                    </div>
+                    {/* Gold title overlay - hidden for first pair (white girl cover already has text) */}
+                    {activeIndex !== 0 && (
+                      <div className="absolute top-4 left-4 right-4">
+                        <p className="font-heading text-xl lg:text-2xl leading-tight tracking-wide uppercase"
+                          style={{
+                            background: 'linear-gradient(180deg, #F5DC78 0%, #D4AF37 50%, #966E19 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            textShadow: 'none',
+                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
+                          }}
+                        >
+                          {currentPair.childName}'s {currentTheme.title}
+                        </p>
+                      </div>
+                    )}
                     {/* Age badge */}
                     <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-full text-xs font-bold text-gray-700 shadow-md">
                       {currentTheme.ageRange}
