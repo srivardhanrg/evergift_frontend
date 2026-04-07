@@ -72,9 +72,9 @@ const Home: React.FC = () => {
     navigate("/create");
   };
 
-  // Featured book = first theme (Enchanted Forest), rest go in collage
-  const featuredTheme = THEMES[2]; // Cosmic Adventure - space-themed like the reference
-  const collageThemes = THEMES.filter((_, i) => i !== 2).slice(0, 5);
+  // Featured book = Cosmic Adventure, all remaining themes in collage
+  const featuredTheme = THEMES[2];
+  const collageThemes = THEMES.filter((_, i) => i !== 2);
 
   return (
     <>
@@ -122,52 +122,45 @@ const Home: React.FC = () => {
             {/* Book Covers Layout */}
             <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-10 mb-10">
 
-              {/* Left Side - Featured Book */}
-              <div className="relative flex-shrink-0 w-full lg:w-[40%] flex justify-center">
-                <div className="relative">
-                  {/* "Your Photo → Their Hero!" annotation */}
-                  <div className="absolute -left-4 bottom-16 sm:-left-12 sm:bottom-20 z-20 hidden sm:block">
-                    <p className="font-heading text-gray-700 text-sm md:text-base leading-tight">
-                      Your Photo<br />
-                      <span className="text-primary font-bold">→ Their Hero!</span>
-                    </p>
-                    <svg className="absolute -right-6 top-1/2 w-8 h-6 text-primary/60" fill="none" viewBox="0 0 32 24">
-                      <path d="M2 12 C 10 12, 20 8, 28 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" strokeDasharray="4 3"/>
-                      <path d="M24 2 L28 4 L24 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                    </svg>
+              {/* Left Side - Featured Book + Annotation */}
+              <div className="relative flex-shrink-0 w-full lg:w-[38%] flex flex-col items-center">
+                {/* Featured Book Cover */}
+                <div className="w-52 sm:w-60 md:w-64 transform -rotate-3 hover:rotate-0 transition-transform duration-500 animate-float-gentle">
+                  <div className="rounded-xl overflow-hidden shadow-2xl shadow-primary/20 border-2 border-white">
+                    <OptimizedImage
+                      src={featuredTheme.defaultCover}
+                      alt={`${featuredTheme.title} - featured storybook cover`}
+                      aspectRatio="4/5"
+                      priority={true}
+                      width={320}
+                      height={400}
+                      fetchPriority="high"
+                    />
                   </div>
-
-                  {/* Featured Book Cover */}
-                  <div className="w-64 sm:w-72 md:w-80 transform -rotate-3 hover:rotate-0 transition-transform duration-500 animate-float-gentle">
-                    <div className="rounded-xl overflow-hidden shadow-2xl shadow-primary/20 border-2 border-white">
-                      <OptimizedImage
-                        src={featuredTheme.defaultCover}
-                        alt={`${featuredTheme.title} - featured storybook cover`}
-                        aspectRatio="4/5"
-                        priority={true}
-                        width={400}
-                        height={500}
-                        fetchPriority="high"
-                      />
-                    </div>
-                    {/* Price Badge */}
-                    <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg text-sm font-heading text-gray-800 z-10">
-                      From <span className="text-primary font-bold">$19</span>
-                    </div>
+                  {/* Price Badge */}
+                  <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg shadow-lg text-xs font-heading text-gray-800 z-10">
+                    From <span className="text-primary font-bold">$19</span>
                   </div>
+                </div>
+                {/* "Your Photo → Their Hero!" - BELOW the image */}
+                <div className="mt-3 flex items-center gap-2">
+                  <p className="font-heading text-gray-700 text-sm leading-tight">
+                    Your Photo <span className="text-primary font-bold">→ Their Hero!</span>
+                  </p>
                 </div>
               </div>
 
-              {/* Right Side - Scattered Book Collage */}
-              <div className="relative flex-1 w-full min-h-[320px] sm:min-h-[380px] lg:min-h-[420px] hidden md:block">
-                {/* Collage of book covers at various positions and rotations */}
+              {/* Right Side - All 7 Book Collage */}
+              <div className="relative flex-1 w-full min-h-[280px] sm:min-h-[340px] lg:min-h-[380px] hidden md:block">
                 {collageThemes.map((theme, i) => {
                   const positions = [
-                    { top: '0%', left: '5%', rotate: '-5deg', size: 'w-36 lg:w-44', zIndex: 3, delay: '0s' },
-                    { top: '2%', left: '50%', rotate: '4deg', size: 'w-32 lg:w-40', zIndex: 2, delay: '0.3s' },
-                    { top: '45%', left: '0%', rotate: '3deg', size: 'w-32 lg:w-38', zIndex: 2, delay: '0.6s' },
-                    { top: '48%', left: '40%', rotate: '-4deg', size: 'w-30 lg:w-36', zIndex: 1, delay: '0.9s' },
-                    { top: '30%', left: '72%', rotate: '6deg', size: 'w-28 lg:w-34', zIndex: 1, delay: '1.2s' },
+                    { top: '0%', left: '0%', rotate: '-4deg', size: 'w-28 lg:w-32', zIndex: 3, delay: '0s' },
+                    { top: '0%', left: '35%', rotate: '3deg', size: 'w-26 lg:w-30', zIndex: 3, delay: '0.1s' },
+                    { top: '0%', left: '68%', rotate: '-2deg', size: 'w-26 lg:w-30', zIndex: 3, delay: '0.2s' },
+                    { top: '48%', left: '5%', rotate: '4deg', size: 'w-26 lg:w-30', zIndex: 2, delay: '0.3s' },
+                    { top: '48%', left: '32%', rotate: '-3deg', size: 'w-28 lg:w-32', zIndex: 2, delay: '0.4s' },
+                    { top: '46%', left: '60%', rotate: '5deg', size: 'w-24 lg:w-28', zIndex: 2, delay: '0.5s' },
+                    { top: '22%', left: '82%', rotate: '-5deg', size: 'w-22 lg:w-26', zIndex: 1, delay: '0.6s' },
                   ];
                   const pos = positions[i];
                   return (
@@ -188,17 +181,17 @@ const Home: React.FC = () => {
                           src={theme.defaultCover}
                           alt={`${theme.title} storybook cover`}
                           aspectRatio="4/5"
-                          width={200}
-                          height={250}
-                          sizes="200px"
+                          width={160}
+                          height={200}
+                          sizes="160px"
                         />
                       </div>
                       {/* Age Badge */}
-                      <div className="absolute -top-2 -right-2 bg-white/95 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-gray-700 shadow-md z-10 border border-gray-100">
+                      <div className="absolute -top-2 -right-2 bg-white/95 backdrop-blur-sm px-1.5 py-0.5 rounded-full text-[9px] font-bold text-gray-700 shadow-md z-10 border border-gray-100">
                         {theme.ageRange}
                       </div>
                       {/* Title tooltip on hover */}
-                      <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/80 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gray-900/80 text-white text-[10px] px-2 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                         {theme.title}
                       </div>
                     </div>
@@ -206,12 +199,12 @@ const Home: React.FC = () => {
                 })}
               </div>
 
-              {/* Mobile: Show small scrollable row of covers instead of collage */}
+              {/* Mobile: Show small scrollable row of covers */}
               <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 md:hidden w-full">
                 {THEMES.filter((_, i) => i !== 2).map((theme) => (
                   <div
                     key={theme.id}
-                    className="flex-shrink-0 w-28 cursor-pointer"
+                    className="flex-shrink-0 w-24 cursor-pointer"
                     onClick={() => handleThemeSelect(theme.id)}
                   >
                     <div className="rounded-lg overflow-hidden shadow-lg border-2 border-white">
@@ -219,11 +212,11 @@ const Home: React.FC = () => {
                         src={theme.defaultCover}
                         alt={`${theme.title} cover`}
                         aspectRatio="4/5"
-                        width={150}
-                        height={188}
+                        width={120}
+                        height={150}
                       />
                     </div>
-                    <p className="text-[10px] text-gray-600 text-center mt-1 font-medium truncate">{theme.title}</p>
+                    <p className="text-[9px] text-gray-600 text-center mt-1 font-medium truncate">{theme.title}</p>
                   </div>
                 ))}
               </div>
