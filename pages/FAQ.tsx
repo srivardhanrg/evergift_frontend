@@ -58,7 +58,7 @@ const FAQ: React.FC = () => {
           <h1 className="text-3xl md:text-4xl font-heading text-gray-900 mb-2">
             Frequently Asked Questions
           </h1>
-          <p className="text-gray-500">Everything you need to know about StoryGift</p>
+          <p className="text-gray-500">Everything you need to know about EverGift</p>
         </div>
 
         {/* FAQ Sections */}

@@ -1,5 +1,5 @@
 /**
- * StoryGift Analytics Service
+ * EverGift Analytics Service
  * Comprehensive tracking for user behavior, conversions, and technical performance
  */
 

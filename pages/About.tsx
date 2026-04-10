@@ -78,7 +78,7 @@ const About: React.FC = () => {
           <h2 className="text-4xl font-heading text-gray-900 mb-4">Our Promise to You</h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
             We understand that nothing is more precious than your child. That's why we've built
-            StoryGift with the highest standards of safety, quality, and care.
+            EverGift with the highest standards of safety, quality, and care.
           </p>
         </div>
 

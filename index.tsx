@@ -4,7 +4,7 @@ import App from './App';
 import { ShadowRootContext } from './src/ShadowContext';
 
 /**
- * MagicTales Application Bootstrap
+ * EverGift Application Bootstrap
  * 
  * This handles two environments:
  * 1. Shopify (zelavo-app) - Uses Shadow DOM for CSS isolation
@@ -57,7 +57,7 @@ let shadowRoot: ShadowRoot | null = null;
 let renderTarget: HTMLElement;
 
 if (isShopifyEnvironment) {
-  console.log('[MagicTales] Shopify environment detected, using Shadow DOM isolation');
+  console.log('[EverGift] Shopify environment detected, using Shadow DOM isolation');
 
   // Attach Shadow DOM for complete CSS isolation
   shadowRoot = hostElement.attachShadow({ mode: 'open' });
@@ -117,7 +117,7 @@ if (isShopifyEnvironment) {
 
     // Add load handler to reveal content when CSS is ready
     link.onload = () => {
-      console.log('[MagicTales] CSS loaded, revealing app');
+      console.log('[EverGift] CSS loaded, revealing app');
       const appRoot = shadowRoot?.getElementById('shadow-app-root');
       const spinner = shadowRoot?.querySelector('.loading-spinner');
       if (appRoot) appRoot.classList.add('css-loaded');
@@ -129,7 +129,7 @@ if (isShopifyEnvironment) {
 
     // Handle CSS load error
     link.onerror = () => {
-      console.error('[MagicTales] Failed to load CSS, showing app anyway');
+      console.error('[EverGift] Failed to load CSS, showing app anyway');
       const appRoot = shadowRoot?.getElementById('shadow-app-root');
       const spinner = shadowRoot?.querySelector('.loading-spinner');
       if (appRoot) appRoot.classList.add('css-loaded');
@@ -141,7 +141,7 @@ if (isShopifyEnvironment) {
 
     shadowRoot.appendChild(link);
   } else {
-    console.warn('[MagicTales] No CSS URL found in data-css-url attribute');
+    console.warn('[EverGift] No CSS URL found in data-css-url attribute');
     // No CSS to load, signal ready immediately after render
     requestAnimationFrame(() => {
       window.dispatchEvent(new Event('storygift-ready'));
@@ -199,7 +199,7 @@ if (isShopifyEnvironment) {
   shadowRoot.appendChild(renderTarget);
 
 } else {
-  console.log('[MagicTales] Local development mode, no Shadow DOM');
+  console.log('[EverGift] Local development mode, no Shadow DOM');
   renderTarget = hostElement;
   // CSS is loaded via index.html in local development
 

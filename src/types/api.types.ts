@@ -11,7 +11,7 @@
 
 // Backend themes - these are the actual values accepted by the API
 export enum Theme {
-    // Primary StoryGift themes
+    // Primary EverGift themes
     STORYGIFT_MAGIC_CASTLE = 'storygift_magic_castle',
     STORYGIFT_ENCHANTED_FOREST = 'storygift_enchanted_forest',
     // New premium themes

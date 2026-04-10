@@ -21,13 +21,13 @@ const PrivacyPolicy: React.FC = () => {
                         <Shield className="w-8 h-8 text-primary" />
                     </div>
                     <h1 className="text-3xl md:text-4xl font-heading text-gray-900 mb-2">Privacy Policy</h1>
-                    <p className="text-gray-500">Your privacy is our priority. This policy explains how we protect and handle your personal information at StoryGift.</p>
+                    <p className="text-gray-500">Your privacy is our priority. This policy explains how we protect and handle your personal information at EverGift.</p>
                 </div>
 
                 {/* Content */}
                 <div className="bg-white rounded-2xl shadow-lg p-8 space-y-8">
                     <p className="text-gray-600">
-                        At StoryGift, your privacy matters to us. This Privacy Policy explains how we collect, use, disclose, and protect your personal information when you use our platform.
+                        At EverGift, your privacy matters to us. This Privacy Policy explains how we collect, use, disclose, and protect your personal information when you use our platform.
                     </p>
 
                     <section>
@@ -146,7 +146,7 @@ const PrivacyPolicy: React.FC = () => {
                     <section>
                         <h2 className="text-xl font-heading text-gray-900 mb-4">7. Children's Privacy</h2>
                         <p className="text-gray-600 mb-3">
-                            StoryGift is intended for parents and guardians. We do not knowingly collect personal data directly from children. All information must be submitted by a consenting adult who is the parent or legal guardian of the child.
+                            EverGift is intended for parents and guardians. We do not knowingly collect personal data directly from children. All information must be submitted by a consenting adult who is the parent or legal guardian of the child.
                         </p>
                         <p className="text-gray-600">
                             We comply with applicable children's privacy laws, including COPPA (Children's Online Privacy Protection Act). Parents have the right to review, delete, or request information about their child's data at any time.
@@ -156,7 +156,7 @@ const PrivacyPolicy: React.FC = () => {
                     <section>
                         <h2 className="text-xl font-heading text-gray-900 mb-4">8. International Data Transfers</h2>
                         <p className="text-gray-600">
-                            If you are accessing StoryGift from outside the US, please note that your data may be transferred to and processed in countries where our infrastructure or partners are located. We ensure adequate safeguards are in place for international transfers.
+                            If you are accessing EverGift from outside the US, please note that your data may be transferred to and processed in countries where our infrastructure or partners are located. We ensure adequate safeguards are in place for international transfers.
                         </p>
                     </section>
 

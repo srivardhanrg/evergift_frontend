@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, Star, User as UserIcon, Menu, X, LogOut, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, User as UserIcon, Menu, X, LogOut, ChevronDown } from 'lucide-react';
 import { isShopifyCustomerLoggedIn, getShopifyCustomerContext, getFullCurrentPath, saveLoginRedirect } from '../src/api/client';
 
 // Hardcoded shop domain as ultimate fallback
@@ -69,11 +69,12 @@ const Navbar: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-14 sm:h-16 items-center">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2" aria-label="StoryGift home">
-              <div className="bg-primary p-1.5 sm:p-2 rounded-lg">
-                <Star className="text-white w-5 h-5 sm:w-6 sm:h-6 fill-current" />
-              </div>
-              <span className="text-xl sm:text-2xl font-heading text-gray-900 tracking-tight">StoryGift</span>
+            <Link to="/" className="flex items-center" aria-label="EverGift home">
+              <img
+                src="https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/namelogo.webp"
+                alt="EverGift"
+                className="h-9 sm:h-11 w-auto"
+              />
             </Link>
 
             {/* Desktop Navigation */}

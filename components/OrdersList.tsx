@@ -176,7 +176,7 @@ const STATUS_MESSAGES: Record<string, { headline: string; subMessage: string }> 
     },
     delivered: {
         headline: '🎁 Delivered!',
-        subMessage: 'Thank you for choosing MagicTales ❤️',
+        subMessage: 'Thank you for choosing EverGift ❤️',
     },
     failed: {
         headline: '⚠️ We hit a snag with your print order.',
@@ -391,7 +391,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
                                 <p className="font-semibold text-red-700 text-sm">{messages.headline}</p>
                                 <p className="text-xs text-red-600 mt-1">{messages.subMessage}</p>
                                 <p className="text-xs text-gray-500 mt-2">
-                                    Email us at <span className="font-medium">support@storygift.in</span>
+                                    Email us at <span className="font-medium">support@evergift.in</span>
                                 </p>
                             </div>
                         </div>

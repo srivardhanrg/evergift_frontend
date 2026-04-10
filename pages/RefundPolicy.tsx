@@ -24,7 +24,7 @@ const RefundPolicy: React.FC = () => {
 
                 <div className="bg-white rounded-2xl shadow-lg p-8 space-y-8">
                     <p className="text-gray-600">
-                        Because every StoryGift book is personalized using AI — with your child's name, photo, and unique story — each order is one-of-a-kind. We provide a full preview before purchase so you can see exactly what you're getting.
+                        Because every EverGift book is personalized using AI — with your child's name, photo, and unique story — each order is one-of-a-kind. We provide a full preview before purchase so you can see exactly what you're getting.
                     </p>
 
                     <section>

@@ -27,13 +27,13 @@ const TermsOfService: React.FC = () => {
                 {/* Content */}
                 <div className="bg-white rounded-2xl shadow-lg p-8 space-y-8">
                     <p className="text-gray-600">
-                        Welcome to StoryGift! These Terms of Service govern your access to and use of our platform, where you can create personalized storybooks featuring your child.
+                        Welcome to EverGift! These Terms of Service govern your access to and use of our platform, where you can create personalized storybooks featuring your child.
                     </p>
 
                     <section>
                         <h2 className="text-xl font-heading text-gray-900 mb-4">1. Acceptance of Terms</h2>
                         <p className="text-gray-600">
-                            By using our platform, you agree to comply with these Terms. If you do not agree, please do not use StoryGift. You must be at least 18 years old and the parent or legal guardian of the child featured in the storybook.
+                            By using our platform, you agree to comply with these Terms. If you do not agree, please do not use EverGift. You must be at least 18 years old and the parent or legal guardian of the child featured in the storybook.
                         </p>
                     </section>
 
@@ -225,7 +225,7 @@ const TermsOfService: React.FC = () => {
 
                         <div className="text-center pt-4">
                             <p className="text-sm text-gray-600">
-                                By using StoryGift's services, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.
+                                By using EverGift's services, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.
                             </p>
                         </div>
                     </div>

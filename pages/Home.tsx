@@ -540,7 +540,7 @@ const Home: React.FC = () => {
 
             {/* Feedback CTA */}
             <div className="mt-10 bg-gradient-to-r from-primary/5 via-purple-50 to-primary/5 rounded-2xl p-6 text-center border border-primary/10">
-              <p className="text-gray-700 font-heading text-lg mb-2">Got a StoryGift book?</p>
+              <p className="text-gray-700 font-heading text-lg mb-2">Got an EverGift book?</p>
               <p className="text-gray-500 text-sm mb-4">We'd love to hear what your little one thought of their adventure!</p>
               <Link
                 to="/feedback"

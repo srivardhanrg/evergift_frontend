@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Heart, Shield, Lock, Mail } from 'lucide-react';
+import { Heart, Shield, Lock, Mail } from 'lucide-react';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -13,11 +13,12 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12">
           {/* Brand Column */}
           <div className="col-span-2 md:col-span-2">
-            <Link to="/" className="flex items-center space-x-2 mb-6">
-              <div className="bg-primary p-2 rounded-lg">
-                <Star className="text-white w-5 h-5 fill-current" />
-              </div>
-              <span className="text-2xl font-heading text-gray-800">StoryGift</span>
+            <Link to="/" className="flex items-center mb-6">
+              <img
+                src="https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/namelogo.webp"
+                alt="EverGift"
+                className="h-11 w-auto"
+              />
             </Link>
             <p className="text-gray-500 mb-6 max-w-md">
               Creating magical, personalized storybooks where every child becomes the hero
@@ -96,7 +97,7 @@ const Footer: React.FC = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-center md:text-left">
               <p className="text-gray-500 text-sm">
-                © {currentYear} StoryGift. All rights reserved.
+                © {currentYear} EverGift. All rights reserved.
               </p>
               <p className="text-gray-400 text-xs mt-1">
                 Operated by Juvi Labs LLC

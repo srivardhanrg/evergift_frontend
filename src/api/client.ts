@@ -1,5 +1,5 @@
 /**
- * API Client for Magictales Backend
+ * API Client for EverGift Backend
  *
  * Shopify Integration:
  * - In Shopify (*.myshopify.com): API calls go through Shopify App Proxy at /apps/zelavo/api/*
