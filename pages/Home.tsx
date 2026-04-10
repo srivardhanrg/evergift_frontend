@@ -7,36 +7,36 @@ import { Sparkles, MessageCircle } from 'lucide-react';
 import OptimizedImage from '../components/OptimizedImage';
 import { trackThemeSelected, trackFunnelStep } from '../src/services/analytics';
 
-// Transformation pairs: child photo + matching theme cover/page
+// Transformation pairs: child photo + matching theme cover/page (WebP optimized)
 const HERO_PAIRS = [
   {
     childName: 'Sofia',
-    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/whitegirl.png',
-    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/final/d9bb9f89-c5c1-4fcf-8276-316e343280a5/cover_final.png',
+    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/whitegirl.webp',
+    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/theme/Emma_enchanted_forest.webp',
     themeIndex: 0, // Enchanted Forest
   },
   {
     childName: 'Ava',
-    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/blackgirl.png',
-    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/theme/Screenshot%202026-04-08%20at%201.18.09%20AM.png',
+    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/blackgirl.webp',
+    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/theme/cosmic_dreamer.webp',
     themeIndex: 2, // Cosmic Dreamer
   },
   {
     childName: 'Liam',
-    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/hispanicboy.png',
-    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/final/7cc4cce7-60a0-4274-bce2-3316e2e47bea/page_01.jpg',
+    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/hispanicboy.webp',
+    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/theme/safari.webp',
     themeIndex: 6, // Safari Adventure
   },
   {
     childName: 'Mateo',
-    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/southasian.png',
-    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/final/b41b5fac-83e8-4782-94b0-68cc97a8af5a/page_04.jpg',
+    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/southasian.webp',
+    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/theme/mighty_guardian.webp',
     themeIndex: 3, // Mighty Guardian
   },
   {
     childName: 'Zara',
-    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/whiteboy.png',
-    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/final/91b99731-c891-4258-b1c0-8e66b8f69f03/page_02.jpg',
+    childPhoto: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/Kids/whiteboy.webp',
+    themeImage: 'https://pub-eab76058d817412b9c6c9726ff8ae49e.r2.dev/LandingPage/theme/ocean.webp',
     themeIndex: 4, // Ocean Explorer
   },
 ];
